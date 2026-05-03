@@ -1,0 +1,17 @@
+/* Add these styles to the bottom of PropertyCard.css and SearchCard.css to handle link styling */
+.property-title-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.property-title-link:hover .property-title,
+.property-title-link:hover .search-card-title {
+    color: var(--color-primary);
+}
+
+.property-image-wrapper,
+.search-card-image-wrapper {
+    display: block;
+    cursor: pointer;
+}
