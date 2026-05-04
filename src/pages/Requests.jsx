@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -43,7 +43,7 @@ export default function Requests() {
             q = query(requestsRef, where('tenantId', '==', currentUser.uid));
         }
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
             let reqData = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
@@ -55,6 +55,16 @@ export default function Requests() {
 
             setRequests(reqData);
             setLoading(false);
+
+            // ── Mark all unread received requests as read instantly ──
+            if (activeTab === 'received') {
+                const unreadDocs = snapshot.docs.filter(d => d.data().isRead === false);
+                if (unreadDocs.length > 0) {
+                    const batch = writeBatch(db);
+                    unreadDocs.forEach(d => batch.update(d.ref, { isRead: true }));
+                    await batch.commit();
+                }
+            }
         }, (error) => {
             console.error("Error fetching requests:", error);
             setLoading(false);

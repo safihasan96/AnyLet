@@ -77,6 +77,7 @@ export default function PropertyDetails() {
                 tenantId: currentUser.uid,
                 tenantName: formData.name,
                 status: 'pending',
+                isRead: false,
                 createdAt: serverTimestamp(),
                 tenantDetails: formData
             });

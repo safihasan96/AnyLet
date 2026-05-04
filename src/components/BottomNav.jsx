@@ -55,7 +55,10 @@ export default function BottomNav() {
             <Link to="/requests" className={`flex flex-col items-center gap-1.5 w-12 relative ${isActive('/requests') ? 'text-[#3730a3]' : 'text-[#94a3b8]'}`}>
                 <MessageSquare size={24} strokeWidth={isActive('/requests') ? 2.5 : 2} />
                 {unreadCount > 0 && (
-                    <span className="absolute top-0 right-0 size-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-slate-950" />
+                    <span className="absolute -top-0.5 right-0.5 flex size-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                        <span className="relative inline-flex size-3 rounded-full bg-rose-500 border-2 border-white dark:border-slate-950" />
+                    </span>
                 )}
                 <span className="text-[10px] font-[800] tracking-wide">Messages</span>
             </Link>
