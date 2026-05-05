@@ -7,7 +7,7 @@ import {
   User, 
   LogOut, 
   Heart, 
-  LayoutDashboard, 
+  List, 
   Settings, 
   ShieldCheck, 
   Bell,
@@ -131,7 +131,7 @@ export default function Header() {
                     className="absolute right-0 mt-3 w-64 bg-white dark:bg-slate-900 rounded-[28px] shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 overflow-hidden"
                   >
                     <div className="p-2 space-y-1">
-                      <DropdownItem to="/dashboard" onClick={() => setIsDropdownOpen(false)} icon={<LayoutDashboard size={18} />} label="Dashboard" />
+                      <DropdownItem to="/my-listings" onClick={() => setIsDropdownOpen(false)} icon={<List size={18} />} label="My Ads" />
                       <DropdownItem to="/profile" onClick={() => setIsDropdownOpen(false)} icon={<User size={18} />} label="My Profile" />
                       <DropdownItem to="/favorites" onClick={() => setIsDropdownOpen(false)} icon={<Heart size={18} />} label="Saved Items" />
                       {userProfile?.role === 'admin' && (

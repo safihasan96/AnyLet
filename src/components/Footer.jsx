@@ -57,7 +57,7 @@ export default function Footer() {
                         <ul className="space-y-4 font-bold text-sm text-slate-500 dark:text-slate-400">
                             <li><Link to="/post-ad" className="hover:text-[#3E2B88] transition-colors">Post a Listing</Link></li>
                             <li><Link to="/pricing" className="hover:text-[#3E2B88] transition-colors">Pricing Plans</Link></li>
-                            <li><Link to="/dashboard" className="hover:text-[#3E2B88] transition-colors">Owner Dashboard</Link></li>
+                            <li><Link to="/my-listings" className="hover:text-[#3E2B88] transition-colors">Manage Ads</Link></li>
                             <li><Link to="/blog/owner-tips" className="hover:text-[#3E2B88] transition-colors">Landlord Advice</Link></li>
                         </ul>
                     </div>

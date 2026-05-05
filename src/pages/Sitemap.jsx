@@ -15,7 +15,7 @@ export default function Sitemap() {
             links: [
                 { name: "Login", path: "/login" },
                 { name: "Register", path: "/signup" },
-                { name: "User Dashboard", path: "/dashboard" },
+                { name: "My Listings", path: "/my-listings" },
                 { name: "Saved Properties", path: "/favorites" }
             ]
         },

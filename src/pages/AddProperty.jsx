@@ -10,6 +10,7 @@ import {
     ShieldCheck, Car, Wind, Lock, DoorOpen, ChevronsUp, Phone,
     CloudSun, UtensilsCrossed, Thermometer, Package, Bike, Calendar, Users
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AddProperty() {
     const { currentUser } = useAuth();
@@ -37,6 +38,8 @@ export default function AddProperty() {
         utilities: [],
         features: []
     });
+
+    const [showSuccess, setShowSuccess] = useState(false);
 
     const BILLING_CYCLES = ["Month", "Week", "Day"];
     const PROPERTY_TYPES = ["House", "Apartment", "Sublet", "Room", "Mess", "Cottage", "Resort", "Shop", "Others"];
@@ -121,7 +124,8 @@ export default function AddProperty() {
             };
 
             await addDoc(collection(db, 'properties'), propertyData);
-            navigate('/dashboard');
+            setShowSuccess(true);
+            setTimeout(() => navigate('/'), 3000);
         } catch (err) {
             console.error(err);
         } finally {
@@ -143,6 +147,36 @@ export default function AddProperty() {
 
     return (
         <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark pb-10 text-slate-900 dark:text-slate-100">
+            <AnimatePresence>
+                {showSuccess && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl px-6"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="bg-white dark:bg-slate-900 p-10 rounded-[40px] shadow-2xl border border-slate-100 dark:border-slate-800 text-center max-w-sm w-full"
+                        >
+                            <div className="size-24 bg-emerald-500 rounded-full flex items-center justify-center text-white mx-auto mb-8 shadow-xl shadow-emerald-500/20">
+                                <CheckCircle size={48} strokeWidth={2.5} />
+                            </div>
+                            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4">Ad Published!</h2>
+                            <p className="text-slate-500 dark:text-slate-400 font-bold mb-10 leading-relaxed text-lg">
+                                Your property is now live. Redirecting you home...
+                            </p>
+                            <button 
+                                onClick={() => navigate('/')}
+                                className="w-full py-5 bg-primary text-white rounded-2xl font-black text-lg shadow-xl shadow-primary/20"
+                            >
+                                Take me Home
+                            </button>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <header className="flex items-center p-4 justify-between sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
                 <button onClick={prevStep} className="text-slate-700 dark:text-slate-300 p-2">
                     <ArrowLeft size={24} />

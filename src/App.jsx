@@ -10,7 +10,6 @@ import Search from './pages/Search';
 import PropertyDetails from './pages/PropertyDetails';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import AddProperty from './pages/AddProperty';
 import Favorites from './pages/Favorites';
@@ -128,11 +127,6 @@ function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <PageWrapper><Dashboard /></PageWrapper>
-                </ProtectedRoute>
-              } />
               <Route path="/profile" element={
                 <ProtectedRoute>
                   <PageWrapper><Profile /></PageWrapper>
