@@ -36,7 +36,7 @@ export default function Signup() {
             // Send Firebase's own verification email — no config needed
             await sendEmailVerification(userCredential.user);
 
-            setDone(true);
+            navigate('/');
         } catch (err) {
             console.error(err);
             if (err.code === 'auth/email-already-in-use') {
@@ -53,48 +53,7 @@ export default function Signup() {
         }
     }
 
-    // ── Success / Verify Email Screen ──────────────────────────────────────
-    if (done) {
-        return (
-            <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 p-6 items-center justify-center">
-                <div className="max-w-sm w-full text-center">
-
-                    {/* Animated success ring */}
-                    <div className="relative mb-8 inline-flex">
-                        <div className="size-28 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                            <CheckCircle2 size={52} className="text-emerald-500" strokeWidth={1.5} />
-                        </div>
-                        <div className="absolute inset-0 rounded-full border-4 border-emerald-400/30 animate-ping" />
-                    </div>
-
-                    <h1 className="text-2xl font-[900] text-slate-900 dark:text-white mb-3 tracking-tight">
-                        Check Your Email!
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 font-semibold text-sm mb-2 leading-relaxed">
-                        We've sent a verification link to
-                    </p>
-                    <div className="px-5 py-2.5 bg-primary/10 rounded-2xl inline-block mb-6">
-                        <span className="text-primary font-black text-sm">{email}</span>
-                    </div>
-                    <p className="text-slate-400 dark:text-slate-500 text-xs text-center font-semibold mb-10 max-w-[260px] mx-auto">
-                        Click the link in the email to verify your account, then log in.
-                    </p>
-
-                    <button
-                        onClick={() => navigate('/login')}
-                        className="w-full bg-primary text-white font-[900] py-[18px] rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95"
-                    >
-                        Go to Login <ArrowRight size={20} />
-                    </button>
-                    <p className="text-slate-300 dark:text-slate-700 text-[10px] font-bold uppercase tracking-widest mt-6">
-                        Didn't receive it? Check your spam folder
-                    </p>
-                </div>
-            </div>
-        );
-    }
-
-    // ── Signup Form ─────────────────────────────────────────────────────────
+    // Signup Form ─────────────────────────────────────────────────────────
     return (
         <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 p-6 relative overflow-hidden">
             <div className="absolute -top-24 -right-24 size-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />

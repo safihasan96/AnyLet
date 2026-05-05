@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -13,8 +13,18 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AddProperty() {
-    const { currentUser } = useAuth();
+    const { currentUser, userProfile } = useAuth();
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (currentUser && !currentUser.emailVerified) {
+            alert("Please verify your email address to post a property.");
+            navigate('/');
+        } else if (userProfile && !userProfile.phone) {
+            alert("Please add your phone number to your profile before posting a property.");
+            navigate('/edit-profile');
+        }
+    }, [currentUser, userProfile, navigate]);
 
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);

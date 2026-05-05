@@ -69,6 +69,10 @@ export default function PropertyDetails() {
 
     const handleSendRequest = async (formData) => {
         if (!currentUser) return navigate('/login');
+        if (!currentUser.emailVerified) {
+            alert("Please verify your email address to send viewing requests.");
+            return;
+        }
         try {
             setRequestSending(true);
             await addDoc(collection(db, 'viewing_requests'), {
@@ -248,6 +252,11 @@ export default function PropertyDetails() {
                                     </button>
                                     <button 
                                         onClick={() => {
+                                            if (!currentUser) return navigate('/login');
+                                            if (!currentUser.emailVerified) {
+                                                alert("Please verify your email address to call the owner.");
+                                                return;
+                                            }
                                             const phone = owner?.phone || property?.ownerPhone || '';
                                             if (phone) {
                                                 setPhoneNumberToCall(phone);
@@ -301,6 +310,11 @@ export default function PropertyDetails() {
                             </button>
                             <button 
                                 onClick={() => {
+                                    if (!currentUser) return navigate('/login');
+                                    if (!currentUser.emailVerified) {
+                                        alert("Please verify your email address to call the owner.");
+                                        return;
+                                    }
                                     const phone = owner?.phone || property?.ownerPhone || '';
                                     if (phone) {
                                         setPhoneNumberToCall(phone);

@@ -82,25 +82,16 @@ export default function Header() {
         </nav>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button
-            onClick={() => setCurrency(c => c === 'BDT' ? 'USD' : 'BDT')}
-            className="hidden lg:flex px-3 h-11 items-center justify-center rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-primary font-black text-[11px] transition-all uppercase tracking-widest"
-          >
-            {currency}
-          </button>
-          <button
-            onClick={() => setLanguage(l => l === 'EN' ? 'বাংলা' : 'EN')}
-            className="hidden lg:flex px-3 h-11 items-center justify-center rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-primary font-black text-[12px] transition-all"
-          >
-            {language}
-          </button>
-          <button
-            onClick={toggleTheme}
-            className="hidden sm:flex size-11 items-center justify-center rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-primary transition-all active:scale-95"
-          >
-            {isDarkMode ? '☀️' : '🌙'}
-          </button>
+        <div className="flex items-center gap-2 sm:gap-4">
+          {currentUser && !currentUser.emailVerified && (
+            <button
+              onClick={() => navigate('/settings')}
+              className="hidden lg:flex items-center gap-2 bg-rose-500 text-white px-5 py-2.5 rounded-2xl font-black text-xs shadow-lg shadow-rose-500/20 hover:scale-105 transition-transform active:scale-95 animate-pulse"
+            >
+              <ShieldCheck size={16} />
+              Verify Now
+            </button>
+          )}
 
           {currentUser ? (
             <div className="relative" ref={dropdownRef}>
