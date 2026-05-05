@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { ArrowLeft, Moon, Sun, LogOut, ChevronRight, Bell, Globe } from 'lucide-react';
@@ -9,6 +10,7 @@ import { ArrowLeft, Moon, Sun, LogOut, ChevronRight, Bell, Globe } from 'lucide-
 export default function Settings() {
     const navigate = useNavigate();
     const { isDark, toggleTheme } = useTheme();
+    const { language, setLanguage, t } = useLanguage();
     const { currentUser } = useAuth();
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
@@ -28,7 +30,7 @@ export default function Settings() {
                 <button onClick={() => navigate(-1)} className="text-[#1a227f] dark:text-white p-2 border border-transparent mr-4">
                     <ArrowLeft size={20} strokeWidth={2.5} />
                 </button>
-                <h1 className="text-[14px] font-[900] text-[#1a227f] dark:text-white tracking-[0.2em] uppercase">Settings</h1>
+                <h1 className="text-[14px] font-[900] text-[#1a227f] dark:text-white tracking-[0.2em] uppercase">{t('settings')}</h1>
             </header>
 
             <div className="px-6 py-6 space-y-8">
@@ -42,7 +44,7 @@ export default function Settings() {
                                 <div className="size-9 bg-white dark:bg-slate-800 border border-[#f1f5f9] dark:border-slate-700 rounded-[14px] flex items-center justify-center text-[#94a3b8] shadow-sm">
                                     {isDark ? <Moon size={18} strokeWidth={2} /> : <Sun size={18} strokeWidth={2} />}
                                 </div>
-                                <span className="text-sm font-[800] text-[#1e293b] dark:text-slate-200">Dark Mode</span>
+                                <span className="text-sm font-[800] text-[#1e293b] dark:text-slate-200">{t('dark_mode')}</span>
                             </div>
                             <button 
                                 onClick={toggleTheme}
@@ -55,9 +57,26 @@ export default function Settings() {
                         <div className="flex items-center justify-between p-5">
                             <div className="flex items-center gap-4">
                                 <div className="size-9 bg-white dark:bg-slate-800 border border-[#f1f5f9] dark:border-slate-700 rounded-[14px] flex items-center justify-center text-[#94a3b8] shadow-sm">
+                                    <Globe size={18} strokeWidth={2} />
+                                </div>
+                                <span className="text-sm font-[800] text-[#1e293b] dark:text-slate-200">{t('language')}</span>
+                            </div>
+                            <select 
+                                value={language}
+                                onChange={(e) => setLanguage(e.target.value)}
+                                className="bg-transparent border-none text-primary font-[900] text-sm uppercase tracking-wider outline-none"
+                            >
+                                <option value="en">English</option>
+                                <option value="bn">বাংলা</option>
+                            </select>
+                        </div>
+
+                        <div className="flex items-center justify-between p-5">
+                            <div className="flex items-center gap-4">
+                                <div className="size-9 bg-white dark:bg-slate-800 border border-[#f1f5f9] dark:border-slate-700 rounded-[14px] flex items-center justify-center text-[#94a3b8] shadow-sm">
                                     <Bell size={18} strokeWidth={2} />
                                 </div>
-                                <span className="text-sm font-[800] text-[#1e293b] dark:text-slate-200">Push Notifications</span>
+                                <span className="text-sm font-[800] text-[#1e293b] dark:text-slate-200">{t('notifications')}</span>
                             </div>
                             <button 
                                 onClick={() => setNotificationsEnabled(!notificationsEnabled)}
@@ -82,7 +101,7 @@ export default function Settings() {
                             <div className="size-9 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center text-[#e11d48] shadow-sm">
                                 <LogOut size={18} strokeWidth={2} />
                             </div>
-                            <span className="text-sm font-[800]">Sign Out</span>
+                            <span className="text-sm font-[800]">{t('sign_out')}</span>
                         </div>
                     </button>
                 </section>

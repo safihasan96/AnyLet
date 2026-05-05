@@ -4,6 +4,7 @@ import { MapPin, ChevronDown, Bell, User, Search, SlidersHorizontal, Building2, 
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import FeaturedListings from '../components/FeaturedListings';
 import { Helmet } from 'react-helmet-async';
 import PromotedAds from '../components/PromotedAds';
@@ -13,6 +14,7 @@ import { motion } from 'framer-motion';
 
 export default function Home() {
     const { currentUser } = useAuth();
+    const { t } = useLanguage();
     const [hasUnread, setHasUnread] = useState(false);
 
     useEffect(() => {
@@ -73,7 +75,7 @@ export default function Home() {
                             animate={{ x: 0, opacity: 1 }}
                             className="text-3xl md:text-6xl font-black tracking-tight leading-tight text-slate-900 dark:text-white max-w-2xl"
                         >
-                            Find your <span className="text-primary italic">perfect</span> space in <span className="underline decoration-primary decoration-4 underline-offset-8">seconds</span>.
+                            {t('hero_title')} <span className="text-primary italic">{t('hero_perfect')}</span> {t('hero_space')} <span className="underline decoration-primary decoration-4 underline-offset-8">{t('hero_seconds')}</span>.
                         </motion.h1>
 
                         <motion.div
@@ -87,11 +89,11 @@ export default function Home() {
                                         <Search size={26} />
                                     </div>
                                     <div className="flex items-center w-full px-4 text-lg font-semibold text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-                                        Search area, house type or location...
+                                        {t('search_placeholder')}
                                     </div>
                                     <div className="flex items-center pr-3">
                                         <div className="bg-primary text-white h-12 md:h-14 px-6 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
-                                            <span className="hidden md:inline mr-2 font-bold">Search Now</span>
+                                            <span className="hidden md:inline mr-2 font-bold">{t('search')}</span>
                                             <SlidersHorizontal size={20} />
                                         </div>
                                     </div>
@@ -128,13 +130,13 @@ export default function Home() {
 
                 <div className="mt-12">
                     <div className="flex items-center justify-between px-4 mb-6">
-                        <h3 className="font-black text-2xl text-slate-900 dark:text-white uppercase tracking-tight">Categories</h3>
+                        <h3 className="font-black text-2xl text-slate-900 dark:text-white uppercase tracking-tight">{t('categories')}</h3>
                     </div>
                     <div className="flex gap-6 px-4 overflow-x-auto no-scrollbar pb-4">
-                        <CategoryItem icon={<Building2 size={30} />} label="Flat" active />
-                        <CategoryItem icon={<Users size={30} />} label="Sublet" />
-                        <CategoryItem icon={<Bed size={30} />} label="Room" />
-                        <CategoryItem icon={<DoorOpen size={30} />} label="Mess" />
+                        <CategoryItem icon={<Building2 size={30} />} label={t('flat')} active />
+                        <CategoryItem icon={<Users size={30} />} label={t('sublet')} />
+                        <CategoryItem icon={<Bed size={30} />} label={t('room')} />
+                        <CategoryItem icon={<DoorOpen size={30} />} label={t('mess')} />
                     </div>
                 </div>
 

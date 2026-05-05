@@ -4,6 +4,7 @@ import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/fires
 import { db } from '../firebase';
 import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -30,6 +31,7 @@ export default function PropertyDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const { t } = useLanguage();
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeImage, setActiveImage] = useState(0);
@@ -99,8 +101,8 @@ export default function PropertyDetails() {
     if (!property) return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 text-center">
             <div>
-                <h1 className="text-2xl font-black mb-4">Property not found</h1>
-                <Link to="/search" className="text-primary font-bold">Back to Search</Link>
+                <h1 className="text-2xl font-black mb-4">{t('no_properties')}</h1>
+                <Link to="/search" className="text-primary font-bold">{t('search')}</Link>
             </div>
         </div>
     );
@@ -132,7 +134,7 @@ export default function PropertyDetails() {
             <div className="max-w-7xl mx-auto px-0 md:px-6 py-4 md:py-8">
                 {/* Back Link */}
                 <button onClick={() => navigate(-1)} className="flex items-center gap-2 px-4 md:px-0 text-slate-500 hover:text-primary transition-colors mb-4 md:mb-6 font-bold">
-                    <ArrowLeft size={20} /> Back to discovery
+                    <ArrowLeft size={20} /> {t('back_to_discovery')}
                 </button>
 
                 <div className="flex flex-col lg:flex-row gap-6 md:gap-10">
@@ -172,14 +174,14 @@ export default function PropertyDetails() {
                                 </h1>
                                 <div className="flex flex-wrap items-center gap-3 md:gap-6 text-sm md:text-base text-slate-500 font-bold">
                                     <span className="flex items-center gap-1.5 break-all md:break-normal"><MapPin size={18} className="text-primary shrink-0" /> {property.addressDetails ? `${property.addressDetails}, ` : ''}{property.upazila}, {property.district}</span>
-                                    {property.area && <span className="flex items-center gap-1.5"><Maximize size={18} className="shrink-0" /> {property.area} sqft</span>}
+                                    {property.area && <span className="flex items-center gap-1.5"><Maximize size={18} className="shrink-0" /> {property.area} {t('sqft')}</span>}
                                     <span className="flex items-center gap-1.5"><ShieldCheck size={18} className="text-emerald-500 shrink-0" /> Verified</span>
                                 </div>
                             </div>
                             
                             {/* Price Tag & Utilities */}
                             <div className="bg-primary/5 p-5 md:p-6 rounded-3xl border border-primary/10 shrink-0 flex flex-col md:items-end">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-primary/70 mb-1">Rent</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary/70 mb-1">{t('rent')}</p>
                                 <div className="flex items-baseline gap-2 mb-2">
                                     <span className="text-3xl md:text-4xl font-black text-primary hover:scale-105 transition-transform origin-left md:origin-right">৳{property.rent?.toLocaleString()}</span>
                                     <span className="text-lg font-bold text-slate-500">/{property.billingCycle}</span>
@@ -193,7 +195,7 @@ export default function PropertyDetails() {
 
                         {/* Description */}
                         <section className="bg-white dark:bg-slate-900 p-6 md:p-10 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800 mb-6 md:mb-10">
-                            <h2 className="text-xl md:text-2xl font-black mb-4 md:mb-6">Description</h2>
+                            <h2 className="text-xl md:text-2xl font-black mb-4 md:mb-6">{t('description')}</h2>
                             <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-base md:text-lg font-medium whitespace-pre-wrap">
                                 {property.description || 'No description provided.'}
                             </p>
@@ -203,7 +205,7 @@ export default function PropertyDetails() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-10">
                             <section className="bg-white dark:bg-slate-900 p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800">
                                 <h3 className="text-lg md:text-xl font-black mb-4 md:mb-6 flex items-center gap-3">
-                                    <Zap size={20} className="text-primary md:w-6 md:h-6" /> Amenities
+                                    <Zap size={20} className="text-primary md:w-6 md:h-6" /> {t('amenities')}
                                 </h3>
                                 <div className="grid grid-cols-1 gap-4">
                                     {property.features?.length > 0 ? property.features.map(f => (
@@ -216,7 +218,7 @@ export default function PropertyDetails() {
                             </section>
                             <section className="bg-white dark:bg-slate-900 p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800">
                                 <h3 className="text-lg md:text-xl font-black mb-4 md:mb-6 flex items-center gap-3">
-                                    <Info size={20} className="text-primary md:w-6 md:h-6" /> Inclusions
+                                    <Info size={20} className="text-primary md:w-6 md:h-6" /> {t('inclusions')}
                                 </h3>
                                 <div className="grid grid-cols-1 gap-4">
                                     {property.utilities?.length > 0 ? property.utilities.map(u => (
@@ -236,13 +238,13 @@ export default function PropertyDetails() {
                             {/* Desktop Action Card (Hidden on Mobile) */}
                             {!isOwner ? (
                                 <div className="hidden lg:block bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden">
-                                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 text-center">Interested?</h3>
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 text-center">{t('interested')}</h3>
                                     <button 
                                         onClick={() => !requestSent && setIsModalOpen(true)}
                                         disabled={requestSent || requestSending}
                                         className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-xl mb-4 ${requestSent ? 'bg-emerald-500 text-white' : 'bg-primary text-white hover:scale-[1.02] active:scale-95'}`}
                                     >
-                                        {requestSending ? 'Sending...' : requestSent ? 'Request Sent' : 'Request Viewing'}
+                                        {requestSending ? 'Sending...' : requestSent ? 'Request Sent' : t('request_viewing')}
                                     </button>
                                     <button 
                                         onClick={() => {
@@ -256,7 +258,7 @@ export default function PropertyDetails() {
                                         }}
                                         className="w-full py-5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-lg hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
                                     >
-                                        <Phone size={20} /> Call Owner
+                                        <Phone size={20} /> {t('call_owner')}
                                     </button>
                                 </div>
                             ) : (
@@ -268,7 +270,7 @@ export default function PropertyDetails() {
 
                             {/* Owner Card */}
                             <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl md:rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
-                                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">Property Contact</h3>
+                                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">{t('owner_contact')}</h3>
                                 <Link to={`/owner/${property.ownerId || property.userId}`} className="flex items-center gap-4 group cursor-pointer">
                                     <div className="size-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary shadow-inner group-hover:bg-primary group-hover:text-white transition-colors">
                                         <User size={32} />
@@ -288,14 +290,14 @@ export default function PropertyDetails() {
                 {/* Dynamic Bottom Action Bar (Scroll flow) */}
                 {!isOwner && (
                     <div className="mt-10 pt-8 border-t border-slate-200 dark:border-slate-800 px-4">
-                        <h3 className="text-xl font-black mb-6 text-slate-900 dark:text-white text-center">Interested in this property?</h3>
+                        <h3 className="text-xl font-black mb-6 text-slate-900 dark:text-white text-center">{t('interested')}</h3>
                         <div className="flex flex-col sm:flex-row items-center gap-4">
                             <button 
                                 onClick={() => !requestSent && setIsModalOpen(true)}
                                 disabled={requestSent || requestSending}
                                 className={`w-full flex justify-center items-center h-14 rounded-2xl font-black text-lg transition-all shadow-xl ${requestSent ? 'bg-emerald-500 text-white' : 'bg-primary text-white active:scale-95'}`}
                             >
-                                {requestSending ? 'Sending...' : requestSent ? 'Request Sent' : 'Request Viewing'}
+                                {requestSending ? 'Sending...' : requestSent ? 'Request Sent' : t('request_viewing')}
                             </button>
                             <button 
                                 onClick={() => {
@@ -309,7 +311,7 @@ export default function PropertyDetails() {
                                 }}
                                 className="w-full h-14 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold hover:bg-slate-300 transition-colors flex items-center justify-center gap-3"
                             >
-                                <Phone size={20} /> Call Owner
+                                <Phone size={20} /> {t('call_owner')}
                             </button>
                         </div>
                     </div>

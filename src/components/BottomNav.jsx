@@ -4,10 +4,12 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 
 export default function BottomNav() {
     const { currentUser } = useAuth();
+    const { t } = useLanguage();
     const location = useLocation();
     const [unreadCount, setUnreadCount] = useState(0);
 
@@ -37,12 +39,12 @@ export default function BottomNav() {
         <nav className="fixed bottom-0 left-0 right-0 max-w-[450px] mx-auto bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 px-6 h-20 flex justify-between items-center z-50">
             <Link to="/" className={`flex flex-col items-center gap-1.5 w-12 ${isActive('/') ? 'text-[#3730a3]' : 'text-[#94a3b8]'}`}>
                 <Compass size={24} strokeWidth={isActive('/') ? 2.5 : 2} />
-                <span className="text-[10px] font-[800] tracking-wide">Explore</span>
+                <span className="text-[10px] font-[800] tracking-wide">{t('explore')}</span>
             </Link>
 
             <Link to="/search" className={`flex flex-col items-center gap-1.5 w-12 ${isActive('/search') ? 'text-[#3730a3]' : 'text-[#94a3b8]'}`}>
                 <Search size={24} strokeWidth={isActive('/search') ? 2.5 : 2} />
-                <span className="text-[10px] font-[800] tracking-wide">Search</span>
+                <span className="text-[10px] font-[800] tracking-wide">{t('search')}</span>
             </Link>
 
             {/* Floating Center Button */}
@@ -60,13 +62,13 @@ export default function BottomNav() {
                         <span className="relative inline-flex size-3 rounded-full bg-rose-500 border-2 border-white dark:border-slate-950" />
                     </span>
                 )}
-                <span className="text-[10px] font-[800] tracking-wide">Messages</span>
+                <span className="text-[10px] font-[800] tracking-wide">{t('messages')}</span>
             </Link>
 
 
             <Link to="/profile" className={`flex flex-col items-center gap-1.5 w-12 ${isActive('/profile') ? 'text-[#3730a3]' : 'text-[#94a3b8]'}`}>
                 <User size={24} strokeWidth={isActive('/profile') ? 2.5 : 2} />
-                <span className="text-[10px] font-[800] tracking-wide">Profile</span>
+                <span className="text-[10px] font-[800] tracking-wide">{t('profile')}</span>
             </Link>
         </nav>
     );
