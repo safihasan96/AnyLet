@@ -131,6 +131,7 @@ export default function AddProperty() {
                 body: data
             });
             const fileData = await res.json();
+            
             if (fileData.secure_url) {
                 setFormData(prev => ({ 
                     ...prev, 
@@ -138,11 +139,12 @@ export default function AddProperty() {
                     image_url: fileData.secure_url 
                 }));
             } else {
-                alert("Upload failed. Please try again.");
+                console.error("Cloudinary Error Response:", fileData);
+                alert(`Upload failed: ${fileData.error?.message || "Check your Cloud Name and Preset"}`);
             }
         } catch (err) {
-            console.error("Cloudinary Error:", err);
-            alert("Error uploading image.");
+            console.error("Cloudinary Connection Error:", err);
+            alert("Connection error while uploading to Cloudinary.");
         } finally {
             setLoading(false);
         }
