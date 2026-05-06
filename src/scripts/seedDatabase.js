@@ -46,7 +46,7 @@ const fakeListings = [
 export async function seedDatabase() {
     try {
         console.log("Starting database seed...");
-        const listingsRef = collection(db, "Listings");
+        const listingsRef = collection(db, "properties");
 
         for (const listing of fakeListings) {
             const docRef = await addDoc(listingsRef, listing);

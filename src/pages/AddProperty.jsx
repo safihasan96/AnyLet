@@ -42,7 +42,8 @@ export default function AddProperty() {
         baths: '1',
         description: '',
         imageUrl: '',
-        image_url: '', // New field requested by user
+        image_url: '',
+        images: [], // Store up to 5 images
         securityDeposit: '',
         utilitiesCost: '',
         billingCycle: 'Month',
@@ -117,30 +118,58 @@ export default function AddProperty() {
     };
 
     const handleImageUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        // Check if adding these files exceeds the 5-image limit
+        if (formData.images.length + files.length > 5) {
+            alert("You can only upload up to 5 images in total.");
+            return;
+        }
 
         setLoading(true);
-        const data = new FormData();
-        data.append('file', file);
-        data.append('upload_preset', 'cn6piwep');
+        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmkbsddqk';
+        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'cn6piwep';
+        
+        console.log('Attempting upload to Cloudinary...', { 
+            cloudName, 
+            preset: uploadPreset ? `${uploadPreset.substring(0, 3)}***` : 'MISSING' 
+        });
+
+        const uploadedUrls = [];
 
         try {
-            const res = await fetch('https://api.cloudinary.com/v1_1/safihasan96/image/upload', {
-                method: 'POST',
-                body: data
-            });
-            const fileData = await res.json();
-            
-            if (fileData.secure_url) {
-                setFormData(prev => ({ 
-                    ...prev, 
-                    imageUrl: fileData.secure_url,
-                    image_url: fileData.secure_url 
-                }));
-            } else {
-                console.error("Cloudinary Error Response:", fileData);
-                alert(`Upload failed: ${fileData.error?.message || "Check your Cloud Name and Preset"}`);
+            for (const file of files) {
+                const data = new FormData();
+                data.append('file', file);
+                data.append('upload_preset', uploadPreset);
+
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+                    method: 'POST',
+                    body: data
+                });
+                const fileData = await res.json();
+                
+                if (fileData.secure_url) {
+                    uploadedUrls.push(fileData.secure_url);
+                } else {
+                    console.error("Cloudinary Error Response:", fileData);
+                    alert(`Upload failed!\nError: ${fileData.error?.message || "Unknown error"}\nCloud Name: ${cloudName}\nPreset: ${uploadPreset ? uploadPreset.substring(0,3) + '...' : 'Missing'}`);
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            if (uploadedUrls.length > 0) {
+                setFormData(prev => {
+                    const newImages = [...prev.images, ...uploadedUrls];
+                    return { 
+                        ...prev, 
+                        images: newImages,
+                        imageUrl: newImages[0], // Keep for backward compatibility
+                        image_url: newImages[0]  // Keep for backward compatibility
+                    };
+                });
             }
         } catch (err) {
             console.error("Cloudinary Connection Error:", err);
@@ -148,6 +177,18 @@ export default function AddProperty() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const removeImage = (indexToRemove) => {
+        setFormData(prev => {
+            const newImages = prev.images.filter((_, index) => index !== indexToRemove);
+            return {
+                ...prev,
+                images: newImages,
+                imageUrl: newImages[0] || '',
+                image_url: newImages[0] || ''
+            };
+        });
     };
 
     const handleSubmit = async () => {
@@ -312,40 +353,53 @@ export default function AddProperty() {
                             <Textarea label="Description" name="description" value={formData.description} onChange={handleChange} placeholder="Tell tenants about your space..." />
                         </Section>
 
-                        <Section title="Media" icon={<ImageIcon size={20} />}>
+                        <Section title="Media (Up to 5 images)" icon={<ImageIcon size={20} />}>
                             <div className="space-y-4">
-                                <div className="relative group">
-                                    <input 
-                                        type="file" 
-                                        accept="image/*" 
-                                        onChange={handleImageUpload}
-                                        className="hidden" 
-                                        id="image-upload" 
-                                        disabled={loading}
-                                    />
-                                    <label 
-                                        htmlFor="image-upload"
-                                        className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all overflow-hidden relative"
-                                    >
-                                        {formData.imageUrl ? (
-                                            <>
-                                                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <span className="text-white text-xs font-black uppercase tracking-widest">Change Photo</span>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {formData.images.map((url, index) => (
+                                        <div key={index} className="relative aspect-square rounded-2xl overflow-hidden group border border-slate-100 dark:border-slate-800 shadow-sm">
+                                            <img src={url} alt={`Property ${index + 1}`} className="w-full h-full object-cover" />
+                                            <button 
+                                                onClick={() => removeImage(index)}
+                                                className="absolute top-2 right-2 p-1.5 bg-rose-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-rose-500/20"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                            {index === 0 && (
+                                                <div className="absolute bottom-0 inset-x-0 bg-primary/80 backdrop-blur-sm py-1 text-[8px] font-black text-white text-center uppercase tracking-widest">
+                                                    Main Cover
                                                 </div>
-                                            </>
-                                        ) : (
-                                            <div className="flex flex-col items-center gap-2">
-                                                <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                                                    <ImageIcon size={24} />
+                                            )}
+                                        </div>
+                                    ))}
+                                    
+                                    {formData.images.length < 5 && (
+                                        <div className="relative aspect-square">
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                multiple
+                                                onChange={handleImageUpload}
+                                                className="hidden" 
+                                                id="image-upload" 
+                                                disabled={loading}
+                                            />
+                                            <label 
+                                                htmlFor="image-upload"
+                                                className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
+                                            >
+                                                <div className="p-2 bg-primary/10 rounded-xl text-primary mb-1">
+                                                    <ImageIcon size={20} />
                                                 </div>
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                                    {loading ? "Uploading..." : "Upload Property Photo"}
+                                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                                    {loading ? "..." : "Add Photo"}
                                                 </p>
-                                            </div>
-                                        )}
-                                    </label>
+                                                <p className="text-[7px] font-bold text-slate-300 mt-0.5">{formData.images.length}/5</p>
+                                            </label>
+                                        </div>
+                                    )}
                                 </div>
+                                
                                 {loading && (
                                     <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                         <div className="h-full bg-primary animate-progress" style={{ width: '100%' }} />
@@ -421,15 +475,31 @@ export default function AddProperty() {
 
                 {step === 3 && (
                     <div className="space-y-6 fade-in">
-                        <div className="relative h-64 rounded-3xl overflow-hidden shadow-xl">
-                            <img src={formData.imageUrl} className="w-full h-full object-cover" alt="Preview" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                            <div className="absolute bottom-6 left-6 right-6">
-                                <span className="bg-primary px-3 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-widest mb-2 inline-block shadow-lg">
-                                    {formData.type}
-                                </span>
-                                <h2 className="text-xl font-black text-white uppercase truncate">{formData.title}</h2>
+                        <div className="space-y-4">
+                            <div className="relative h-64 rounded-3xl overflow-hidden shadow-xl">
+                                <img src={formData.imageUrl} className="w-full h-full object-cover" alt="Preview" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                                <div className="absolute bottom-6 left-6 right-6">
+                                    <span className="bg-primary px-3 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-widest mb-2 inline-block shadow-lg">
+                                        {formData.type}
+                                    </span>
+                                    <h2 className="text-xl font-black text-white uppercase truncate">{formData.title}</h2>
+                                </div>
                             </div>
+                            
+                            {formData.images.length > 1 && (
+                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                    {formData.images.map((url, idx) => (
+                                        <div 
+                                            key={idx} 
+                                            className={`size-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${formData.imageUrl === url ? 'border-primary scale-105' : 'border-transparent opacity-60'}`}
+                                            onClick={() => setFormData(prev => ({ ...prev, imageUrl: url, image_url: url }))}
+                                        >
+                                            <img src={url} className="w-full h-full object-cover" alt="Thumb" />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <Section title="Everything Looks Good?" icon={<CheckCircle size={20} />}>

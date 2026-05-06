@@ -55,28 +55,7 @@ function PageWrapper({ children }) {
 
 function App() {
   useEffect(() => {
-    async function autoMigrate() {
-      try {
-        const listingsSnap = await getDocs(collection(db, 'listings'));
-        if (listingsSnap.empty) return;
-
-        console.log(`Auto-migrating ${listingsSnap.size} legacy listings...`);
-        for (const lDoc of listingsSnap.docs) {
-          const data = lDoc.data();
-          await addDoc(collection(db, 'properties'), {
-            ...data,
-            ownerId: data.ownerId || data.landlordId || data.userId || data.creatorId,
-            isApproved: data.isApproved ?? true,
-            migratedAt: serverTimestamp()
-          });
-          await deleteDoc(doc(db, 'listings', lDoc.id));
-        }
-        console.log("Auto-migration complete.");
-      } catch (err) {
-        console.error("Auto-migration failed:", err);
-      }
-    }
-    autoMigrate();
+    // Legacy auto-migration removed. Use Admin Panel > System Health for manual cleanup.
   }, []);
 
   const location = useLocation();

@@ -163,34 +163,63 @@ export default function AdminPanel() {
         } catch (e) { console.error('Approve listing error:', e); }
     };
 
-    /* ── Data Migration ── */
-    const handleDataMigration = async () => {
+    /* ── System Cleanup & Migration ── */
+    const handleSystemCleanup = async () => {
         showModal({
-            title: 'Run Data Migration',
-            message: 'This will move all data from "listings" to "properties" collection. Are you sure?',
-            confirmText: 'Start Migration',
+            title: 'Run System Cleanup',
+            message: 'This will migrate data from redundant collections (listings, Listings, Users, Profiles) to the active ones (properties, users) and delete the old ones. Are you sure?',
+            confirmText: 'Start Cleanup',
             confirmColor: '#10b981',
             onConfirm: async () => {
                 setModal(p => ({ ...p, isLoading: true }));
                 try {
-                    let count = 0;
-                    const listingsSnap = await getDocs(collection(db, 'listings'));
-                    for (const lDoc of listingsSnap.docs) {
-                        const data = lDoc.data();
-                        await addDoc(collection(db, 'properties'), {
-                            ...data,
-                            ownerId: data.ownerId || data.landlordId || data.userId || data.creatorId,
-                            isApproved: data.isApproved ?? true,
-                            migratedAt: serverTimestamp()
-                        });
-                        await deleteDoc(doc(db, 'listings', lDoc.id));
-                        count++;
+                    let listingCount = 0;
+                    let userCount = 0;
+
+                    // 1. Listings Cleanup
+                    const listingSources = ['listings', 'Listings'];
+                    for (const source of listingSources) {
+                        const snap = await getDocs(collection(db, source));
+                        for (const lDoc of snap.docs) {
+                            const data = lDoc.data();
+                            await addDoc(collection(db, 'properties'), {
+                                ...data,
+                                ownerId: data.ownerId || data.landlordId || data.userId || data.creatorId,
+                                isApproved: data.isApproved ?? true,
+                                migratedAt: serverTimestamp(),
+                                migrationSource: source
+                            });
+                            await deleteDoc(doc(db, source, lDoc.id));
+                            listingCount++;
+                        }
                     }
-                    setModal(p => ({ ...p, isLoading: false, isSuccess: true, message: `Migration successful! Moved ${count} items.` }));
-                    setTimeout(closeModal, 3000);
+
+                    // 2. Users Cleanup
+                    const userSources = ['Users', 'Profiles', 'user_profiles'];
+                    for (const source of userSources) {
+                        const snap = await getDocs(collection(db, source));
+                        for (const uDoc of snap.docs) {
+                            const data = uDoc.data();
+                            await setDoc(doc(db, 'users', uDoc.id), {
+                                ...data,
+                                migratedAt: serverTimestamp(),
+                                migrationSource: source
+                            }, { merge: true });
+                            await deleteDoc(doc(db, source, uDoc.id));
+                            userCount++;
+                        }
+                    }
+
+                    setModal(p => ({ 
+                        ...p, 
+                        isLoading: false, 
+                        isSuccess: true, 
+                        message: `Cleanup successful! Moved ${listingCount} listings and ${userCount} users.` 
+                    }));
+                    setTimeout(closeModal, 4000);
                 } catch (e) {
                     console.error(e);
-                    setModal(p => ({ ...p, isLoading: false, message: 'Migration failed. Check console.' }));
+                    setModal(p => ({ ...p, isLoading: false, message: 'Cleanup failed. Check console.' }));
                 }
             }
         });
@@ -479,10 +508,10 @@ export default function AdminPanel() {
                                                         </div>
                                                     </div>
                                                     <button
-                                                        onClick={handleDataMigration}
+                                                        onClick={handleSystemCleanup}
                                                         className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl transition-all text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-emerald-500/20 active:scale-[0.98] flex items-center justify-center gap-2"
                                                     >
-                                                        <Database size={14} /> Synchronize Legacy Data
+                                                        <Database size={14} /> Synchronize & Cleanup Data
                                                     </button>
                                                     <div>
                                                         <div className="flex justify-between text-[9px] font-black uppercase tracking-widest mb-2">

@@ -18,7 +18,8 @@ export default function EditProfile() {
         fullName: '',
         email: '',
         phone: '',
-        location: ''
+        location: '',
+        photoURL: ''
     });
 
     useEffect(() => {
@@ -37,7 +38,8 @@ export default function EditProfile() {
                         fullName: data.fullName || '',
                         email: currentUser.email || '',
                         phone: data.phone || '',
-                        location: data.location || ''
+                        location: data.location || '',
+                        photoURL: data.photoURL || currentUser.photoURL || ''
                     });
                 }
             } catch (err) {
@@ -76,11 +78,15 @@ export default function EditProfile() {
             await updateDoc(userRef, {
                 fullName: formData.fullName,
                 phone: phoneDigits,
-                location: formData.location
+                location: formData.location,
+                photoURL: formData.photoURL
             });
 
             if (currentUser) {
-                await updateProfile(currentUser, { displayName: formData.fullName });
+                await updateProfile(currentUser, { 
+                    displayName: formData.fullName,
+                    photoURL: formData.photoURL 
+                });
             }
 
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
@@ -90,6 +96,47 @@ export default function EditProfile() {
         } catch (err) {
             console.error(err);
             setMessage({ type: 'error', text: 'Failed to update profile.' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setSaving(true);
+        setMessage({ type: '', text: '' });
+        
+        const data = new FormData();
+        data.append('file', file);
+        data.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'cn6piwep');
+
+        try {
+            const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmkbsddqk';
+            const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'cn6piwep';
+            
+            console.log('Attempting profile photo upload...', { 
+                cloudName, 
+                preset: uploadPreset ? `${uploadPreset.substring(0, 3)}***` : 'MISSING' 
+            });
+
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+                method: 'POST',
+                body: data
+            });
+            const fileData = await res.json();
+            
+            if (fileData.secure_url) {
+                setFormData(prev => ({ ...prev, photoURL: fileData.secure_url }));
+                setMessage({ type: 'success', text: 'Photo uploaded! Don\'t forget to save changes.' });
+            } else {
+                console.error("Cloudinary Error:", fileData);
+                setMessage({ type: 'error', text: `Upload failed: ${fileData.error?.message || "Unknown error"} (Cloud: ${cloudName}, Preset: ${uploadPreset ? uploadPreset.substring(0,3) + '...' : 'None'})` });
+            }
+        } catch (err) {
+            console.error("Cloudinary Connection Error:", err);
+            setMessage({ type: 'error', text: 'Connection error during upload.' });
         } finally {
             setSaving(false);
         }
@@ -120,16 +167,32 @@ export default function EditProfile() {
                 <div className="flex flex-col items-center mb-8">
                     <div className="relative mb-4">
                         <div className="size-[120px] rounded-full bg-slate-200 dark:bg-slate-800 border-4 border-white dark:border-slate-900 shadow-sm overflow-hidden flex items-center justify-center text-5xl font-bold text-[#3730a3] dark:text-indigo-400">
-                            {/* Assuming we don't have actual image URLs stored yet, fallback to initials */}
-                            {getInitials(formData.fullName)}
+                            {formData.photoURL ? (
+                                <img src={formData.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                                getInitials(formData.fullName)
+                            )}
                         </div>
-                        <button className="absolute bottom-0 right-0 size-10 bg-[#3730a3] text-white rounded-full flex items-center justify-center border-[3px] border-[#f8fafc] dark:border-slate-950 shadow-md">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                            id="profile-photo-upload"
+                        />
+                        <label 
+                            htmlFor="profile-photo-upload"
+                            className="absolute bottom-0 right-0 size-10 bg-[#3730a3] text-white rounded-full flex items-center justify-center border-[3px] border-[#f8fafc] dark:border-slate-950 shadow-md cursor-pointer hover:scale-110 transition-transform"
+                        >
                             <Camera size={18} strokeWidth={2.5} />
-                        </button>
+                        </label>
                     </div>
-                    <button className="bg-[#e2e8f0] dark:bg-slate-800 text-[#3730a3] dark:text-indigo-400 font-[800] text-sm py-2.5 px-6 rounded-full tracking-wide">
-                        Change Photo
-                    </button>
+                    <label 
+                        htmlFor="profile-photo-upload"
+                        className="bg-[#e2e8f0] dark:bg-slate-800 text-[#3730a3] dark:text-indigo-400 font-[800] text-sm py-2.5 px-6 rounded-full tracking-wide cursor-pointer hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
+                    >
+                        {saving ? "Uploading..." : "Change Photo"}
+                    </label>
                 </div>
 
                 {message.text && (
