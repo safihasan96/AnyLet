@@ -42,6 +42,7 @@ export default function AddProperty() {
         baths: '1',
         description: '',
         imageUrl: '',
+        image_url: '', // New field requested by user
         securityDeposit: '',
         utilitiesCost: '',
         billingCycle: 'Month',
@@ -115,6 +116,38 @@ export default function AddProperty() {
         });
     };
 
+    const handleImageUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setLoading(true);
+        const data = new FormData();
+        data.append('file', file);
+        data.append('upload_preset', 'cn6piwep');
+
+        try {
+            const res = await fetch('https://api.cloudinary.com/v1_1/safihasan96/image/upload', {
+                method: 'POST',
+                body: data
+            });
+            const fileData = await res.json();
+            if (fileData.secure_url) {
+                setFormData(prev => ({ 
+                    ...prev, 
+                    imageUrl: fileData.secure_url,
+                    image_url: fileData.secure_url 
+                }));
+            } else {
+                alert("Upload failed. Please try again.");
+            }
+        } catch (err) {
+            console.error("Cloudinary Error:", err);
+            alert("Error uploading image.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSubmit = async () => {
         if (!currentUser) return;
         setLoading(true);
@@ -133,6 +166,7 @@ export default function AddProperty() {
                 createdAt: serverTimestamp(),
             };
 
+            // Using 'properties' to match current app structure, but ensuring 'image_url' is included
             await addDoc(collection(db, 'properties'), propertyData);
             setShowSuccess(true);
             setTimeout(() => navigate('/'), 3000);
@@ -277,7 +311,45 @@ export default function AddProperty() {
                         </Section>
 
                         <Section title="Media" icon={<ImageIcon size={20} />}>
-                            <Input label="Image URL" name="imageUrl" value={formData.imageUrl} onChange={handleChange} placeholder="https://unsplash.com/..." required />
+                            <div className="space-y-4">
+                                <div className="relative group">
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={handleImageUpload}
+                                        className="hidden" 
+                                        id="image-upload" 
+                                        disabled={loading}
+                                    />
+                                    <label 
+                                        htmlFor="image-upload"
+                                        className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all overflow-hidden relative"
+                                    >
+                                        {formData.imageUrl ? (
+                                            <>
+                                                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <span className="text-white text-xs font-black uppercase tracking-widest">Change Photo</span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                                                    <ImageIcon size={24} />
+                                                </div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                    {loading ? "Uploading..." : "Upload Property Photo"}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </label>
+                                </div>
+                                {loading && (
+                                    <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div className="h-full bg-primary animate-progress" style={{ width: '100%' }} />
+                                    </div>
+                                )}
+                            </div>
                         </Section>
 
                         <button

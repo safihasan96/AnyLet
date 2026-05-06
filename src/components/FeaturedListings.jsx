@@ -22,7 +22,7 @@ export default function FeaturedListings() {
                     return {
                         id: doc.id,
                         ...data,
-                        image: data.image || data.imageUrl || (data.images && data.images[0]),
+                        image: data.image || data.imageUrl || data.image_url || (data.images && data.images[0]),
                         isApproved: data.isApproved !== false
                     };
                 })
