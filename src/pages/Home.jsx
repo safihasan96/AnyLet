@@ -8,6 +8,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import FeaturedListings from '../components/FeaturedListings';
 import { Helmet } from 'react-helmet-async';
 import PromotedAds from '../components/PromotedAds';
+import { bdLocations } from '../data/locations';
 
 
 import { motion } from 'framer-motion';
@@ -16,6 +17,7 @@ export default function Home() {
     const { currentUser } = useAuth();
     const { t } = useLanguage();
     const [hasUnread, setHasUnread] = useState(false);
+    const [selectedDivision, setSelectedDivision] = useState('');
 
     useEffect(() => {
         if (!currentUser) return;
@@ -48,9 +50,18 @@ export default function Home() {
                     </div>
                     <div>
                         <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Location</p>
-                        <div className="flex items-center gap-1">
-                            <h2 className="text-slate-900 dark:text-slate-100 text-sm font-black leading-tight">Dhaka, Bangladesh</h2>
-                            <ChevronDown size={14} className="text-primary" />
+                        <div className="flex items-center gap-1 relative">
+                            <select 
+                                value={selectedDivision}
+                                onChange={(e) => setSelectedDivision(e.target.value)}
+                                className="text-slate-900 dark:text-slate-100 text-sm font-black leading-tight bg-transparent appearance-none outline-none pr-4 z-10"
+                            >
+                                <option value="">All Divisions</option>
+                                {Object.keys(bdLocations).map(div => (
+                                    <option key={div} value={div}>{div}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={14} className="text-primary absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
                     </div>
                 </div>
@@ -83,8 +94,25 @@ export default function Home() {
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ delay: 0.2 }}
                         >
-                            <Link to="/search" className="flex flex-col w-full max-w-3xl">
-                                <div className="flex w-full items-stretch rounded-3xl h-16 md:h-20 bg-white dark:bg-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 overflow-hidden cursor-pointer hover:border-primary/50 transition-all group">
+                            <div className="flex flex-col md:flex-row gap-4 w-full max-w-3xl">
+                                <div className="hidden md:flex flex-col justify-center px-6 rounded-3xl bg-white dark:bg-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 min-w-[200px]">
+                                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Division</p>
+                                    <div className="flex items-center gap-1 relative">
+                                        <select 
+                                            value={selectedDivision}
+                                            onChange={(e) => setSelectedDivision(e.target.value)}
+                                            className="text-slate-900 dark:text-slate-100 text-sm font-black leading-tight bg-transparent appearance-none outline-none w-full cursor-pointer pr-4"
+                                        >
+                                            <option value="">All Divisions</option>
+                                            {Object.keys(bdLocations).map(div => (
+                                                <option key={div} value={div}>{div}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown size={14} className="text-primary absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                <Link to={`/search${selectedDivision ? `?division=${selectedDivision}` : ''}`} className="flex-1 flex w-full items-stretch rounded-3xl h-16 md:h-20 bg-white dark:bg-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 overflow-hidden cursor-pointer hover:border-primary/50 transition-all group">
                                     <div className="text-slate-400 flex items-center justify-center pl-6 group-hover:text-primary transition-colors">
                                         <Search size={26} />
                                     </div>
@@ -97,8 +125,8 @@ export default function Home() {
                                             <SlidersHorizontal size={20} />
                                         </div>
                                     </div>
-                                </div>
-                            </Link>
+                                </Link>
+                            </div>
                         </motion.div>
                     </div>
                 </div>
@@ -133,10 +161,10 @@ export default function Home() {
                         <h3 className="font-black text-2xl text-slate-900 dark:text-white uppercase tracking-tight">{t('categories')}</h3>
                     </div>
                     <div className="flex gap-6 px-4 overflow-x-auto no-scrollbar pb-4">
-                        <CategoryItem icon={<Building2 size={30} />} label={t('flat')} active />
-                        <CategoryItem icon={<Users size={30} />} label={t('sublet')} />
-                        <CategoryItem icon={<Bed size={30} />} label={t('room')} />
-                        <CategoryItem icon={<DoorOpen size={30} />} label={t('mess')} />
+                        <CategoryItem icon={<Building2 size={30} />} label={t('flat')} to={`/search?type=Apartment${selectedDivision ? `&division=${selectedDivision}` : ''}`} active />
+                        <CategoryItem icon={<Users size={30} />} label={t('sublet')} to={`/search?type=Sublet${selectedDivision ? `&division=${selectedDivision}` : ''}`} />
+                        <CategoryItem icon={<Bed size={30} />} label={t('room')} to={`/search?type=Room${selectedDivision ? `&division=${selectedDivision}` : ''}`} />
+                        <CategoryItem icon={<DoorOpen size={30} />} label={t('mess')} to={`/search?type=Mess${selectedDivision ? `&division=${selectedDivision}` : ''}`} />
                     </div>
                 </div>
 
@@ -148,16 +176,16 @@ export default function Home() {
     );
 }
 
-function CategoryItem({ icon, label, active = false }) {
+function CategoryItem({ icon, label, active = false, to }) {
     return (
-        <div className="flex flex-col items-center gap-2 min-w-[80px]">
-            <div className={`size-16 rounded-2xl shadow-lg flex items-center justify-center transition-all ${active
+        <Link to={to} className="flex flex-col items-center gap-2 min-w-[80px] group">
+            <div className={`size-16 rounded-2xl shadow-lg flex items-center justify-center transition-all group-hover:scale-105 group-hover:border-primary/50 ${active
                 ? 'bg-primary text-white shadow-primary/30 scale-105'
                 : 'bg-white dark:bg-slate-800 text-primary border border-slate-100 dark:border-slate-700 shadow-slate-200/50 dark:shadow-none'
                 }`}>
                 {icon}
             </div>
-            <p className={`text-[11px] font-black uppercase tracking-wider ${active ? 'text-primary' : 'text-slate-500'}`}>{label}</p>
-        </div>
+            <p className={`text-[11px] font-black uppercase tracking-wider group-hover:text-primary transition-colors ${active ? 'text-primary' : 'text-slate-500'}`}>{label}</p>
+        </Link>
     );
 }

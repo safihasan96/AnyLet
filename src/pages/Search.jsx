@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { 
@@ -32,14 +32,15 @@ const FEATURE_OPTIONS = ["Lift/Elevator", "CCTV Security", "Fire Exit", "Emergen
 
 export default function Search() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('Dhaka City');
+    const [searchTerm, setSearchTerm] = useState(searchParams.get('division') ? '' : 'Dhaka City');
     
     const [filterState, setFilterState] = useState({
-        division: '', district: '', upazila: '',
-        type: '', minPrice: '', maxPrice: '',
+        division: searchParams.get('division') || '', district: '', upazila: '',
+        type: searchParams.get('type') || '', minPrice: '', maxPrice: '',
         billingCycle: 'Month', tenantType: 'Any',
         beds: 'Any', baths: 'Any',
         utilities: [], features: []
