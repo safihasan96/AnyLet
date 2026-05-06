@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, MoreHorizontal, MapPin, ChevronRight, Home as HomeIcon } from 'lucide-react';
+import { ArrowLeft, MoreHorizontal, MapPin, ChevronRight, Home as HomeIcon, Trash2 } from 'lucide-react';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 export default function MyListings() {
     const { currentUser: user } = useAuth();
@@ -11,6 +12,8 @@ export default function MyListings() {
 
     const [listings, setListings] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, title: '' });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     useEffect(() => {
         if (!user) {
@@ -47,6 +50,25 @@ export default function MyListings() {
         return () => unsubscribe();
     }, [user, navigate]);
 
+    const handleDeleteClick = (e, property) => {
+        e.stopPropagation();
+        setDeleteModal({ isOpen: true, id: property.id, title: property.title });
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteModal.id) return;
+        setIsDeleting(true);
+        try {
+            await deleteDoc(doc(db, 'properties', deleteModal.id));
+            setDeleteModal({ isOpen: false, id: null, title: '' });
+        } catch (error) {
+            console.error("Error deleting property:", error);
+            alert("Failed to delete property. Please try again.");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-28">
             <header className="flex items-center px-6 pt-10 pb-6 sticky top-0 bg-[#f8fafc]/95 dark:bg-slate-950/95 backdrop-blur-md z-20 border-b border-slate-100 dark:border-slate-800/50">
@@ -67,7 +89,12 @@ export default function MyListings() {
                 ) : listings.length > 0 ? (
                     <div className="flex flex-col gap-4">
                         {listings.map(property => (
-                            <ListingCard key={property.id} property={property} onClick={() => navigate(`/property/${property.id}`)} />
+                            <ListingCard 
+                                key={property.id} 
+                                property={property} 
+                                onClick={() => navigate(`/property/${property.id}`)} 
+                                onDelete={(e) => handleDeleteClick(e, property)}
+                            />
                         ))}
                     </div>
                 ) : (
@@ -91,11 +118,22 @@ export default function MyListings() {
                     </div>
                 )}
             </main>
+
+            <ConfirmationModal
+                isOpen={deleteModal.isOpen}
+                title="Delete Listing?"
+                message={`Are you sure you want to delete "${deleteModal.title}"? This action cannot be undone.`}
+                confirmText="Delete"
+                confirmColor="#ef4444"
+                isLoading={isDeleting}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteModal({ isOpen: false, id: null, title: '' })}
+            />
         </div>
     );
 }
 
-function ListingCard({ property, onClick }) {
+function ListingCard({ property, onClick, onDelete }) {
     const { title, rent, area, district, upazila, image } = property;
 
     const displayRent = rent || property.price || 0;
@@ -103,7 +141,10 @@ function ListingCard({ property, onClick }) {
     const displayLocation = upazila || area || district || 'City Area';
 
     return (
-        <button onClick={onClick} className="w-full group flex items-center bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800/80 transition-all hover:shadow-xl hover:shadow-[#3730a3]/5 active:scale-[0.98] p-3 gap-4 text-left">
+        <div 
+            onClick={onClick} 
+            className="w-full group flex items-center bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800/80 transition-all hover:shadow-xl hover:shadow-[#3730a3]/5 active:scale-[0.98] p-3 gap-4 text-left cursor-pointer"
+        >
             <div className="size-[88px] shrink-0 overflow-hidden rounded-[20px]">
                 <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={displayImage} alt={title || 'Listing'} />
             </div>
@@ -120,7 +161,7 @@ function ListingCard({ property, onClick }) {
 
                 <div className="flex items-baseline gap-1">
                     <span className="font-[900] text-[17px] text-[#3730a3] dark:text-indigo-400">
-                        ${displayRent.toLocaleString()}
+                        ৳{displayRent.toLocaleString()}
                     </span>
                     <span className="text-[12px] font-bold text-[#64748b] dark:text-slate-400">
                         / month
@@ -128,9 +169,17 @@ function ListingCard({ property, onClick }) {
                 </div>
             </div>
 
-            <div className="pr-3 pl-1 text-[#94a3b8] dark:text-slate-500 group-hover:text-[#3730a3] dark:group-hover:text-indigo-400 transition-colors">
-                <ChevronRight size={20} strokeWidth={3} />
+            <div className="flex items-center gap-1">
+                <button 
+                    onClick={onDelete}
+                    className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all"
+                >
+                    <Trash2 size={18} strokeWidth={2.5} />
+                </button>
+                <div className="pr-3 pl-1 text-[#94a3b8] dark:text-slate-500 group-hover:text-[#3730a3] dark:group-hover:text-indigo-400 transition-colors">
+                    <ChevronRight size={20} strokeWidth={3} />
+                </div>
             </div>
-        </button>
+        </div>
     );
 }
