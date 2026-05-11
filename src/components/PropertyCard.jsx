@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Bed, DoorOpen, Building2, Star, Heart, Zap } from 'lucide-react';
 import useSavedProperties from '../hooks/useSavedProperties';
+import { motion } from 'framer-motion';
+import { popIn } from '../utils/animations';
 
 export default function PropertyCard({ property }) {
     const { id, title, rent, area, beds, baths, sqft, image, type, verified, utilitiesCost } = property;
@@ -9,71 +11,88 @@ export default function PropertyCard({ property }) {
 
     // Fallbacks
     const displayRent = rent || property.price || 0;
-    const displayImage = image || property.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80';
-    const displayLocation = property.upazila || property.area || property.district || 'Dhaka';
+    const displayImage = property?.images?.[0] || image || property.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80';
+    
+    const locationParts = [
+        property.streetAddress || property.address || property.location || property.area,
+        property.upazila,
+        property.district
+    ].filter(Boolean);
+    const displayLocation = locationParts.length > 0 ? locationParts.join(', ') : 'Dhaka, Bangladesh';
 
     return (
-        <Link to={`/property/${id}`} className="group flex flex-col bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 transition-all hover:shadow-xl hover:shadow-primary/5 active:scale-[0.98]">
-            <div className="relative h-56 w-full overflow-hidden">
-                <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={displayImage} alt={title} />
-                <div className="absolute top-4 right-4">
-                    <button
-                        className={`size-10 rounded-xl bg-white/90 backdrop-blur flex items-center justify-center shadow-sm transition-transform hover:scale-110 active:scale-95 ${isSaved ? 'text-rose-500' : 'text-slate-400 hover:text-rose-500'}`}
-                        onClick={(e) => toggleSaveProperty(id, e)}
-                    >
-                        <Heart size={20} fill={isSaved ? "currentColor" : "none"} strokeWidth={isSaved ? 0 : 2} />
-                    </button>
-                </div>
-                <div className="absolute bottom-4 left-4 bg-primary text-white px-4 py-2 rounded-xl font-black text-sm shadow-lg shadow-primary/20">
-                    ৳ {displayRent.toLocaleString()}<span className="text-[10px] opacity-80 ml-1 font-bold">/MO</span>
-                </div>
-                {verified && (
-                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur text-emerald-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm border border-emerald-100">
-                        <Star size={12} className="fill-emerald-600" />
-                        Verified
+        <motion.div
+            variants={popIn}
+            whileHover={{ y: -4, transition: { type: 'spring', stiffness: 350, damping: 26 } }}
+            whileTap={{ scale: 0.98, transition: { duration: 0.12 } }}
+            style={{ willChange: 'transform' }}
+            className="h-full"
+        >
+            <Link to={`/property/${id}`} className="h-full group flex flex-col bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 transition-shadow hover:shadow-xl hover:shadow-primary/8">
+                <div className="relative h-56 w-full overflow-hidden">
+                    <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={displayImage} alt={title} />
+                    <div className="absolute top-4 right-4">
+                        <motion.button
+                            className={`size-10 rounded-xl bg-white/90 backdrop-blur flex items-center justify-center shadow-sm ${isSaved ? 'text-rose-500' : 'text-slate-400 hover:text-rose-500'}`}
+                            onClick={(e) => toggleSaveProperty(id, e)}
+                            whileTap={{ scale: 0.82 }}
+                            whileHover={{ scale: 1.1 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+                        >
+                            <Heart size={20} fill={isSaved ? "currentColor" : "none"} strokeWidth={isSaved ? 0 : 2} />
+                        </motion.button>
                     </div>
-                )}
-            </div>
-            <div className="p-5">
-                <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-black text-xl text-slate-900 dark:text-white leading-tight truncate">{title}</h4>
-                    <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest">{type}</span>
+                    <div className="absolute bottom-4 left-4 bg-primary text-white px-4 py-2 rounded-xl font-black text-sm shadow-lg shadow-primary/20">
+                        ৳ {displayRent.toLocaleString()}<span className="text-[10px] opacity-80 ml-1 font-bold">/MO</span>
+                    </div>
+                    {verified && (
+                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur text-emerald-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm border border-emerald-100">
+                            <Star size={12} className="fill-emerald-600" />
+                            Verified
+                        </div>
+                    )}
                 </div>
-                <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-sm mb-1">
-                    <MapPin size={14} className="text-primary" />
-                    <span className="font-semibold">{displayLocation}{property.district ? `, ${property.district}` : ''}</span>
-                </div>
+                <div className="p-5 flex flex-col flex-1">
+                    <div className="flex justify-between items-start gap-3 mb-2">
+                        <h4 className="font-black text-xl text-slate-900 dark:text-white leading-tight line-clamp-2 flex-1" title={title}>{title}</h4>
+                        <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shrink-0">{type}</span>
+                    </div>
+                    <div className="flex items-start gap-1.5 text-slate-500 dark:text-slate-400 text-sm mb-2">
+                        <MapPin size={14} className="text-primary shrink-0 mt-0.5" />
+                        <span className="font-semibold line-clamp-2" title={displayLocation}>{displayLocation}</span>
+                    </div>
 
-                {utilitiesCost > 0 && (
-                    <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider mb-4">
-                        <Zap size={12} strokeWidth={3} />
-                        Service Charge: ৳{utilitiesCost.toLocaleString()}
-                    </div>
-                )}
+                    {utilitiesCost > 0 && (
+                        <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wider mb-4">
+                            <Zap size={12} strokeWidth={3} />
+                            Service Charge: ৳{utilitiesCost.toLocaleString()}
+                        </div>
+                    )}
 
-                <div className="flex items-center justify-between border-t border-slate-50 dark:border-slate-700/50 pt-4">
-                    <div className="flex gap-4">
-                        <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                            <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-primary">
-                                <Bed size={16} />
+                    <div className="flex items-center justify-between border-t border-slate-50 dark:border-slate-700/50 pt-4 mt-auto">
+                        <div className="flex gap-4">
+                            <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                                <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-primary">
+                                    <Bed size={16} />
+                                </div>
+                                <span className="text-xs font-black">{beds} Bed</span>
                             </div>
-                            <span className="text-xs font-black">{beds} Bed</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                            <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-primary">
-                                <DoorOpen size={16} />
+                            <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                                <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-primary">
+                                    <DoorOpen size={16} />
+                                </div>
+                                <span className="text-xs font-black">{baths} Bath</span>
                             </div>
-                            <span className="text-xs font-black">{baths} Bath</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                            <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-primary">
-                                <Building2 size={16} />
+                            <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                                <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-primary">
+                                    <Building2 size={16} />
+                                </div>
+                                <span className="text-xs font-black">{sqft || property.area || property.sqft || 'N/A'} {(sqft || property.area || property.sqft) ? 'sqft' : ''}</span>
                             </div>
-                            <span className="text-xs font-black">{sqft || property.area || property.sqft || 'N/A'} {(sqft || property.area || property.sqft) ? 'sqft' : ''}</span>
                         </div>
                     </div>
                 </div>
-            </div>
-        </Link>
+            </Link>
+        </motion.div>
     );
 }

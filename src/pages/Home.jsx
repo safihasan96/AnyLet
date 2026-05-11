@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, ChevronDown, Bell, User, Search, SlidersHorizontal, Building2, Users, Bed, DoorOpen, Download, Smartphone } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -10,12 +10,13 @@ import { Helmet } from 'react-helmet-async';
 import PromotedAds from '../components/PromotedAds';
 import { bdLocations } from '../data/locations';
 
-
 import { motion } from 'framer-motion';
+import { PopInSection } from '../utils/animations';
 
 export default function Home() {
     const { currentUser } = useAuth();
     const { t } = useLanguage();
+    const navigate = useNavigate();
     const [hasUnread, setHasUnread] = useState(false);
     const [selectedDivision, setSelectedDivision] = useState('');
 
@@ -33,11 +34,7 @@ export default function Home() {
     }, [currentUser]);
 
     return (
-        <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="pb-24 bg-background-light dark:bg-background-dark min-h-screen"
-        >
+        <div className="pb-24 bg-background-light dark:bg-background-dark min-h-screen">
             <Helmet>
                 <title>Any-Let | The Smartest Way to Rent in Bangladesh</title>
                 <meta name="description" content="Discover verified properties for rent in Dhaka, Chittagong, and across Bangladesh. Connect with trusted landlords securely on Any-Let." />
@@ -54,9 +51,9 @@ export default function Home() {
                             <select 
                                 value={selectedDivision}
                                 onChange={(e) => setSelectedDivision(e.target.value)}
-                                className="text-slate-900 dark:text-slate-100 text-sm font-black leading-tight bg-transparent appearance-none outline-none pr-4 z-10"
+                                className="appearance-none bg-transparent text-slate-900 dark:text-slate-100 text-sm font-black leading-tight outline-none cursor-pointer pr-4 z-10"
                             >
-                                <option value="">All Divisions</option>
+                                <option value="">All Bangladesh</option>
                                 {Object.keys(bdLocations).map(div => (
                                     <option key={div} value={div}>{div}</option>
                                 ))}
@@ -94,98 +91,88 @@ export default function Home() {
                             animate={{ y: 0, opacity: 1 }}
                             transition={{ delay: 0.2 }}
                         >
-                            <div className="flex flex-col md:flex-row gap-4 w-full max-w-3xl">
-                                <div className="hidden md:flex flex-col justify-center px-6 rounded-3xl bg-white dark:bg-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 min-w-[200px]">
-                                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-black">Division</p>
-                                    <div className="flex items-center gap-1 relative">
+                            <div className="flex flex-col w-full max-w-4xl">
+                                <div className="flex w-full items-stretch rounded-3xl h-16 md:h-20 bg-white dark:bg-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 overflow-hidden group">
+                                    <div className="hidden md:flex items-center border-r border-slate-100 dark:border-slate-700 pl-6 pr-2 relative">
+                                        <MapPin size={20} className="text-primary mr-2" />
                                         <select 
                                             value={selectedDivision}
                                             onChange={(e) => setSelectedDivision(e.target.value)}
-                                            className="text-slate-900 dark:text-slate-100 text-sm font-black leading-tight bg-transparent appearance-none outline-none w-full cursor-pointer pr-4"
+                                            className="appearance-none bg-transparent text-slate-900 dark:text-white font-bold outline-none cursor-pointer pr-6"
                                         >
-                                            <option value="">All Divisions</option>
+                                            <option value="">Anywhere</option>
                                             {Object.keys(bdLocations).map(div => (
                                                 <option key={div} value={div}>{div}</option>
                                             ))}
                                         </select>
-                                        <ChevronDown size={14} className="text-primary absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                        <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                     </div>
-                                </div>
-
-                                <Link to={`/search${selectedDivision ? `?division=${selectedDivision}` : ''}`} className="flex-1 flex w-full items-stretch rounded-3xl h-16 md:h-20 bg-white dark:bg-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 overflow-hidden cursor-pointer hover:border-primary/50 transition-all group">
-                                    <div className="text-slate-400 flex items-center justify-center pl-6 group-hover:text-primary transition-colors">
-                                        <Search size={26} />
-                                    </div>
-                                    <div className="flex items-center w-full px-4 text-lg font-semibold text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-                                        {t('search_placeholder')}
-                                    </div>
-                                    <div className="flex items-center pr-3">
-                                        <div className="bg-primary text-white h-12 md:h-14 px-6 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
-                                            <span className="hidden md:inline mr-2 font-bold">{t('search')}</span>
-                                            <SlidersHorizontal size={20} />
+                                    <div 
+                                        onClick={() => navigate('/search', { state: { division: selectedDivision } })}
+                                        className="flex-1 flex items-stretch cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                    >
+                                        <div className="text-slate-400 flex items-center justify-center pl-6 group-hover:text-primary transition-colors">
+                                            <Search size={26} />
+                                        </div>
+                                        <div className="flex items-center w-full px-4 text-lg font-semibold text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
+                                            {t('search_placeholder')}
                                         </div>
                                     </div>
-                                </Link>
-                            </div>
+                                    <div className="flex items-center pr-3">
+                                        <button 
+                                            onClick={() => navigate('/search', { state: { division: selectedDivision } })}
+                                            className="bg-primary text-white h-12 md:h-14 px-6 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 transition-transform"
+                                        >
+                                            <span className="hidden md:inline mr-2 font-bold">{t('search')}</span>
+                                            <SlidersHorizontal size={20} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>>
                         </motion.div>
                     </div>
                 </div>
 
-                {/* Get the App Banner */}
-                <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4 }}
-                    className="px-4 mt-3 mb-8"
-                >
-                    <Link to="/download">
-                        <div className="flex items-center gap-4 bg-gradient-to-r from-primary to-primary/80 rounded-3xl px-6 py-4 shadow-xl shadow-primary/20 hover:scale-[1.01] transition-transform cursor-pointer">
-                            <div className="bg-white/20 p-3 rounded-2xl shrink-0">
-                                <Smartphone size={24} className="text-white" />
-                            </div>
-                            <div className="flex-1">
-                                <p className="text-white font-black text-lg leading-tight">Get the Any-Let Pro App</p>
-                                <p className="text-white/70 text-sm font-medium">Install for free — no app store needed</p>
-                            </div>
-                            <div className="bg-white/10 p-2 rounded-full">
-                                <Download size={20} className="text-white" />
-                            </div>
-                        </div>
-                    </Link>
-                </motion.div>
+                {/* Get the App Banner Removed */}
 
                 <PromotedAds />
 
-                <div className="mt-12">
+                <PopInSection delay={0.05} className="mt-12">
                     <div className="flex items-center justify-between px-4 mb-6">
                         <h3 className="font-black text-2xl text-slate-900 dark:text-white uppercase tracking-tight">{t('categories')}</h3>
                     </div>
                     <div className="flex gap-6 px-4 overflow-x-auto no-scrollbar pb-4">
-                        <CategoryItem icon={<Building2 size={30} />} label={t('flat')} to={`/search?type=Apartment${selectedDivision ? `&division=${selectedDivision}` : ''}`} active />
-                        <CategoryItem icon={<Users size={30} />} label={t('sublet')} to={`/search?type=Sublet${selectedDivision ? `&division=${selectedDivision}` : ''}`} />
-                        <CategoryItem icon={<Bed size={30} />} label={t('room')} to={`/search?type=Room${selectedDivision ? `&division=${selectedDivision}` : ''}`} />
-                        <CategoryItem icon={<DoorOpen size={30} />} label={t('mess')} to={`/search?type=Mess${selectedDivision ? `&division=${selectedDivision}` : ''}`} />
+                        <CategoryItem icon={<Building2 size={30} />} label={t('flat')} onClick={() => navigate('/search', { state: { type: 'Apartment', division: selectedDivision } })} />
+                        <CategoryItem icon={<Users size={30} />} label={t('sublet')} onClick={() => navigate('/search', { state: { type: 'Sublet', division: selectedDivision } })} />
+                        <CategoryItem icon={<Bed size={30} />} label={t('room')} onClick={() => navigate('/search', { state: { type: 'Room', division: selectedDivision } })} />
+                        <CategoryItem icon={<DoorOpen size={30} />} label={t('mess')} onClick={() => navigate('/search', { state: { type: 'Mess', division: selectedDivision } })} />
                     </div>
-                </div>
+                </PopInSection>
 
-                <div className="mt-8">
+                <PopInSection delay={0.1} className="mt-8">
                     <FeaturedListings />
-                </div>
+                </PopInSection>
             </main>
-        </motion.div>
+        </div>
     );
 }
 
-function CategoryItem({ icon, label, active = false, to }) {
+function CategoryItem({ icon, label, active = false, onClick }) {
     return (
-        <Link to={to} className="flex flex-col items-center gap-2 min-w-[80px] group">
-            <div className={`size-16 rounded-2xl shadow-lg flex items-center justify-center transition-all group-hover:scale-105 group-hover:border-primary/50 ${active
+        <motion.button
+            onClick={onClick}
+            className="flex flex-col items-center gap-2 min-w-[80px]"
+            whileTap={{ scale: 0.82 }}
+            whileHover={{ scale: 1.1, y: -3 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+        >
+            <div className={`size-16 rounded-2xl shadow-lg flex items-center justify-center transition-all ${active
                 ? 'bg-primary text-white shadow-primary/30 scale-105'
                 : 'bg-white dark:bg-slate-800 text-primary border border-slate-100 dark:border-slate-700 shadow-slate-200/50 dark:shadow-none'
                 }`}>
                 {icon}
             </div>
-            <p className={`text-[11px] font-black uppercase tracking-wider group-hover:text-primary transition-colors ${active ? 'text-primary' : 'text-slate-500'}`}>{label}</p>
-        </Link>
+            <p className={`text-[11px] font-black uppercase tracking-wider ${active ? 'text-primary' : 'text-slate-500'}`}>{label}</p>
+        </motion.button>
     );
 }

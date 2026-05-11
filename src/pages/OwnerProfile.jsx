@@ -4,6 +4,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { db } from '../firebase';
 import { ArrowLeft, MapPin, Maximize, User2 } from 'lucide-react';
 import PropertyCard from '../components/PropertyCard';
+import PropertyLoader from '../components/PropertyLoader';
 
 export default function OwnerProfile() {
     const { id } = useParams();
@@ -44,7 +45,7 @@ export default function OwnerProfile() {
 
     if (loading) return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-            <div className="animate-spin size-12 border-4 border-primary border-t-transparent rounded-full" />
+            <PropertyLoader />
         </div>
     );
 

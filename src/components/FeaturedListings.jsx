@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import PropertyCard from './PropertyCard';
-
-import { motion } from 'framer-motion';
+import { StaggerGrid, CardPopItem } from '../utils/animations';
 
 export default function FeaturedListings() {
     const [listings, setListings] = useState([]);
@@ -68,24 +67,13 @@ export default function FeaturedListings() {
                 <h3 className="font-black text-2xl text-slate-900 dark:text-white uppercase tracking-tight">Latest Properties</h3>
                 <div className="h-1 bg-primary w-20 rounded-full"></div>
             </div>
-            <motion.div 
-                layout 
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-            >
-                {listings.map((listing, index) => (
-                    <motion.div
-                        key={listing.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                    >
+            <StaggerGrid className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {listings.map((listing) => (
+                    <CardPopItem key={listing.id} className="h-full">
                         <PropertyCard property={listing} />
-                    </motion.div>
+                    </CardPopItem>
                 ))}
-            </motion.div>
+            </StaggerGrid>
         </div>
     );
 }

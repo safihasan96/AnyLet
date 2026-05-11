@@ -37,15 +37,28 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-background-light);
+  background-color: #ddd8f0;
+  background-image: url('/body-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   color: #0f172a;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
 [data-theme='dark'] body {
-  background-color: var(--color-background-dark);
+  background-color: #1a1030;
+  background-image: url('/body-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  filter: brightness(0.6);
   color: #f8fafc;
+}
+
+[data-theme='dark'] .app-container {
+  filter: none;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -88,16 +101,26 @@ body {
 
 .app-container {
   width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
   min-height: 100vh;
   position: relative;
   background: var(--color-bg);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.08);
+}
+
+@media (min-width: 1440px) {
+  .app-container {
+    margin: 1.5rem auto;
+    min-height: calc(100vh - 3rem);
+    border-radius: 2rem;
+    overflow: clip;
+  }
 }
 
 .main-content {
   width: 100%;
-  max-width: 1200px;
   margin: 0 auto;
-  padding: 0 1rem;
 }
 
 @media (max-width: 450px) {

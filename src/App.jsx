@@ -5,6 +5,7 @@ import { db } from './firebase';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import InstallPrompt from './components/InstallPrompt';
+import CustomCursor from './components/CustomCursor';
 import Home from './pages/Home';
 import Search from './pages/Search';
 import PropertyDetails from './pages/PropertyDetails';
@@ -37,16 +38,19 @@ import AgentProfile from './pages/AgentProfile';
 import Blog from './pages/Blog';
 import BlogPost from './pages/BlogPost';
 import Settings from './pages/Settings';
+import ReportProperty from './pages/ReportProperty';
+import VerifyEmail from './pages/VerifyEmail';
 import './App.css';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function PageWrapper({ children }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      style={{ willChange: 'opacity, transform' }}
     >
       {children}
     </motion.div>
@@ -64,6 +68,7 @@ function App() {
 
   return (
     <div className={isAdminPath ? "min-h-screen w-full bg-slate-50 flex" : "app-container relative flex flex-col"}>
+      <CustomCursor />
       {!isAdminPath && !isAuthPath && (
         <div className="hidden md:block sticky top-0 z-50">
           <Header />
@@ -127,6 +132,11 @@ function App() {
                   <PageWrapper><EditProfile /></PageWrapper>
                 </ProtectedRoute>
               } />
+              <Route path="/verify-email" element={
+                <ProtectedRoute>
+                  <PageWrapper><VerifyEmail /></PageWrapper>
+                </ProtectedRoute>
+              } />
               <Route path="/change-password" element={
                 <ProtectedRoute>
                   <PageWrapper><ChangePassword /></PageWrapper>
@@ -140,6 +150,11 @@ function App() {
               <Route path="/enquiry" element={
                 <ProtectedRoute>
                   <PageWrapper><Enquiry /></PageWrapper>
+                </ProtectedRoute>
+              } />
+              <Route path="/report-property/:id" element={
+                <ProtectedRoute>
+                  <PageWrapper><ReportProperty /></PageWrapper>
                 </ProtectedRoute>
               } />
               <Route path="/admin/*" element={

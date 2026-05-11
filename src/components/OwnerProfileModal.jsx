@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { X, Phone, Mail, User, ShieldCheck, MapPin } from 'lucide-react';
+import { X, Phone, Mail, User, ShieldCheck } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
+import { BottomSheet3D } from './Modal3D';
 
 export default function OwnerProfileModal({ isOpen, onClose, owner }) {
     const [callModalOpen, setCallModalOpen] = useState(false);
     const [phoneNumberToCall, setPhoneNumberToCall] = useState('');
-
-    if (!isOpen) return null;
 
     // Fallbacks for missing data
     const displayName = owner?.fullName || owner?.name || owner?.displayName || "Property Owner";
@@ -17,92 +16,94 @@ export default function OwnerProfileModal({ isOpen, onClose, owner }) {
     const isVerified = owner?.verified || owner?.role === 'admin';
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center bg-slate-900/60 backdrop-blur-[2px] p-4 sm:p-0 animate-in fade-in duration-200">
-            {/* Click outside to close */}
-            <div className="absolute inset-0" onClick={onClose} />
+        <>
+            <BottomSheet3D isOpen={isOpen} onClose={onClose} className="max-w-sm sm:max-w-sm mx-auto" zIndex={50}>
+                <div className="bg-white dark:bg-slate-900 rounded-t-[32px] sm:rounded-[40px] shadow-2xl overflow-hidden">
+                    {/* Drag handle (mobile) */}
+                    <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                        <div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700" />
+                    </div>
 
-            <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[32px] sm:rounded-[40px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:slide-in-from-bottom-8 duration-300">
-                {/* Header matching app style */}
-                <header className="flex items-center justify-between p-6 pb-0">
-                    <h2 className="text-[18px] font-black text-slate-900 dark:text-white flex items-center gap-2">
-                        <User size={20} className="text-primary" />
-                        Host Profile
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="size-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-                    >
-                        <X size={20} strokeWidth={2.5} />
-                    </button>
-                </header>
+                    {/* Header */}
+                    <header className="flex items-center justify-between px-6 pt-4 pb-0">
+                        <h2 className="text-[18px] font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <User size={20} className="text-primary" />
+                            Host Profile
+                        </h2>
+                        <button
+                            onClick={onClose}
+                            className="size-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                        >
+                            <X size={20} strokeWidth={2.5} />
+                        </button>
+                    </header>
 
-                <main className="p-6 pt-6 flex flex-col items-center">
-                    {/* Avatar */}
-                    <div className="relative mb-4">
-                        <div className="size-24 rounded-[28px] bg-primary/10 flex items-center justify-center text-primary overflow-hidden shadow-inner border-4 border-white dark:border-slate-800 shadow-xl shadow-primary/10">
-                            {displayAvatar ? (
-                                <img src={displayAvatar} alt={displayName} className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-3xl font-black uppercase">{displayName.charAt(0)}</span>
+                    <main className="p-6 pt-6 flex flex-col items-center">
+                        {/* Avatar */}
+                        <div className="relative mb-4">
+                            <div className="size-24 rounded-[28px] bg-primary/10 flex items-center justify-center text-primary overflow-hidden shadow-inner border-4 border-white dark:border-slate-800 shadow-xl shadow-primary/10">
+                                {displayAvatar ? (
+                                    <img src={displayAvatar} alt={displayName} className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-3xl font-black uppercase">{displayName.charAt(0)}</span>
+                                )}
+                            </div>
+                            {isVerified && (
+                                <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-1.5 rounded-xl shadow-lg shadow-emerald-500/30 ring-4 ring-white dark:ring-slate-900">
+                                    <ShieldCheck size={16} strokeWidth={3} />
+                                </div>
                             )}
                         </div>
-                        {isVerified && (
-                            <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-1.5 rounded-xl shadow-lg shadow-emerald-500/30 ring-4 ring-white dark:ring-slate-900">
-                                <ShieldCheck size={16} strokeWidth={3} />
-                            </div>
-                        )}
-                    </div>
 
-                    {/* Name & Role */}
-                    <h3 className="text-xl font-black text-slate-900 dark:text-white text-center mb-1 leading-tight flex items-center gap-2">
-                        {displayName}
-                    </h3>
-                    <p className="text-[11px] font-black uppercase tracking-widest text-primary mb-8 px-3 py-1 bg-primary/10 rounded-lg">
-                        {displayRole}
-                    </p>
+                        {/* Name & Role */}
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white text-center mb-1 leading-tight">{displayName}</h3>
+                        <p className="text-[11px] font-black uppercase tracking-widest text-primary mb-8 px-3 py-1 bg-primary/10 rounded-lg">
+                            {displayRole}
+                        </p>
 
-                    {/* Contact Info Cards */}
-                    <div className="w-full space-y-3">
-                        <button 
-                            onClick={() => {
-                                if (displayPhone && displayPhone !== "No phone provided") {
-                                    setPhoneNumberToCall(displayPhone);
-                                    setCallModalOpen(true);
-                                } else {
-                                    alert("Phone number not available");
-                                }
-                            }}
-                            className="w-full flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors group text-left"
+                        {/* Contact Info Cards */}
+                        <div className="w-full space-y-3">
+                            <button
+                                onClick={() => {
+                                    if (displayPhone && displayPhone !== "No phone provided") {
+                                        setPhoneNumberToCall(displayPhone);
+                                        setCallModalOpen(true);
+                                    } else {
+                                        alert("Phone number not available");
+                                    }
+                                }}
+                                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors group text-left"
+                            >
+                                <div className="size-10 shrink-0 rounded-xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                    <Phone size={18} strokeWidth={2.5} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-0.5">Phone Number</p>
+                                    <p className="text-[14px] font-bold text-slate-700 dark:text-slate-200 truncate">{displayPhone}</p>
+                                </div>
+                            </button>
+
+                            <a href={`mailto:${displayEmail}`} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors group">
+                                <div className="size-10 rounded-xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                    <Mail size={18} strokeWidth={2.5} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-0.5">Email Address</p>
+                                    <p className="text-[14px] font-bold text-slate-700 dark:text-slate-200 truncate">{displayEmail}</p>
+                                </div>
+                            </a>
+                        </div>
+
+                        {/* Close Button */}
+                        <button
+                            onClick={onClose}
+                            className="w-full mt-8 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-[15px] py-4 rounded-[20px] shadow-xl shadow-slate-900/10 dark:shadow-white/10 active:scale-95 transition-transform"
                         >
-                            <div className="size-10 shrink-0 rounded-xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                                <Phone size={18} strokeWidth={2.5} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-0.5">Phone Number</p>
-                                <p className="text-[14px] font-bold text-slate-700 dark:text-slate-200 truncate">{displayPhone}</p>
-                            </div>
+                            Close Profile
                         </button>
-
-                        <a href={`mailto:${displayEmail}`} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors group">
-                            <div className="size-10 rounded-xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                                <Mail size={18} strokeWidth={2.5} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400 mb-0.5">Email Address</p>
-                                <p className="text-[14px] font-bold text-slate-700 dark:text-slate-200 truncate">{displayEmail}</p>
-                            </div>
-                        </a>
-                    </div>
-
-                    {/* Action Button */}
-                    <button
-                        onClick={onClose}
-                        className="w-full mt-8 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-[15px] py-4 rounded-[20px] shadow-xl shadow-slate-900/10 dark:shadow-white/10 active:scale-95 transition-transform"
-                    >
-                        Close Profile
-                    </button>
-                </main>
-            </div>
+                    </main>
+                </div>
+            </BottomSheet3D>
 
             <ConfirmationModal
                 isOpen={callModalOpen}
@@ -116,6 +117,6 @@ export default function OwnerProfileModal({ isOpen, onClose, owner }) {
                 }}
                 onCancel={() => setCallModalOpen(false)}
             />
-        </div>
+        </>
     );
 }

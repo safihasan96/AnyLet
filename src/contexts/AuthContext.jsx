@@ -3,10 +3,12 @@ import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     signOut,
-    onAuthStateChanged
+    onAuthStateChanged,
+    reload
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import LoadingScreen from '../components/LoadingScreen';
 
 const AuthContext = createContext();
 
@@ -97,20 +99,28 @@ export function AuthProvider({ children }) {
         return unsubscribe;
     }, []);
 
+    async function refreshUser() {
+        if (auth.currentUser) {
+            await reload(auth.currentUser);
+            setCurrentUser({ ...auth.currentUser });
+        }
+    }
+
     const value = {
         currentUser,
         userRole,
         userData,
-        userProfile: userData, // Alias for consistency with user preference
+        userProfile: userData, 
         login,
         signup,
         logout,
+        refreshUser,
         loading
     };
 
     return (
         <AuthContext.Provider value={value}>
-            {!loading && children}
+            {loading ? <LoadingScreen /> : children}
         </AuthContext.Provider>
     );
 }

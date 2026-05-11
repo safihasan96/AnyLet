@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { 
@@ -32,19 +32,32 @@ const FEATURE_OPTIONS = ["Lift/Elevator", "CCTV Security", "Fire Exit", "Emergen
 
 export default function Search() {
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const location = useLocation();
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
-    const [searchTerm, setSearchTerm] = useState(searchParams.get('division') ? '' : 'Dhaka City');
+    const [searchTerm, setSearchTerm] = useState('');
     
     const [filterState, setFilterState] = useState({
-        division: searchParams.get('division') || '', district: '', upazila: '',
-        type: searchParams.get('type') || '', minPrice: '', maxPrice: '',
+        division: location.state?.division || '', district: '', upazila: '',
+        type: location.state?.type || '', minPrice: '', maxPrice: '',
         billingCycle: 'Month', tenantType: 'Any',
         beds: 'Any', baths: 'Any',
         utilities: [], features: []
     });
+
+    useEffect(() => {
+        if (location.state && (location.state.division !== undefined || location.state.type !== undefined)) {
+            setFilterState(prev => ({
+                ...prev,
+                division: location.state.division !== undefined ? location.state.division : prev.division,
+                type: location.state.type !== undefined ? location.state.type : prev.type,
+                district: '',
+                upazila: ''
+            }));
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state, navigate, location.pathname]);
 
     const resetFilters = () => {
         setFilterState({
@@ -121,21 +134,23 @@ export default function Search() {
             <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-8 px-6 py-8">
                 
                 {/* Desktop Sidebar */}
-                <aside className="hidden md:block w-80 shrink-0 sticky top-28 self-start h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pb-10">
-                    <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
-                        <div className="flex items-center justify-between mb-8">
-                            <h2 className="text-xl font-black text-slate-900 dark:text-white">Filters</h2>
-                            <button onClick={resetFilters} className="text-primary text-sm font-black hover:underline underline-offset-4">Reset</button>
+                <div className="hidden md:block w-80 shrink-0">
+                    <aside className="sticky top-28 self-start h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pb-10">
+                        <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
+                            <div className="flex items-center justify-between mb-8">
+                                <h2 className="text-xl font-black text-slate-900 dark:text-white">Filters</h2>
+                                <button onClick={resetFilters} className="text-primary text-sm font-black hover:underline underline-offset-4">Reset</button>
+                            </div>
+                            <FilterContent 
+                                filterState={filterState} setFilterState={setFilterState}
+                                districts={districts} thanas={thanas}
+                                PROPERTY_TYPES={PROPERTY_TYPES} BILLING_CYCLES={BILLING_CYCLES} TENANT_TYPES={TENANT_TYPES}
+                                UTILITY_OPTIONS={UTILITY_OPTIONS} FEATURE_OPTIONS={FEATURE_OPTIONS}
+                                toggleList={toggleList}
+                            />
                         </div>
-                        <FilterContent 
-                            filterState={filterState} setFilterState={setFilterState}
-                            districts={districts} thanas={thanas}
-                            PROPERTY_TYPES={PROPERTY_TYPES} BILLING_CYCLES={BILLING_CYCLES} TENANT_TYPES={TENANT_TYPES}
-                            UTILITY_OPTIONS={UTILITY_OPTIONS} FEATURE_OPTIONS={FEATURE_OPTIONS}
-                            toggleList={toggleList}
-                        />
-                    </div>
-                </aside>
+                    </aside>
+                </div>
 
                 {/* Main Results */}
                 <main className="flex-1 flex flex-col gap-6">
@@ -180,7 +195,7 @@ export default function Search() {
                             <AnimatePresence mode="popLayout">
                                 {filteredProperties.length > 0 ? (
                                     filteredProperties.map((p, idx) => (
-                                        <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: idx * 0.05 }}>
+                                        <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: idx * 0.05 }} className="h-full">
                                             <HorizontalPropertyCard property={p} />
                                         </motion.div>
                                     ))

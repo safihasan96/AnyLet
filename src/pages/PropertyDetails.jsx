@@ -21,11 +21,14 @@ import {
   Share2,
   Heart,
   User,
-  Info
+  Info,
+  Flag,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ViewingRequestModal from '../components/ViewingRequestModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import PropertyLoader from '../components/PropertyLoader';
 
 export default function PropertyDetails() {
     const { id } = useParams();
@@ -98,7 +101,7 @@ export default function PropertyDetails() {
 
     if (loading) return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-            <div className="animate-spin size-12 border-4 border-primary border-t-transparent rounded-full" />
+            <PropertyLoader />
         </div>
     );
 
@@ -171,7 +174,7 @@ export default function PropertyDetails() {
                         </div>
 
                         {/* Title, Stats & Price */}
-                        <div className="mb-8 md:mb-10 px-4 md:px-0 flex flex-col md:flex-row md:justify-between md:items-start gap-6">
+                        <div className="mb-8 md:mb-10 px-4 md:px-0 flex flex-col md:flex-row md:justify-between md:items-center gap-6">
                             <div className="flex-1">
                                 <h1 className="text-2xl md:text-4xl font-black text-slate-900 dark:text-white mb-4 leading-tight">
                                     {property.title}
@@ -292,6 +295,17 @@ export default function PropertyDetails() {
                             </div>
 
                             {/* Scam protection removed per request */}
+                            
+                            {/* Report Ad Option */}
+                            <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                                <Link 
+                                    to={`/report-property/${id}`} 
+                                    state={{ property }}
+                                    className="flex items-center justify-center gap-2 text-slate-400 hover:text-rose-500 font-bold text-sm transition-colors py-2 group"
+                                >
+                                    <Flag size={16} className="group-hover:fill-rose-500" /> Report this ad
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -327,6 +341,15 @@ export default function PropertyDetails() {
                             >
                                 <Phone size={20} /> {t('call_owner')}
                             </button>
+                        </div>
+                        <div className="mt-8 flex justify-center">
+                            <Link 
+                                to={`/report-property/${id}`} 
+                                state={{ property }}
+                                className="flex items-center gap-2 text-slate-400 hover:text-rose-500 font-bold text-sm transition-colors py-4 px-8"
+                            >
+                                <Flag size={16} /> Report this ad
+                            </Link>
                         </div>
                     </div>
                 )}

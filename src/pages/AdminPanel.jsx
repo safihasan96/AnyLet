@@ -4,7 +4,7 @@ import {
     Users, Home, ClipboardList, Search, LayoutDashboard, Settings,
     LogOut, UserCheck, UserMinus, Trash2, TrendingUp, ShieldCheck,
     Bell, ChevronRight, ChevronLeft, Activity, Database, Lock,
-    Menu, CheckCircle, Clock, Building2, MessageSquare
+    Menu, CheckCircle, Clock, Building2, MessageSquare, Flag, AlertCircle
 } from 'lucide-react';
 import { collection, onSnapshot, updateDoc, deleteDoc, doc, getDoc, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
     { path: '/admin/properties', icon: Building2, label: 'Properties' },
     { path: '/admin/requests', icon: ClipboardList, label: 'Live Pipeline' },
     { path: '/admin/enquiries', icon: MessageSquare, label: 'Enquiries' },
+    { path: '/admin/reports', icon: Flag, label: 'Reports' },
     { path: '/admin/settings', icon: Settings, label: 'System Health' },
 ];
 
@@ -40,6 +41,7 @@ export default function AdminPanel() {
     const [listings, setListings] = useState([]);
     const [viewingReqs, setViewingReqs] = useState([]);
     const [enquiries, setEnquiries] = useState([]);
+    const [reports, setReports] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [loadingStats, setLoadingStats] = useState(true);
     const [stats, setStats] = useState({ totalUsers: 0, totalListings: 0, pendingRequests: 0 });
@@ -93,7 +95,13 @@ export default function AdminPanel() {
             setEnquiries(list);
         }, err => console.error('FIRESTORE (enquiries):', err.message));
 
-        return () => { unsubUsers(); unsubListings(); unsubLeads(); unsubEnquiries(); };
+        // Reports
+        const unsubReports = onSnapshot(collection(db, 'reports'), snap => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            setReports(list);
+        }, err => console.error('FIRESTORE (reports):', err.message));
+
+        return () => { unsubUsers(); unsubListings(); unsubLeads(); unsubEnquiries(); unsubReports(); };
     }, []);
 
     /* ── User actions ─────────────────────────────────────────────────────── */
@@ -274,6 +282,40 @@ export default function AdminPanel() {
             }
         });
     };
+    
+    /* ── Report actions ───────────────────────────────────────────────────── */
+    const handleDismissReport = async (reportId) => {
+        try {
+            await deleteDoc(doc(db, 'reports', reportId));
+        } catch (e) {
+            console.error('Dismiss report error:', e);
+        }
+    };
+
+    const handleDeleteReportedProperty = async (report) => {
+        showModal({
+            title: 'Delete Reported Property',
+            message: `This will permanently delete the property "${report.propertyTitle}" and dismiss this report. Continue?`,
+            confirmText: 'Delete Property',
+            confirmColor: '#ef4444',
+            onConfirm: async () => {
+                setModal(p => ({ ...p, isLoading: true }));
+                try {
+                    // Delete the property
+                    await deleteDoc(doc(db, 'properties', report.propertyId));
+                    // Delete the report
+                    await deleteDoc(doc(db, 'reports', report.id));
+                    
+                    setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
+                    setTimeout(closeModal, 1500);
+                } catch (e) {
+                    console.error(e);
+                    setModal(p => ({ ...p, isLoading: false, isOpen: false }));
+                    alert("Error deleting property. It might have been already deleted.");
+                }
+            }
+        });
+    };
 
     /* ── Derived ──────────────────────────────────────────────────────────── */
     const filteredUsers = users.filter(u =>
@@ -360,6 +402,11 @@ export default function AdminPanel() {
                                         {item.label === 'Enquiries' && enquiries.filter(e => e.status !== 'resolved').length > 0 && (
                                             <span className="ml-auto bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
                                                 {enquiries.filter(e => e.status !== 'resolved').length}
+                                            </span>
+                                        )}
+                                        {item.label === 'Reports' && reports.length > 0 && (
+                                            <span className="ml-auto bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                                                {reports.length}
                                             </span>
                                         )}
                                         {item.label !== 'Listings' && (
@@ -782,6 +829,89 @@ export default function AdminPanel() {
                                                             </form>
                                                         </div>
                                                     )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            } />
+
+                            {/* ── Reports ── */}
+                            <Route path="reports" element={
+                                <div className="space-y-6">
+                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
+                                        <div className="px-8 py-8 border-b border-zinc-50">
+                                            <h3 className="text-2xl font-black text-zinc-950">Property Reports</h3>
+                                            <p className="text-sm text-zinc-400 font-bold mt-1">
+                                                {reports.length} active reports · <span className="text-rose-500">Security & Content Moderation</span>
+                                            </p>
+                                        </div>
+
+                                        <div className="divide-y divide-zinc-50">
+                                            {reports.length === 0 ? (
+                                                <div className="px-8 py-16 text-center text-zinc-400 font-bold">
+                                                    No property reports found. Excellent!
+                                                </div>
+                                            ) : reports.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)).map(report => (
+                                                <div key={report.id} className="p-8 hover:bg-rose-50/[0.02] transition-all border-l-4 border-transparent hover:border-rose-500">
+                                                    <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
+                                                        <div className="flex-1 space-y-4">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500">
+                                                                    <Flag size={24} />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">Reason: {report.reason}</p>
+                                                                    <h4 className="text-lg font-black text-zinc-950 leading-tight">
+                                                                        {report.propertyTitle}
+                                                                    </h4>
+                                                                    <p className="text-xs font-bold text-zinc-400 mt-1">Property ID: {report.propertyId}</p>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-100">
+                                                                <p className="text-sm text-zinc-600 font-medium leading-relaxed italic">
+                                                                    "{report.details || 'No additional details provided.'}"
+                                                                </p>
+                                                            </div>
+
+                                                            <div className="flex flex-wrap gap-6 items-center">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="w-6 h-6 bg-zinc-200 rounded-lg flex items-center justify-center text-[10px] font-black text-zinc-600 uppercase">
+                                                                        {report.reporterName?.[0] || 'U'}
+                                                                    </div>
+                                                                    <p className="text-xs font-bold text-zinc-500">Reporter: <span className="text-zinc-900">{report.reporterName}</span></p>
+                                                                </div>
+                                                                <p className="text-xs font-bold text-zinc-400">
+                                                                    Email: <span className="text-zinc-700">{report.reporterEmail}</span>
+                                                                </p>
+                                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
+                                                                    {report.createdAt?.toDate()?.toLocaleString() || 'Just now'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex flex-row lg:flex-col gap-3 w-full lg:w-48">
+                                                            <button 
+                                                                onClick={() => navigate(`/property/${report.propertyId}`)}
+                                                                className="flex-1 py-3 px-4 bg-zinc-950 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
+                                                            >
+                                                                <Search size={14} /> View Ad
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleDeleteReportedProperty(report)}
+                                                                className="flex-1 py-3 px-4 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2"
+                                                            >
+                                                                <Trash2 size={14} /> Delete Ad
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleDismissReport(report.id)}
+                                                                className="flex-1 py-3 px-4 bg-zinc-100 text-zinc-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-zinc-200 transition-all flex items-center justify-center gap-2"
+                                                            >
+                                                                <CheckCircle size={14} /> Dismiss
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>

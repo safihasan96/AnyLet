@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Calendar, Users, Briefcase, Mail, Phone, User } from 'lucide-react';
+import Modal3D from './Modal3D';
 
 export default function ViewingRequestModal({ isOpen, onClose, onSubmit, propertyTitle }) {
     const [formData, setFormData] = useState({
@@ -12,19 +13,14 @@ export default function ViewingRequestModal({ isOpen, onClose, onSubmit, propert
         message: ''
     });
 
-    if (!isOpen) return null;
-
     const handleSubmit = (e) => {
         e.preventDefault();
         onSubmit(formData);
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm sm:p-6" onClick={onClose}>
-            <div
-                className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-                onClick={e => e.stopPropagation()}
-            >
+        <Modal3D isOpen={isOpen} onClose={onClose} className="max-w-lg" zIndex={50}>
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-800/50">
                     <div>
@@ -42,7 +38,7 @@ export default function ViewingRequestModal({ isOpen, onClose, onSubmit, propert
                 </div>
 
                 {/* Form Body - Scrollable */}
-                <div className="overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+                <div className="overflow-y-auto p-6">
                     <form id="viewing-form" onSubmit={handleSubmit} className="space-y-5">
                         <div className="space-y-4">
                             <h3 className="text-xs font-black uppercase tracking-widest text-[#3E2B88] dark:text-[#a78bfa]">Personal Details</h3>
@@ -125,7 +121,7 @@ export default function ViewingRequestModal({ isOpen, onClose, onSubmit, propert
                     </form>
                 </div>
 
-                {/* Footer fixed at bottom */}
+                {/* Footer */}
                 <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
                     <button
                         type="submit"
@@ -136,7 +132,7 @@ export default function ViewingRequestModal({ isOpen, onClose, onSubmit, propert
                     </button>
                 </div>
             </div>
-        </div>
+        </Modal3D>
     );
 }
 

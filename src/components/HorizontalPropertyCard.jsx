@@ -9,11 +9,17 @@ export default function HorizontalPropertyCard({ property }) {
 
     // Fallbacks
     const displayRent = rent || property.price || 0;
-    const displayImage = image || property.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80';
-    const displayLocation = property.upazila || property.area || property.district || 'Dhaka';
+    const displayImage = property?.images?.[0] || image || property.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80';
+    
+    const locationParts = [
+        property.streetAddress || property.address || property.location || property.area,
+        property.upazila,
+        property.district
+    ].filter(Boolean);
+    const displayLocation = locationParts.length > 0 ? locationParts.join(', ') : 'Dhaka, Bangladesh';
 
     return (
-        <Link to={`/property/${id}`} className="group flex bg-white dark:bg-slate-800 rounded-[28px] overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 transition-all hover:shadow-xl hover:shadow-[#3730a3]/5 active:scale-[0.98] p-3 gap-4">
+        <Link to={`/property/${id}`} className="h-full group flex bg-white dark:bg-slate-800 rounded-[28px] overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 transition-all hover:shadow-xl hover:shadow-[#3730a3]/5 active:scale-[0.98] p-3 gap-4">
             {/* Image Container */}
             <div className="relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-[20px]">
                 <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={displayImage} alt={title || 'Property'} />
@@ -31,8 +37,8 @@ export default function HorizontalPropertyCard({ property }) {
             <div className="flex flex-col justify-between py-1 pr-2 flex-1 min-w-0">
                 <div>
                     <div className="flex justify-between items-start gap-2 mb-1">
-                        <h4 className="font-[800] text-[15px] text-slate-900 dark:text-white leading-tight truncate">{title || 'Property Title'}</h4>
-                        <div className="flex items-baseline gap-0.5 shrink-0">
+                        <h4 className="font-[800] text-[15px] text-slate-900 dark:text-white leading-tight line-clamp-2 flex-1" title={title || 'Property Title'}>{title || 'Property Title'}</h4>
+                        <div className="flex items-baseline gap-0.5 shrink-0 ml-2">
                             <span className="font-[900] text-[15px] text-primary dark:text-indigo-400">৳ {displayRent.toLocaleString()}</span>
                             <span className="text-[10px] font-bold text-slate-400">/mo</span>
                         </div>
@@ -44,9 +50,9 @@ export default function HorizontalPropertyCard({ property }) {
                         </div>
                     )}
 
-                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-[13px] mb-3 truncate">
-                        <MapPin size={14} className="shrink-0" strokeWidth={2.5} />
-                        <span className="font-semibold truncate">{displayLocation}</span>
+                    <div className="flex items-start gap-1.5 text-slate-500 dark:text-slate-400 text-[13px] mb-3">
+                        <MapPin size={14} className="shrink-0 mt-0.5" strokeWidth={2.5} />
+                        <span className="font-semibold line-clamp-2" title={displayLocation}>{displayLocation}</span>
                     </div>
                 </div>
 

@@ -7,8 +7,9 @@ import { useAuth } from '../contexts/AuthContext';
 import {
     ArrowLeft, Settings, User, Lock, Building2, Heart,
     History, ChevronRight, Phone,
-    Info, HelpCircle, ShieldCheck, FileText, Map
+    Info, HelpCircle, ShieldCheck, FileText, Map, ShieldAlert
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function Profile() {
     const { currentUser } = useAuth();
@@ -94,7 +95,11 @@ export default function Profile() {
                 </h2>
 
                 <div className="flex flex-col items-center gap-1">
-                    <span className="text-[#1a227f] text-[10px] font-black uppercase tracking-[0.15em]">Verified Member</span>
+                    {currentUser?.emailVerified ? (
+                        <span className="text-[#1a227f] text-[10px] font-black uppercase tracking-[0.15em]">Verified Member</span>
+                    ) : (
+                        <span className="text-rose-500 text-[10px] font-black uppercase tracking-[0.15em]">Pending Verification</span>
+                    )}
                     <div className="flex items-center gap-2 text-[#94a3b8] font-bold text-[10px] uppercase tracking-wider mt-0.5">
                         Member since {
                             userData.createdAt 
@@ -111,6 +116,23 @@ export default function Profile() {
 
             {/* Content Sections */}
             <div className="px-6 space-y-8 mt-2">
+                {!currentUser?.emailVerified && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        onClick={() => navigate('/verify-email')}
+                        className="bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30 p-5 rounded-[28px] flex items-center gap-4 cursor-pointer hover:bg-rose-100 transition-colors"
+                    >
+                        <div className="size-10 bg-rose-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-rose-500/20">
+                            <ShieldAlert size={20} />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-black text-rose-600 dark:text-rose-400">Account Not Verified</p>
+                            <p className="text-[11px] font-bold text-rose-500/80">Tap here to verify your email and unlock all features.</p>
+                        </div>
+                        <ChevronRight size={16} className="text-rose-400" />
+                    </motion.div>
+                )}
                 {/* Account Settings */}
                 <Section title="Account Settings">
                     <ProfileMenuItem

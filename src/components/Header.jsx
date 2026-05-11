@@ -12,18 +12,41 @@ import {
   ShieldCheck, 
   Bell,
   Search,
-  Plus
+  Plus,
+  MessageSquare
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export default function Header() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [language, setLanguage] = useState('EN');
   const [currency, setCurrency] = useState('BDT');
+  const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
   const { currentUser, logout, userProfile, login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!currentUser) {
+        setUnreadCount(0);
+        return;
+    }
+
+    const q = query(
+        collection(db, 'viewing_requests'),
+        where('ownerId', '==', currentUser.uid),
+        where('isRead', '==', false)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        setUnreadCount(snapshot.size);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -74,23 +97,28 @@ export default function Header() {
           </span>
         </Link>
 
-        {/* Desktop Nav */}
-        <nav className="hidden md:flex items-center gap-10">
-          <NavLink to="/" label="Home" />
-          <NavLink to="/search" label="Discover" />
-          <NavLink to="/download" label="App" />
-        </nav>
+        {/* Desktop Nav removed as per request */}
 
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-4">
-          {currentUser && !currentUser.emailVerified && (
-            <button
-              onClick={() => navigate('/settings')}
-              className="hidden lg:flex items-center gap-2 bg-rose-500 text-white px-5 py-2.5 rounded-2xl font-black text-xs shadow-lg shadow-rose-500/20 hover:scale-105 transition-transform active:scale-95 animate-pulse"
-            >
-              <ShieldCheck size={16} />
-              Verify Now
-            </button>
+          {currentUser && (
+            currentUser.emailVerified ? (
+              <Link
+                to="/post-ad"
+                className="hidden lg:flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-2xl font-black text-xs shadow-lg shadow-primary/20 hover:scale-105 transition-transform active:scale-95"
+              >
+                <Plus size={16} strokeWidth={3} />
+                Post Ad
+              </Link>
+            ) : (
+              <button
+                onClick={() => navigate('/verify-email')}
+                className="hidden lg:flex items-center gap-2 bg-rose-500 text-white px-5 py-2.5 rounded-2xl font-black text-xs shadow-lg shadow-rose-500/20 hover:scale-105 transition-transform active:scale-95 animate-pulse"
+              >
+                <ShieldCheck size={16} />
+                Verify Now
+              </button>
+            )
           )}
 
           {currentUser ? (
@@ -99,8 +127,14 @@ export default function Header() {
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-2 p-1.5 pr-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-primary/40 transition-all"
               >
-                <div className="size-10 rounded-xl bg-primary text-white flex items-center justify-center font-black text-sm">
+                <div className="relative size-10 rounded-xl bg-primary text-white flex items-center justify-center font-black text-sm">
                   {currentUser.email?.charAt(0).toUpperCase()}
+                  {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex size-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                          <span className="relative inline-flex size-3 rounded-full bg-rose-500 border-2 border-white dark:border-slate-800" />
+                      </span>
+                  )}
                 </div>
                 <div className="hidden lg:block text-left">
                   <p className="text-[12px] font-black text-slate-900 dark:text-white truncate max-w-[120px] leading-none mb-1">
@@ -123,6 +157,7 @@ export default function Header() {
                   >
                     <div className="p-2 space-y-1">
                       <DropdownItem to="/my-listings" onClick={() => setIsDropdownOpen(false)} icon={<List size={18} />} label="My Ads" />
+                      <DropdownItem to="/requests" onClick={() => setIsDropdownOpen(false)} icon={<MessageSquare size={18} />} label="Messages" badgeCount={unreadCount} />
                       <DropdownItem to="/profile" onClick={() => setIsDropdownOpen(false)} icon={<User size={18} />} label="My Profile" />
                       <DropdownItem to="/favorites" onClick={() => setIsDropdownOpen(false)} icon={<Heart size={18} />} label="Saved Items" />
                       {userProfile?.role === 'admin' && (
@@ -155,20 +190,18 @@ export default function Header() {
   );
 }
 
-function NavLink({ to, label }) {
+function DropdownItem({ to, icon, label, onClick, badgeCount }) {
   return (
-    <Link to={to} className="text-sm font-black text-slate-500 hover:text-primary transition-colors tracking-tight uppercase relative group">
-      {label}
-      <span className="absolute -bottom-2 left-0 w-0 h-1 bg-primary rounded-full transition-all group-hover:w-full" />
-    </Link>
-  );
-}
-
-function DropdownItem({ to, icon, label, onClick }) {
-  return (
-    <Link to={to} onClick={onClick} className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-primary transition-all font-bold text-sm">
-      {icon}
-      {label}
+    <Link to={to} onClick={onClick} className="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-primary transition-all font-bold text-sm group">
+      <div className="flex items-center gap-3">
+        {icon}
+        {label}
+      </div>
+      {badgeCount > 0 && (
+        <span className="flex items-center justify-center bg-rose-500 text-white text-[10px] font-black size-5 rounded-full shadow-md shadow-rose-500/30">
+          {badgeCount}
+        </span>
+      )}
     </Link>
   );
 }
