@@ -40,7 +40,6 @@ export default function PromotedAds() {
                     <Sparkles size={18} className="text-amber-500 fill-amber-500" />
                     <h3 className="font-black text-lg text-slate-900 dark:text-white uppercase tracking-tight">Featured Hotspots</h3>
                 </div>
-                <span className="text-[10px] font-black bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 px-2 py-1 rounded-lg uppercase tracking-widest">Sponsored</span>
             </div>
 
             <div className="promoted-slider no-scrollbar">

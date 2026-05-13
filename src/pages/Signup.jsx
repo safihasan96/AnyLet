@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { sendEmailVerification } from 'firebase/auth';
-import { Mail, Lock, User, ArrowRight, Home as HomeIcon, CheckCircle2, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Home as HomeIcon, CheckCircle2, ShieldCheck, RefreshCw, ArrowLeft } from 'lucide-react';
 
 export default function Signup() {
     const [email, setEmail]       = useState('');
@@ -56,6 +56,14 @@ export default function Signup() {
     // Signup Form ─────────────────────────────────────────────────────────
     return (
         <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 p-6 relative overflow-hidden">
+            <header className="flex items-center mb-6 relative z-10">
+                <button 
+                    onClick={() => navigate(-1)} 
+                    className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all active:scale-95 border border-slate-100 dark:border-slate-700 shadow-sm"
+                >
+                    <ArrowLeft size={20} strokeWidth={3} />
+                </button>
+            </header>
             <div className="absolute -top-24 -right-24 size-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
             <div className="absolute -bottom-24 -left-24 size-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 

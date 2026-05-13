@@ -4,11 +4,12 @@ import { db } from '../firebase';
 import PropertyCard from './PropertyCard';
 import { StaggerGrid, CardPopItem } from '../utils/animations';
 
-export default function FeaturedListings() {
+export default function FeaturedListings({ category = 'All', division = '' }) {
     const [listings, setListings] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        setLoading(true);
         const q = query(
             collection(db, 'properties'),
             orderBy('createdAt', 'desc')
@@ -25,7 +26,11 @@ export default function FeaturedListings() {
                         isApproved: data.isApproved !== false
                     };
                 })
-                .filter(item => item.isApproved);
+                .filter(item => {
+                    const matchesCategory = category === 'All' || item.type === category;
+                    const matchesDivision = !division || item.division === division;
+                    return item.isApproved && matchesCategory && matchesDivision;
+                });
 
             setListings(listingsData);
             setLoading(false);
@@ -35,7 +40,7 @@ export default function FeaturedListings() {
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [category, division]);
 
     if (loading) {
         return (
@@ -63,9 +68,17 @@ export default function FeaturedListings() {
 
     return (
         <div className="px-4 py-8">
-            <div className="flex items-center justify-between mb-8">
-                <h3 className="font-black text-2xl text-slate-900 dark:text-white uppercase tracking-tight">Latest Properties</h3>
-                <div className="h-1 bg-primary w-20 rounded-full"></div>
+            <div className="flex flex-col gap-2 mb-8">
+                <div className="flex items-center justify-between">
+                    <h3 className="font-black text-2xl text-slate-900 dark:text-white uppercase tracking-tight">
+                        {category === 'All' ? 'Latest' : category} Properties
+                        {division && <span className="text-primary font-bold ml-2">in {division}</span>}
+                    </h3>
+                    <div className="hidden md:block h-1 bg-primary w-20 rounded-full"></div>
+                </div>
+                <p className="text-slate-500 text-sm font-medium">
+                    Found {listings.length} {listings.length === 1 ? 'listing' : 'listings'} matching your criteria
+                </p>
             </div>
             <StaggerGrid className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {listings.map((listing) => (

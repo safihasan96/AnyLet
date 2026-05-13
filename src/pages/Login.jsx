@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { auth, db } from '../firebase';
 import { signOut, sendEmailVerification } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { Mail, Lock, ArrowRight, Home as HomeIcon, RefreshCw } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Home as HomeIcon, RefreshCw, ArrowLeft } from 'lucide-react';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -59,6 +59,14 @@ export default function Login() {
 
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-slate-950 p-6">
+            <header className="flex items-center mb-6">
+                <button 
+                    onClick={() => navigate(-1)} 
+                    className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all active:scale-95 border border-slate-100 dark:border-slate-700"
+                >
+                    <ArrowLeft size={20} strokeWidth={3} />
+                </button>
+            </header>
             <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
                 <div className="flex items-center gap-2 mb-12">
                     <div className="size-10 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">

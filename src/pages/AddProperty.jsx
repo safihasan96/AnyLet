@@ -54,7 +54,7 @@ export default function AddProperty() {
     const [showSuccess, setShowSuccess] = useState(false);
 
     const BILLING_CYCLES = ["Month", "Week", "Day"];
-    const PROPERTY_TYPES = ["House", "Apartment", "Sublet", "Room", "Mess", "Cottage", "Resort", "Shop", "Others"];
+    const PROPERTY_TYPES = ["House", "Apartment", "Sublet", "Room", "Mess", "Cottage", "Hotel", "Resort", "Commercial Space", "Land", "Shop", "Others"];
     const TENANT_TYPES = ["Any", "Family", "Bachelor (Male)", "Bachelor (Female)"];
 
     // Location Helpers
@@ -227,7 +227,10 @@ export default function AddProperty() {
     };
 
     const prevStep = () => {
-        if (step === 1) return;
+        if (step === 1) {
+            navigate(-1);
+            return;
+        }
         setStep(prev => prev - 1);
         window.scrollTo(0, 0);
     };

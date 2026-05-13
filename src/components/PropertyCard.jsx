@@ -14,11 +14,30 @@ export default function PropertyCard({ property }) {
     const displayImage = property?.images?.[0] || image || property.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80';
     
     const locationParts = [
-        property.streetAddress || property.address || property.location || property.area,
+        property.addressDetails,
         property.upazila,
         property.district
     ].filter(Boolean);
     const displayLocation = locationParts.length > 0 ? locationParts.join(', ') : 'Dhaka, Bangladesh';
+
+    const formatTimeAgo = (timestamp) => {
+        if (!timestamp) return '';
+        try {
+            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - date) / 1000);
+            
+            if (diffInSeconds < 60) return `${Math.max(0, diffInSeconds)}s`;
+            if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}min`;
+            if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
+            if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d`;
+            if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)}w`;
+            if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)}mo`;
+            return `${Math.floor(diffInSeconds / 31536000)}y`;
+        } catch (e) {
+            return '';
+        }
+    };
 
     return (
         <motion.div
@@ -83,12 +102,9 @@ export default function PropertyCard({ property }) {
                                 </div>
                                 <span className="text-xs font-black">{baths} Bath</span>
                             </div>
-                            <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                                <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-primary">
-                                    <Building2 size={16} />
-                                </div>
-                                <span className="text-xs font-black">{sqft || property.area || property.sqft || 'N/A'} {(sqft || property.area || property.sqft) ? 'sqft' : ''}</span>
-                            </div>
+                        </div>
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-md">
+                            {formatTimeAgo(property.createdAt)} ago
                         </div>
                     </div>
                 </div>

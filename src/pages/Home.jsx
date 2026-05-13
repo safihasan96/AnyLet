@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MapPin, ChevronDown, Bell, User, Search, SlidersHorizontal, Building2, Users, Bed, DoorOpen, Download, Smartphone } from 'lucide-react';
+import { MapPin, ChevronDown, Bell, User, Search, SlidersHorizontal, Building2, Users, Bed, DoorOpen, Home as HomeIcon, Trees, Hotel, Waves, Briefcase, Map, Store, MoreHorizontal } from 'lucide-react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +19,7 @@ export default function Home() {
     const navigate = useNavigate();
     const [hasUnread, setHasUnread] = useState(false);
     const [selectedDivision, setSelectedDivision] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('All');
 
     useEffect(() => {
         if (!currentUser) return;
@@ -128,7 +129,7 @@ export default function Home() {
                                         </button>
                                     </div>
                                 </div>
-                            </div>>
+                            </div>
                         </motion.div>
                     </div>
                 </div>
@@ -142,15 +143,89 @@ export default function Home() {
                         <h3 className="font-black text-2xl text-slate-900 dark:text-white uppercase tracking-tight">{t('categories')}</h3>
                     </div>
                     <div className="flex gap-6 px-4 overflow-x-auto no-scrollbar pb-4">
-                        <CategoryItem icon={<Building2 size={30} />} label={t('flat')} onClick={() => navigate('/search', { state: { type: 'Apartment', division: selectedDivision } })} />
-                        <CategoryItem icon={<Users size={30} />} label={t('sublet')} onClick={() => navigate('/search', { state: { type: 'Sublet', division: selectedDivision } })} />
-                        <CategoryItem icon={<Bed size={30} />} label={t('room')} onClick={() => navigate('/search', { state: { type: 'Room', division: selectedDivision } })} />
-                        <CategoryItem icon={<DoorOpen size={30} />} label={t('mess')} onClick={() => navigate('/search', { state: { type: 'Mess', division: selectedDivision } })} />
+                        <CategoryItem 
+                            icon={<HomeIcon size={28} />} 
+                            label="All" 
+                            active={selectedCategory === 'All'} 
+                            onClick={() => setSelectedCategory('All')} 
+                        />
+                        <CategoryItem 
+                            icon={<Building2 size={28} />} 
+                            label="Apartment" 
+                            active={selectedCategory === 'Apartment'} 
+                            onClick={() => setSelectedCategory('Apartment')} 
+                        />
+                        <CategoryItem 
+                            icon={<Bed size={28} />} 
+                            label="Room" 
+                            active={selectedCategory === 'Room'} 
+                            onClick={() => setSelectedCategory('Room')} 
+                        />
+                        <CategoryItem 
+                            icon={<Users size={28} />} 
+                            label="Sublet" 
+                            active={selectedCategory === 'Sublet'} 
+                            onClick={() => setSelectedCategory('Sublet')} 
+                        />
+                        <CategoryItem 
+                            icon={<DoorOpen size={28} />} 
+                            label="Mess" 
+                            active={selectedCategory === 'Mess'} 
+                            onClick={() => setSelectedCategory('Mess')} 
+                        />
+                        <CategoryItem 
+                            icon={<HomeIcon size={28} />} 
+                            label="House" 
+                            active={selectedCategory === 'House'} 
+                            onClick={() => setSelectedCategory('House')} 
+                        />
+                        <CategoryItem 
+                            icon={<Trees size={28} />} 
+                            label="Cottage" 
+                            active={selectedCategory === 'Cottage'} 
+                            onClick={() => setSelectedCategory('Cottage')} 
+                        />
+                        <CategoryItem 
+                            icon={<Hotel size={28} />} 
+                            label="Hotel" 
+                            active={selectedCategory === 'Hotel'} 
+                            onClick={() => setSelectedCategory('Hotel')} 
+                        />
+                        <CategoryItem 
+                            icon={<Waves size={28} />} 
+                            label="Resort" 
+                            active={selectedCategory === 'Resort'} 
+                            onClick={() => setSelectedCategory('Resort')} 
+                        />
+                        <CategoryItem 
+                            icon={<Briefcase size={28} />} 
+                            label="Commercial Space" 
+                            active={selectedCategory === 'Commercial Space'} 
+                            onClick={() => setSelectedCategory('Commercial Space')} 
+                        />
+                        <CategoryItem 
+                            icon={<Map size={28} />} 
+                            label="Land" 
+                            active={selectedCategory === 'Land'} 
+                            onClick={() => setSelectedCategory('Land')} 
+                        />
+                        <CategoryItem 
+                            icon={<Store size={28} />} 
+                            label="Shop" 
+                            active={selectedCategory === 'Shop'} 
+                            onClick={() => setSelectedCategory('Shop')} 
+                        />
+                        <CategoryItem 
+                            icon={<MoreHorizontal size={28} />} 
+                            label="Others" 
+                            active={selectedCategory === 'Others'} 
+                            onClick={() => setSelectedCategory('Others')} 
+                        />
                     </div>
                 </PopInSection>
 
                 <PopInSection delay={0.1} className="mt-8">
-                    <FeaturedListings />
+                    <FeaturedListings category={selectedCategory} division={selectedDivision} />
                 </PopInSection>
             </main>
         </div>

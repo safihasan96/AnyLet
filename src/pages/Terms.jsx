@@ -1,7 +1,19 @@
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
 export default function Terms() {
+    const navigate = useNavigate();
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-16">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10">
             <div className="max-w-3xl mx-auto px-6 prose dark:prose-invert prose-slate">
+                <div className="flex justify-start mb-8 not-prose">
+                    <button 
+                        onClick={() => navigate(-1)} 
+                        className="flex items-center gap-2 text-slate-500 hover:text-primary font-bold transition-colors"
+                    >
+                        <ArrowLeft size={20} /> Back to previous
+                    </button>
+                </div>
                 <h1 className="text-4xl font-black mb-8 text-slate-900 dark:text-white">Terms & Conditions</h1>
                 <p className="font-bold text-slate-500 mb-8">Last updated: {new Date().toLocaleDateString()}</p>
                 

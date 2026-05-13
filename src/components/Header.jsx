@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Building2, 
@@ -13,7 +13,8 @@ import {
   Bell,
   Search,
   Plus,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
@@ -28,6 +29,7 @@ export default function Header() {
   const dropdownRef = useRef(null);
   const { currentUser, logout, userProfile, login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (!currentUser) {
@@ -87,15 +89,26 @@ export default function Header() {
   return (
     <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="bg-primary p-2.5 rounded-2xl text-white shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">
-            <Building2 size={24} />
-          </div>
-          <span className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
-            any<span className="text-primary italic">.let</span>
-          </span>
-        </Link>
+        {/* Logo & Back Button */}
+        <div className="flex items-center gap-4">
+          {location.pathname !== '/' && (
+            <button 
+              onClick={() => navigate(-1)}
+              className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all active:scale-95 border border-slate-100 dark:border-slate-700"
+              title="Go Back"
+            >
+              <ArrowLeft size={20} strokeWidth={3} />
+            </button>
+          )}
+          <Link to="/" className="flex items-center gap-2 group">
+            <div className="bg-primary p-2.5 rounded-2xl text-white shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">
+              <Building2 size={24} />
+            </div>
+            <span className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
+              any<span className="text-primary italic">.let</span>
+            </span>
+          </Link>
+        </div>
 
         {/* Desktop Nav removed as per request */}
 
