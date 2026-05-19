@@ -10,7 +10,6 @@ import {
     Info, HelpCircle, ShieldCheck, FileText, Map, ShieldAlert, Gift
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import ReferralCard from '../components/ReferralCard';
 
 export default function Profile() {
     const { currentUser } = useAuth();
@@ -135,9 +134,6 @@ export default function Profile() {
                     </motion.div>
                 )}
 
-                {/* ── Referral Card ── */}
-                <ReferralCard />
-
                 {/* Account Settings */}
                 <Section title="Account Settings">
                     <ProfileMenuItem
@@ -171,7 +167,7 @@ export default function Profile() {
                     />
                     <ProfileMenuItem
                         icon={<Gift size={18} strokeWidth={2} />}
-                        label="Earn Money (Refer & Earn)"
+                        label="Refer A Friend"
                         onClick={() => navigate('/referral')}
                     />
                 </Section>
