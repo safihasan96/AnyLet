@@ -37,8 +37,8 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: #ddd8f0;
-  background-image: url('/body-bg.png');
+  background-color: #f6f6f8;
+  background-image: url('/bg-light.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -48,8 +48,8 @@ body {
 }
 
 [data-theme='dark'] body {
-  background-color: #1a1030;
-  background-image: url('/body-bg.png');
+  background-color: #121320;
+  background-image: url('/site-background.png');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;

@@ -7,9 +7,10 @@ import { useAuth } from '../contexts/AuthContext';
 import {
     ArrowLeft, Settings, User, Lock, Building2, Heart,
     History, ChevronRight, Phone,
-    Info, HelpCircle, ShieldCheck, FileText, Map, ShieldAlert
+    Info, HelpCircle, ShieldCheck, FileText, Map, ShieldAlert, Gift
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import ReferralCard from '../components/ReferralCard';
 
 export default function Profile() {
     const { currentUser } = useAuth();
@@ -133,6 +134,10 @@ export default function Profile() {
                         <ChevronRight size={16} className="text-rose-400" />
                     </motion.div>
                 )}
+
+                {/* ── Referral Card ── */}
+                <ReferralCard />
+
                 {/* Account Settings */}
                 <Section title="Account Settings">
                     <ProfileMenuItem
@@ -163,6 +168,11 @@ export default function Profile() {
                         icon={<History size={18} strokeWidth={2} />}
                         label="Inquiry History"
                         onClick={() => navigate('/enquiry')}
+                    />
+                    <ProfileMenuItem
+                        icon={<Gift size={18} strokeWidth={2} />}
+                        label="Earn Money (Refer & Earn)"
+                        onClick={() => navigate('/referral')}
                     />
                 </Section>
 

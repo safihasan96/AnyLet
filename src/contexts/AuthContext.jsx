@@ -6,8 +6,9 @@ import {
     onAuthStateChanged,
     reload
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { generateReferralCode } from '../utils/referral';
 import LoadingScreen from '../components/LoadingScreen';
 
 const AuthContext = createContext();
@@ -65,6 +66,15 @@ export function AuthProvider({ children }) {
                         const data = docSnap.data();
                         setUserData(data);
                         setUserRole(data.role || 'client');
+
+                        // ── Backfill referral fields for pre-existing users ──
+                        const needsBackfill = !data.referralCode || !data.referralWallet;
+                        if (needsBackfill) {
+                            const patch = {};
+                            if (!data.referralCode) patch.referralCode = generateReferralCode(user.email);
+                            if (!data.referralWallet) patch.referralWallet = { available: 0, withdrawn: 0 };
+                            updateDoc(userRef, patch).catch(() => {});
+                        }
                     } else if (user.email === 'safi.has.official@gmail.com') {
                         // Critical Synchronization: Superadmin document missing, creating it now.
                         const superadminData = {
@@ -74,7 +84,9 @@ export function AuthProvider({ children }) {
                             accessLevel: "superadmin",
                             fullName: "Safi Hasan",
                             accountStatus: "active",
-                            createdAt: new Date()
+                            createdAt: new Date(),
+                            referralCode: generateReferralCode(user.email),
+                            referralWallet: { available: 0, withdrawn: 0 },
                         };
                         await setDoc(userRef, superadminData);
                         setUserData(superadminData);

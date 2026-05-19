@@ -40,6 +40,7 @@ import BlogPost from './pages/BlogPost';
 import Settings from './pages/Settings';
 import ReportProperty from './pages/ReportProperty';
 import VerifyEmail from './pages/VerifyEmail';
+import ReferralDashboard from './pages/ReferralDashboard';
 import './App.css';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -155,6 +156,11 @@ function App() {
               <Route path="/report-property/:id" element={
                 <ProtectedRoute>
                   <PageWrapper><ReportProperty /></PageWrapper>
+                </ProtectedRoute>
+              } />
+              <Route path="/referral" element={
+                <ProtectedRoute>
+                  <PageWrapper><ReferralDashboard /></PageWrapper>
                 </ProtectedRoute>
               } />
               <Route path="/admin/*" element={
