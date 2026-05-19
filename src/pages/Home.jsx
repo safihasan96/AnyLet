@@ -7,7 +7,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import FeaturedListings from '../components/FeaturedListings';
 import { Helmet } from 'react-helmet-async';
-import PromotedAds from '../components/PromotedAds';
 import { bdLocations } from '../data/locations';
 
 import { motion } from 'framer-motion';
@@ -135,8 +134,6 @@ export default function Home() {
                 </div>
 
                 {/* Get the App Banner Removed */}
-
-                <PromotedAds />
 
                 <PopInSection delay={0.05} className="mt-12">
                     <div className="flex items-center justify-between px-4 mb-6">
