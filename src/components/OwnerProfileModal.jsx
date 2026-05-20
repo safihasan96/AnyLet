@@ -17,12 +17,8 @@ export default function OwnerProfileModal({ isOpen, onClose, owner }) {
 
     return (
         <>
-            <BottomSheet3D isOpen={isOpen} onClose={onClose} className="max-w-sm sm:max-w-sm mx-auto" zIndex={50}>
-                <div className="bg-white dark:bg-slate-900 rounded-t-[32px] sm:rounded-[40px] shadow-2xl overflow-hidden">
-                    {/* Drag handle (mobile) */}
-                    <div className="flex justify-center pt-3 pb-1 sm:hidden">
-                        <div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-slate-700" />
-                    </div>
+            <BottomSheet3D isOpen={isOpen} onClose={onClose} className="max-w-sm mx-auto" zIndex={50}>
+                <div className="bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden">
 
                     {/* Header */}
                     <header className="flex items-center justify-between px-6 pt-4 pb-0">

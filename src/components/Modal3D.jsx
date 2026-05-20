@@ -83,7 +83,7 @@ export function BottomSheet3D({ isOpen, onClose, children, className = '', zInde
             {isOpen && (
                 <motion.div
                     key="sheet-backdrop"
-                    className="fixed inset-0 flex items-end justify-center sm:items-center sm:p-6"
+                    className="fixed inset-0 flex items-center justify-center p-4 sm:p-6"
                     style={{ zIndex }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
