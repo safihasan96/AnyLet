@@ -40,7 +40,7 @@ export default function Home() {
                 <meta name="description" content="Discover verified properties for rent in Dhaka, Chittagong, and across Bangladesh. Connect with trusted landlords securely on Any-Let." />
             </Helmet>
             {/* Mobile Header - Hidden on Desktop */}
-            <header className="flex md:hidden items-center px-4 py-6 justify-between sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
+            <header className="flex md:hidden items-center px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6 justify-between sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
                 <div className="flex items-center gap-2">
                     <div className="bg-primary p-2 rounded-xl text-white">
                         <MapPin size={24} />
