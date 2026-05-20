@@ -97,10 +97,19 @@ export default function VerifyEmail() {
                     <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-4 uppercase tracking-tighter">
                         Verify Your <br /> Email Address
                     </h1>
-                    <p className="text-slate-500 dark:text-slate-400 font-bold text-sm mb-10 leading-relaxed">
+                    <p className="text-slate-500 dark:text-slate-400 font-bold text-sm mb-6 leading-relaxed">
                         We've sent a verification link to <span className="text-primary">{currentUser?.email}</span>. 
-                        Please check your inbox (and spam folder) to complete your registration.
                     </p>
+
+                    <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-2xl p-4 mb-10 text-left flex gap-3">
+                        <ShieldAlert size={24} className="text-amber-500 shrink-0" />
+                        <div>
+                            <p className="text-sm font-black text-amber-800 dark:text-amber-500 uppercase tracking-widest mb-1">Important</p>
+                            <p className="text-xs font-bold text-amber-700 dark:text-amber-400/80">
+                                Emails may accidentally go to your <strong>Spam or Junk folder</strong>. Please check there if you don't see it in your inbox!
+                            </p>
+                        </div>
+                    </div>
 
                     <div className="space-y-4">
                         <button 
