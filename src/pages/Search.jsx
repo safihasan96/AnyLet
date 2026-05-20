@@ -16,7 +16,8 @@ import {
   MapPin,
   Zap,
   Bed,
-  DoorOpen
+  DoorOpen,
+  Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import HorizontalPropertyCard from '../components/HorizontalPropertyCard';
@@ -30,6 +31,22 @@ const TENANT_TYPES = ["Any", "Family", "Bachelor (Male)", "Bachelor (Female)"];
 const UTILITY_OPTIONS = ["Prepaid Gas", "Line Gas", "Prepaid Electricity", "Postpaid Electricity", "Water (WASA)", "Deep Tube-well Water", "Central WiFi", "Trash Collection", "Generator/IPS Backup"];
 const FEATURE_OPTIONS = ["Lift/Elevator", "CCTV Security", "Fire Exit", "Emergency Stairs", "Intercom", "Roof Access", "Drawing & Dining Separate", "Geyser Connection", "Cabinet/Wall Cupboard", "Balcony", "Tiled Floor", "Car Parking", "Bike Parking"];
 
+const HISTORY_KEY = 'anylet_search_history';
+const MAX_HISTORY  = 5;
+
+function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+    catch { return []; }
+}
+
+function saveHistory(term, prev) {
+    const trimmed = term.trim();
+    if (!trimmed) return prev;
+    const deduped = [trimmed, ...prev.filter(h => h.toLowerCase() !== trimmed.toLowerCase())].slice(0, MAX_HISTORY);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(deduped));
+    return deduped;
+}
+
 export default function Search() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -37,7 +54,28 @@ export default function Search() {
     const [loading, setLoading] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    
+    const [searchHistory, setSearchHistory] = useState(loadHistory);
+    const [inputFocused, setInputFocused] = useState(false);
+
+    // Save a term to history (called on Enter or when input blurs with a value)
+    const commitSearch = (term) => {
+        if (!term.trim()) return;
+        setSearchHistory(prev => saveHistory(term, prev));
+    };
+
+    const removeHistoryItem = (item) => {
+        setSearchHistory(prev => {
+            const next = prev.filter(h => h !== item);
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+            return next;
+        });
+    };
+
+    const clearHistory = () => {
+        localStorage.removeItem(HISTORY_KEY);
+        setSearchHistory([]);
+    };
+
     const [filterState, setFilterState] = useState({
         division: location.state?.division || '', district: '', upazila: '',
         type: location.state?.type || '', minPrice: '', maxPrice: '',
@@ -160,25 +198,83 @@ export default function Search() {
                                 <ArrowLeft size={20} strokeWidth={2.5} />
                             </button>
                             <div className="relative flex-1 group">
-                                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors">
+                                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors pointer-events-none">
                                     <SearchIcon size={22} strokeWidth={2.5} />
                                 </div>
                                 <input
                                     type="text"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
+                                    onFocus={() => setInputFocused(true)}
+                                    onBlur={() => setTimeout(() => setInputFocused(false), 150)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') commitSearch(searchTerm); }}
                                     placeholder="Search by title, area or details..."
-                                    className="w-full bg-white dark:bg-slate-900 border-2 border-transparent focus:border-primary/20 rounded-3xl py-4 pl-14 pr-6 font-bold text-slate-900 dark:text-white shadow-sm outline-none transition-all h-16 md:h-20"
+                                    className="w-full bg-white dark:bg-slate-900 border-2 border-transparent focus:border-primary/20 rounded-3xl py-4 pl-14 pr-14 font-bold text-slate-900 dark:text-white shadow-sm outline-none transition-all h-16 md:h-20"
                                 />
+                                {searchTerm && (
+                                    <button
+                                        onClick={() => setSearchTerm('')}
+                                        className="absolute right-16 md:right-5 top-1/2 -translate-y-1/2 size-7 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-colors"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
                                 <button
-                                    onClick={() => setShowFilters(true)}
+                                    onClick={() => { commitSearch(searchTerm); setShowFilters(true); }}
                                     className="md:hidden absolute right-3 top-1/2 -translate-y-1/2 size-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20"
                                 >
                                     <SlidersHorizontal size={22} />
                                 </button>
                             </div>
                         </div>
-                        
+
+                        {/* Search History */}
+                        <AnimatePresence>
+                            {inputFocused && searchHistory.length > 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -6 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800 px-5 py-4"
+                                >
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2 text-slate-400">
+                                            <Clock size={13} />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Recent Searches</span>
+                                        </div>
+                                        <button
+                                            onClick={clearHistory}
+                                            className="text-[10px] font-black text-rose-400 hover:text-rose-500 uppercase tracking-widest transition-colors"
+                                        >
+                                            Clear all
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {searchHistory.map((item) => (
+                                            <div
+                                                key={item}
+                                                className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-3.5 pr-2 py-2 group"
+                                            >
+                                                <button
+                                                    className="text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-primary transition-colors"
+                                                    onClick={() => { setSearchTerm(item); commitSearch(item); }}
+                                                >
+                                                    {item}
+                                                </button>
+                                                <button
+                                                    onClick={() => removeHistoryItem(item)}
+                                                    className="size-4 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-400 hover:bg-rose-100 hover:text-rose-500 dark:hover:bg-rose-900/40 dark:hover:text-rose-400 flex items-center justify-center transition-colors shrink-0"
+                                                >
+                                                    <X size={9} strokeWidth={3} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
                         <div className="flex items-center justify-between px-2">
                             <h2 className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em]">
                                 Found {filteredProperties.length} Properties
