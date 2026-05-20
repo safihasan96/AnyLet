@@ -39,6 +39,8 @@ function relativeTime(ts) {
 
 // ─── Withdraw Modal ────────────────────────────────────────────────────────────
 
+import { createPortal } from 'react-dom';
+
 function WithdrawModal({ available, onClose, uid }) {
     const [amount, setAmount]         = useState('');
     const [bankName, setBankName]     = useState('');
@@ -73,7 +75,9 @@ function WithdrawModal({ available, onClose, uid }) {
         }
     }
 
-    return (
+    if (typeof document === 'undefined') return null;
+
+    return createPortal(
         <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
@@ -153,7 +157,8 @@ function WithdrawModal({ available, onClose, uid }) {
                     </>
                 )}
             </motion.div>
-        </motion.div>
+        </motion.div>,
+        document.body
     );
 }
 

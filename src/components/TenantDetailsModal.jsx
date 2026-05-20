@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Calendar, User, Phone, Mail, MessageSquare, Briefcase, Users } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -6,7 +7,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
     const [callModalOpen, setCallModalOpen] = useState(false);
     const [phoneNumberToCall, setPhoneNumberToCall] = useState('');
 
-    if (!isOpen || !request) return null;
+    if (!isOpen || !request || typeof document === 'undefined') return null;
 
     // Format date as DD MMM YYYY, HH:MM
     let formattedDate = 'N/A';
@@ -15,7 +16,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
         formattedDate = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
-    return (
+    return createPortal(
         <div style={{
             position: 'fixed',
             top: 0,
@@ -211,6 +212,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
                 }}
                 onCancel={() => setCallModalOpen(false)}
             />
-        </div>
+        </div>,
+        document.body
     );
 }

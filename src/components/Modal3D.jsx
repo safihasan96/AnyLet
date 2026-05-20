@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
+import { createPortal } from 'react-dom';
 
 /**
  * Shared 3D modal wrapper.
@@ -18,7 +19,9 @@ import { AnimatePresence, motion } from 'framer-motion';
  *   zIndex    {number}   default 50
  */
 export default function Modal3D({ isOpen, onClose, children, className = '', zIndex = 50 }) {
-    return (
+    if (typeof document === 'undefined') return null;
+
+    return createPortal(
         <AnimatePresence>
             {isOpen && (
                 <motion.div
@@ -69,7 +72,8 @@ export default function Modal3D({ isOpen, onClose, children, className = '', zIn
                     </motion.div>
                 </motion.div>
             )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
     );
 }
 
@@ -78,7 +82,9 @@ export default function Modal3D({ isOpen, onClose, children, className = '', zIn
  * Use this for sheet-style modals.
  */
 export function BottomSheet3D({ isOpen, onClose, children, className = '', zIndex = 50 }) {
-    return (
+    if (typeof document === 'undefined') return null;
+
+    return createPortal(
         <AnimatePresence>
             {isOpen && (
                 <motion.div
@@ -112,6 +118,7 @@ export function BottomSheet3D({ isOpen, onClose, children, className = '', zInde
                     </motion.div>
                 </motion.div>
             )}
-        </AnimatePresence>
+        </AnimatePresence>,
+        document.body
     );
 }
