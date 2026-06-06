@@ -11,6 +11,7 @@ import {
     CloudSun, UtensilsCrossed, Thermometer, Package, Bike, Calendar, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import LocationPickerMap from '../components/LocationPickerMap';
 
 export default function AddProperty() {
     const { currentUser, userProfile } = useAuth();
@@ -48,7 +49,9 @@ export default function AddProperty() {
         utilitiesCost: '',
         billingCycle: 'Month',
         utilities: [],
-        features: []
+        features: [],
+        lat: null,
+        lng: null
     });
 
     const [showSuccess, setShowSuccess] = useState(false);
@@ -342,6 +345,18 @@ export default function AddProperty() {
                                         {thanas.map(t => <option key={t} value={t}>{t}</option>)}
                                     </Select>
                                     <Input label="House/Road No. (Details)" name="addressDetails" value={formData.addressDetails} onChange={handleChange} placeholder="e.g. House 5, Road 10" />
+                                </div>
+                                
+                                <div className="pt-2">
+                                    <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest block mb-2">Pin Exact Location on Map</label>
+                                    <LocationPickerMap 
+                                        lat={formData.lat} 
+                                        lng={formData.lng} 
+                                        division={formData.division}
+                                        district={formData.district}
+                                        upazila={formData.upazila}
+                                        onLocationSelect={(coords) => setFormData(prev => ({ ...prev, lat: coords.lat, lng: coords.lng }))} 
+                                    />
                                 </div>
                             </div>
                         </Section>

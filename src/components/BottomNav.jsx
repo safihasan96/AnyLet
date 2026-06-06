@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Compass, Search, MessageSquare, User, Plus } from 'lucide-react';
+import { Compass, Map, MessageSquare, User, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -75,9 +75,9 @@ export default function BottomNav() {
                 label={t('explore')}
             />
             <NavItem
-                to="/search"
-                icon={(active) => <Search size={24} strokeWidth={active ? 2.5 : 2} />}
-                label={t('search')}
+                to="/map"
+                icon={(active) => <Map size={24} strokeWidth={active ? 2.5 : 2} />}
+                label="Map"
             />
 
             {/* Floating Center Button */}

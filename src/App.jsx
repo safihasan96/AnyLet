@@ -41,6 +41,7 @@ import Settings from './pages/Settings';
 import ReportProperty from './pages/ReportProperty';
 import VerifyEmail from './pages/VerifyEmail';
 import ReferralDashboard from './pages/ReferralDashboard';
+import MapPage from './pages/MapPage';
 import './App.css';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -99,6 +100,7 @@ function App() {
               <Route path="/agent/:id" element={<PageWrapper><AgentProfile /></PageWrapper>} />
               <Route path="/blog" element={<PageWrapper><Blog /></PageWrapper>} />
               <Route path="/blog/:id" element={<PageWrapper><BlogPost /></PageWrapper>} />
+              <Route path="/map" element={<MapPage />} />
 
               {/* Protected Routes */}
               <Route path="/requests" element={
@@ -178,6 +180,7 @@ function App() {
           <BottomNav />
         </div>
       )}
+      {/* On /map the BottomNav still shows but map is fixed-position beneath it */}
       <InstallPrompt />
     </div>
   );

@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "AnyLet",
+    "slug": "anylet-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.safihasan.anylet"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.safihasan.anylet"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "anylet",
+    "plugins": [
+      "expo-status-bar"
+    ]
+  }
+}
