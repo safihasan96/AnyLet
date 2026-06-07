@@ -6,7 +6,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import {
     ArrowLeft, Settings, User, Lock, Building2, Heart,
-    History, ChevronRight, Phone,
+    History, ChevronRight, Phone, Home,
     Info, HelpCircle, ShieldCheck, FileText, Map, ShieldAlert, Gift
 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -164,6 +164,16 @@ export default function Profile() {
                         icon={<History size={18} strokeWidth={2} />}
                         label="Inquiry History"
                         onClick={() => navigate('/enquiry')}
+                    />
+                    <ProfileMenuItem
+                        icon={<ShieldCheck size={18} strokeWidth={2} />}
+                        label="My Bookings (Escrow)"
+                        onClick={() => navigate('/my-bookings')}
+                    />
+                    <ProfileMenuItem
+                        icon={<Home size={18} strokeWidth={2} />}
+                        label="My Move-Ins"
+                        onClick={() => navigate('/my-move-ins')}
                     />
                     <ProfileMenuItem
                         icon={<Gift size={18} strokeWidth={2} />}

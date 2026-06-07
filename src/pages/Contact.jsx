@@ -1,8 +1,10 @@
 import { MapPin, Phone, Mail, Send, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../contexts/ToastContext';
 
 export default function Contact() {
     const navigate = useNavigate();
+    const toast = useToast();
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10">
             <div className="max-w-6xl mx-auto px-6">
@@ -47,7 +49,7 @@ export default function Contact() {
                     </div>
 
                     {/* Contact Form */}
-                    <form className="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[32px] shadow-sm border border-slate-100 dark:border-slate-800" onSubmit={(e) => { e.preventDefault(); alert('Message sent!'); }}>
+                    <form className="bg-white dark:bg-slate-900 p-8 md:p-10 rounded-[32px] shadow-sm border border-slate-100 dark:border-slate-800" onSubmit={(e) => { e.preventDefault(); toast.success('Message sent!'); }}>
                         <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Send a Message</h2>
                         
                         <div className="space-y-4">

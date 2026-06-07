@@ -8,24 +8,29 @@ import {
     ArrowLeft, ArrowRight, Building2, MapPin, Info, Image as ImageIcon,
     CheckCircle, Flame, Zap, Droplets, Wifi, Trash2, Battery,
     ShieldCheck, Car, Wind, Lock, DoorOpen, ChevronsUp, Phone,
-    CloudSun, UtensilsCrossed, Thermometer, Package, Bike, Calendar, Users
+    CloudSun, UtensilsCrossed, Thermometer, Package, Bike, Calendar, Users,
+    CreditCard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LocationPickerMap from '../components/LocationPickerMap';
+import PaymentModal from '../components/PaymentModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useToast } from '../contexts/ToastContext';
 
 export default function AddProperty() {
     const { currentUser, userProfile } = useAuth();
     const navigate = useNavigate();
+    const toast = useToast();
 
     useEffect(() => {
         if (currentUser && !currentUser.emailVerified) {
-            alert("Please verify your email address to post a property.");
+            toast.warning("Please verify your email address to post a property.");
             navigate('/');
         } else if (userProfile && !userProfile.phone) {
-            alert("Please add your phone number to your profile before posting a property.");
+            toast.warning("Please add your phone number to your profile before posting a property.");
             navigate('/edit-profile');
         }
-    }, [currentUser, userProfile, navigate]);
+    }, [currentUser, userProfile, navigate, toast]);
 
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -55,6 +60,8 @@ export default function AddProperty() {
     });
 
     const [showSuccess, setShowSuccess] = useState(false);
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
 
     const BILLING_CYCLES = ["Month", "Week", "Day"];
     const PROPERTY_TYPES = ["House", "Apartment", "Sublet", "Room", "Mess", "Cottage", "Hotel", "Resort", "Commercial Space", "Land", "Shop", "Others"];
@@ -126,7 +133,7 @@ export default function AddProperty() {
 
         // Check if adding these files exceeds the 5-image limit
         if (formData.images.length + files.length > 5) {
-            alert("You can only upload up to 5 images in total.");
+            toast.warning("You can only upload up to 5 images in total.");
             return;
         }
 
@@ -134,11 +141,6 @@ export default function AddProperty() {
         const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmkbsddqk';
         const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'cn6piwep';
         
-        console.log('Attempting upload to Cloudinary...', { 
-            cloudName, 
-            preset: uploadPreset ? `${uploadPreset.substring(0, 3)}***` : 'MISSING' 
-        });
-
         const uploadedUrls = [];
 
         try {
@@ -153,13 +155,14 @@ export default function AddProperty() {
                 });
                 const fileData = await res.json();
                 
+                if (!res.ok) {
+                    console.error("Cloudinary Error:", fileData);
+                    toast.error(`Upload failed!\nError: ${fileData.error?.message || "Unknown error"}`);
+                    throw new Error(fileData.error?.message || 'Upload failed');
+                }
+                
                 if (fileData.secure_url) {
                     uploadedUrls.push(fileData.secure_url);
-                } else {
-                    console.error("Cloudinary Error Response:", fileData);
-                    alert(`Upload failed!\nError: ${fileData.error?.message || "Unknown error"}\nCloud Name: ${cloudName}\nPreset: ${uploadPreset ? uploadPreset.substring(0,3) + '...' : 'Missing'}`);
-                    setLoading(false);
-                    return;
                 }
             }
 
@@ -174,9 +177,9 @@ export default function AddProperty() {
                     };
                 });
             }
-        } catch (err) {
-            console.error("Cloudinary Connection Error:", err);
-            alert("Connection error while uploading to Cloudinary.");
+        } catch (error) {
+            console.error('Error during upload process:', error);
+            toast.error("Connection error while uploading to Cloudinary.");
         } finally {
             setLoading(false);
         }
@@ -194,7 +197,8 @@ export default function AddProperty() {
         });
     };
 
-    const handleSubmit = async () => {
+    // Called by PaymentModal after user submits transaction ID
+    const handlePaymentSubmitted = async (paymentDocId) => {
         if (!currentUser) return;
         setLoading(true);
 
@@ -208,16 +212,24 @@ export default function AddProperty() {
                 securityDeposit: formData.securityDeposit ? Number(formData.securityDeposit) : 0,
                 utilitiesCost: Number(formData.utilitiesCost) || 0,
                 ownerId: currentUser.uid,
-                isApproved: true,
+                isApproved: false, // Payment pending admin verification
+                listingPaymentId: paymentDocId,
+                isOnsiteVerified: false,
+                verificationPaymentId: null,
+                verificationStatus: 'none',
                 createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                status: 'Available',
+                expiryEmailSent: false
             };
 
-            // Using 'properties' to match current app structure, but ensuring 'image_url' is included
             await addDoc(collection(db, 'properties'), propertyData);
+            setPaymentModalOpen(false);
             setShowSuccess(true);
-            setTimeout(() => navigate('/'), 3000);
+            setTimeout(() => navigate('/'), 4000);
         } catch (err) {
             console.error(err);
+            toast.error('Failed to publish property. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -238,6 +250,10 @@ export default function AddProperty() {
         window.scrollTo(0, 0);
     };
 
+    const handleProceedToPayment = () => {
+        setPublishConfirmOpen(true);
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark pb-10 text-slate-900 dark:text-slate-100">
             <AnimatePresence>
@@ -252,12 +268,12 @@ export default function AddProperty() {
                             animate={{ scale: 1, y: 0 }}
                             className="bg-white dark:bg-slate-900 p-10 rounded-[40px] shadow-2xl border border-slate-100 dark:border-slate-800 text-center max-w-sm w-full"
                         >
-                            <div className="size-24 bg-emerald-500 rounded-full flex items-center justify-center text-white mx-auto mb-8 shadow-xl shadow-emerald-500/20">
+                            <div className="size-24 bg-primary rounded-full flex items-center justify-center text-white mx-auto mb-8 shadow-xl shadow-primary/20">
                                 <CheckCircle size={48} strokeWidth={2.5} />
                             </div>
-                            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4">Ad Published!</h2>
+                            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4">Payment Submitted!</h2>
                             <p className="text-slate-500 dark:text-slate-400 font-bold mb-10 leading-relaxed text-lg">
-                                Your property is now live. Redirecting you home...
+                                Your listing is being verified — usually takes under 30 minutes. Redirecting you home...
                             </p>
                             <button 
                                 onClick={() => navigate('/')}
@@ -539,26 +555,56 @@ export default function AddProperty() {
                         <button
                             type="button"
                             disabled={loading}
-                            onClick={handleSubmit}
+                            onClick={handleProceedToPayment}
                             className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70"
                         >
-                            {loading ? "AUTHENTICATING & PUBLISHING..." : (
-                                <>
-                                    <CheckCircle size={20} />
-                                    CONFIRM & PUBLISH NOW
-                                </>
-                            )}
+                            <CreditCard size={20} />
+                            Publish Ad — ৳0 (Free)
                         </button>
+
+                        <p className="text-center text-[10px] font-bold text-slate-400 mt-2">
+                            Limited time discount applied · Free listing
+                        </p>
 
                         <button
                             onClick={() => setStep(2)}
-                            className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-primary transition-colors"
+                            className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-primary transition-colors mt-2"
                         >
                             Wait, go back and edit
                         </button>
                     </div>
                 )}
             </div>
+
+            <ConfirmationModal
+                isOpen={publishConfirmOpen}
+                title="Confirm Free Listing"
+                message={`You are about to publish "${formData.title}" using our limited time free listing discount. Your listing will go live after our team verifies it.`}
+                confirmText="Claim & Publish"
+                confirmColor="#1a227f"
+                variant="info"
+                icon={CreditCard}
+                onConfirm={() => {
+                    setPublishConfirmOpen(false);
+                    setPaymentModalOpen(true);
+                }}
+                onCancel={() => setPublishConfirmOpen(false)}
+            />
+
+            <PaymentModal
+                isOpen={paymentModalOpen}
+                onClose={() => setPaymentModalOpen(false)}
+                type="listing_fee"
+                amount={0}
+                title="Listing Fee"
+                subtitle={`Publish: ${formData.title}`}
+                breakdownItems={[
+                    { label: 'Property Listing Fee', amount: 49 },
+                    { label: 'Limited Time Discount', amount: -49 },
+                ]}
+                propertyName={formData.title}
+                onPaymentSubmitted={handlePaymentSubmitted}
+            />
         </div>
     );
 }

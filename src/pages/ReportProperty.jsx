@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { ArrowLeft, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -21,6 +22,7 @@ export default function ReportProperty() {
     const navigate = useNavigate();
     const location = useLocation();
     const { currentUser } = useAuth();
+    const toast = useToast();
     const [property, setProperty] = useState(location.state?.property || null);
     const [loading, setLoading] = useState(!property);
     const [reason, setReason] = useState('');
@@ -48,7 +50,8 @@ export default function ReportProperty() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!reason) return alert("Please select a reason for reporting.");
+        if (!reason) return toast.warning("Please select a reason for reporting.");
+        if (reason === 'Other' && !details.trim()) return toast.warning("Please provide details for your report.");
         if (!currentUser) return navigate('/login');
 
         try {
@@ -68,7 +71,7 @@ export default function ReportProperty() {
             setSubmitted(true);
         } catch (error) {
             console.error("Error submitting report:", error);
-            alert("Something went wrong. Please try again.");
+            toast.error("Something went wrong. Please try again.");
         } finally {
             setSubmitting(false);
         }

@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Calendar, User, Phone, Mail, MessageSquare, Briefcase, Users } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
+import { useToast } from '../contexts/ToastContext';
 
 export default function TenantDetailsModal({ isOpen, request, onClose }) {
     const [callModalOpen, setCallModalOpen] = useState(false);
     const [phoneNumberToCall, setPhoneNumberToCall] = useState('');
+    const toast = useToast();
 
     if (!isOpen || !request || typeof document === 'undefined') return null;
 
@@ -103,7 +105,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
                                                     setPhoneNumberToCall(phone);
                                                     setCallModalOpen(true);
                                                 } else {
-                                                    alert("Phone number not available");
+                                                    toast.error("Phone number not available");
                                                 }
                                             }}
                                             style={{ color: 'var(--primary-color)', textDecoration: 'none', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontWeight: '500' }}
@@ -206,6 +208,8 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
                 message="Are you sure you want to call this tenant? Your phone dialer will be launched."
                 confirmText="Call"
                 confirmColor="#16a34a"
+                icon={Phone}
+                variant="success"
                 onConfirm={() => {
                     window.location.href = `tel:${phoneNumberToCall}`;
                     setCallModalOpen(false);

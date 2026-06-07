@@ -26,6 +26,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import ChangePassword from './pages/ChangePassword';
 import EditProfile from './pages/EditProfile';
 import MyListings from './pages/MyListings';
+import MyMoveIns from './pages/MyMoveIns';
+import MyBookings from './pages/MyBookings';
 import Download from './pages/Download';
 import AboutUs from './pages/AboutUs';
 import Contact from './pages/Contact';
@@ -148,6 +150,16 @@ function App() {
               <Route path="/my-listings" element={
                 <ProtectedRoute>
                   <PageWrapper><MyListings /></PageWrapper>
+                </ProtectedRoute>
+              } />
+              <Route path="/my-move-ins" element={
+                <ProtectedRoute>
+                  <PageWrapper><MyMoveIns /></PageWrapper>
+                </ProtectedRoute>
+              } />
+              <Route path="/my-bookings" element={
+                <ProtectedRoute>
+                  <PageWrapper><MyBookings /></PageWrapper>
                 </ProtectedRoute>
               } />
               <Route path="/enquiry" element={

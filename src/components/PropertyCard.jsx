@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Bed, DoorOpen, Building2, Star, Heart, Zap } from 'lucide-react';
+import { MapPin, Bed, DoorOpen, Building2, Star, Heart, Zap, CheckCircle2, Clock, Lock } from 'lucide-react';
 import useSavedProperties from '../hooks/useSavedProperties';
 import { motion } from 'framer-motion';
 import { popIn } from '../utils/animations';
 
 export default function PropertyCard({ property }) {
-    const { id, title, rent, area, beds, baths, sqft, image, type, verified, utilitiesCost } = property;
+    const { id, title, rent, area, beds, baths, sqft, image, type, isVerified, utilitiesCost } = property;
     const { toggleSaveProperty, isPropertySaved } = useSavedProperties();
     const isSaved = isPropertySaved(id);
 
@@ -64,12 +64,26 @@ export default function PropertyCard({ property }) {
                     <div className="absolute bottom-4 left-4 bg-primary text-white px-4 py-2 rounded-xl font-black text-sm shadow-lg shadow-primary/20">
                         ৳ {displayRent.toLocaleString()}<span className="text-[10px] opacity-80 ml-1 font-bold">/MO</span>
                     </div>
-                    {verified && (
-                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur text-emerald-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm border border-emerald-100">
-                            <Star size={12} className="fill-emerald-600" />
-                            Verified
-                        </div>
-                    )}
+                    <div className="absolute top-4 left-4 flex flex-col gap-2 items-start">
+                        {isVerified && (
+                            <div className="bg-white/90 backdrop-blur text-emerald-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm border border-emerald-100">
+                                <Star size={12} className="fill-emerald-600" />
+                                Verified Landlord
+                            </div>
+                        )}
+                        {property.status && property.status !== 'Available' && (
+                            <div className={`backdrop-blur-md px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm flex items-center gap-1.5 border ${
+                                property.status === 'Let Agreed' 
+                                    ? 'bg-rose-500/80 text-white border-rose-400/50' 
+                                    : property.status === 'Booked'
+                                        ? 'bg-blue-500/80 text-white border-blue-400/50'
+                                        : 'bg-amber-500/80 text-white border-amber-400/50'
+                            }`}>
+                                {property.status === 'Let Agreed' ? <CheckCircle2 size={12} strokeWidth={3} /> : property.status === 'Booked' ? <Lock size={12} strokeWidth={3} /> : <Clock size={12} strokeWidth={3} />}
+                                {property.status}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <div className="p-5 flex flex-col flex-1">
                     <div className="flex justify-between items-start gap-3 mb-2">

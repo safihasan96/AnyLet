@@ -4,12 +4,14 @@ import {
     Users, Home, ClipboardList, Search, LayoutDashboard, Settings,
     LogOut, UserCheck, UserMinus, Trash2, TrendingUp, ShieldCheck,
     Bell, ChevronRight, ChevronLeft, Activity, Database, Lock,
-    Menu, CheckCircle, Clock, Building2, MessageSquare, Flag, AlertCircle
+    Menu, CheckCircle, Clock, Building2, MessageSquare, Flag, AlertCircle,
+    CreditCard, Banknote, HelpCircle
 } from 'lucide-react';
 import { collection, onSnapshot, updateDoc, deleteDoc, doc, getDoc, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { useToast } from '../contexts/ToastContext';
 import '../index.css';
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -20,6 +22,7 @@ const NAV_ITEMS = [
     { path: '/admin/users', icon: Users, label: 'Platform Users' },
     { path: '/admin/properties', icon: Building2, label: 'Properties' },
     { path: '/admin/requests', icon: ClipboardList, label: 'Live Pipeline' },
+    { path: '/admin/payments', icon: CreditCard, label: 'Payments & Escrow' },
     { path: '/admin/enquiries', icon: MessageSquare, label: 'Enquiries' },
     { path: '/admin/reports', icon: Flag, label: 'Reports' },
     { path: '/admin/settings', icon: Settings, label: 'System Health' },
@@ -34,6 +37,7 @@ export default function AdminPanel() {
     const location = useLocation();
 
     const activeTab = location.pathname.split('/').pop() || 'admin';
+    const toast = useToast();
 
     /* ── State ─────────────────────────────────────────────────────────────── */
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -42,6 +46,8 @@ export default function AdminPanel() {
     const [viewingReqs, setViewingReqs] = useState([]);
     const [enquiries, setEnquiries] = useState([]);
     const [reports, setReports] = useState([]);
+    const [payments, setPayments] = useState([]);
+    const [escrowDeposits, setEscrowDeposits] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [loadingStats, setLoadingStats] = useState(true);
     const [stats, setStats] = useState({ totalUsers: 0, totalListings: 0, pendingRequests: 0 });
@@ -101,7 +107,21 @@ export default function AdminPanel() {
             setReports(list);
         }, err => console.error('FIRESTORE (reports):', err.message));
 
-        return () => { unsubUsers(); unsubListings(); unsubLeads(); unsubEnquiries(); unsubReports(); };
+        // Payments
+        const unsubPayments = onSnapshot(collection(db, 'payments'), snap => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            list.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            setPayments(list);
+        });
+
+        // Escrow Deposits
+        const unsubEscrow = onSnapshot(collection(db, 'escrowDeposits'), snap => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            list.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+            setEscrowDeposits(list);
+        });
+
+        return () => { unsubUsers(); unsubListings(); unsubLeads(); unsubEnquiries(); unsubReports(); unsubPayments(); unsubEscrow(); };
     }, []);
 
     /* ── User actions ─────────────────────────────────────────────────────── */
@@ -169,6 +189,17 @@ export default function AdminPanel() {
                 setSelectedListing(prev => ({ ...prev, isApproved: true, isActive: true }));
             }
         } catch (e) { console.error('Approve listing error:', e); }
+    };
+
+    /* ── Verification ─────────────────────────────────────────────────────── */
+    const handleToggleVerification = async listing => {
+        const newStatus = !listing.isVerified;
+        try {
+            await updateDoc(doc(db, 'properties', listing.id), { isVerified: newStatus });
+            if (selectedListing?.id === listing.id) {
+                setSelectedListing(prev => ({ ...prev, isVerified: newStatus }));
+            }
+        } catch (e) { console.error('Toggle verification error:', e); }
     };
 
     /* ── System Cleanup & Migration ── */
@@ -311,7 +342,77 @@ export default function AdminPanel() {
                 } catch (e) {
                     console.error(e);
                     setModal(p => ({ ...p, isLoading: false, isOpen: false }));
-                    alert("Error deleting property. It might have been already deleted.");
+                    toast.error("Error deleting property. It might have been already deleted.");
+                }
+            }
+        });
+    };
+
+    /* ── Finance actions ───────────────────────────────────────────────────── */
+    const handleApprovePayment = async (payment) => {
+        try {
+            await updateDoc(doc(db, 'payments', payment.id), { status: 'completed' });
+            
+            // If it's a listing fee, approve the property
+            if (payment.type === 'listing_fee' && payment.propertyId) {
+                await updateDoc(doc(db, 'properties', payment.propertyId), { isApproved: true });
+            }
+            // If it's a verification fee, set property to onsite verified
+            if (payment.type === 'verification_fee' && payment.propertyId) {
+                await updateDoc(doc(db, 'properties', payment.propertyId), { 
+                    verificationStatus: 'verified',
+                    isOnsiteVerified: true
+                });
+            }
+            // If it's an escrow deposit, set property status to Booked
+            if (payment.type === 'escrow_deposit' && payment.propertyId) {
+                await updateDoc(doc(db, 'properties', payment.propertyId), { status: 'Booked' });
+                
+                // Also find the associated escrow deposit to mark it as held (if it wasn't already)
+                const escrowRef = query(collection(db, 'escrowDeposits'), where('paymentId', '==', payment.id));
+                const escrowSnap = await getDocs(escrowRef);
+                if (!escrowSnap.empty) {
+                    await updateDoc(doc(db, 'escrowDeposits', escrowSnap.docs[0].id), { status: 'held' });
+                }
+            }
+            toast.success('Payment approved!');
+        } catch (e) { console.error('Approve payment error:', e); }
+    };
+
+    const handleRejectPayment = async (payment) => {
+        try {
+            await updateDoc(doc(db, 'payments', payment.id), { status: 'failed' });
+            
+            if (payment.type === 'escrow_deposit') {
+                const escrowRef = query(collection(db, 'escrowDeposits'), where('paymentId', '==', payment.id));
+                const escrowSnap = await getDocs(escrowRef);
+                if (!escrowSnap.empty) {
+                    await updateDoc(doc(db, 'escrowDeposits', escrowSnap.docs[0].id), { status: 'failed' });
+                }
+            }
+            toast.success('Payment rejected.');
+        } catch (e) { console.error('Reject payment error:', e); }
+    };
+
+    const handleReleaseEscrow = async (escrowId) => {
+        showModal({
+            title: 'Release Escrow Funds',
+            message: 'Are you sure you want to release these funds to the owner? This confirms the tenant has moved in.',
+            confirmText: 'Release Funds',
+            confirmColor: '#10b981',
+            onConfirm: async () => {
+                setModal(p => ({ ...p, isLoading: true }));
+                try {
+                    await updateDoc(doc(db, 'escrowDeposits', escrowId), { 
+                        status: 'released',
+                        releasedAt: serverTimestamp() 
+                    });
+                    setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
+                    setTimeout(closeModal, 1500);
+                } catch (e) {
+                    console.error(e);
+                    setModal(p => ({ ...p, isLoading: false, isOpen: false }));
+                    toast.error("Error releasing funds.");
                 }
             }
         });
@@ -836,6 +937,127 @@ export default function AdminPanel() {
                                 </div>
                             } />
 
+                            {/* ── Payments & Escrow ── */}
+                            <Route path="payments" element={
+                                <div className="space-y-8">
+                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
+                                        <div className="px-8 py-8 border-b border-zinc-50">
+                                            <h3 className="text-2xl font-black text-zinc-950">Payment Verification</h3>
+                                            <p className="text-sm text-zinc-400 font-bold mt-1">
+                                                {payments.filter(p => p.status === 'pending').length} pending verifications
+                                            </p>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="text-zinc-400 text-[10px] font-black uppercase tracking-widest border-b border-zinc-50">
+                                                        <th className="px-8 py-5">Transaction Details</th>
+                                                        <th className="px-8 py-5">Amount</th>
+                                                        <th className="px-8 py-5 text-center">Status</th>
+                                                        <th className="px-8 py-5 text-center">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-zinc-50">
+                                                    {payments.length === 0 ? (
+                                                        <tr><td colSpan="4" className="text-center py-8 text-zinc-400">No payments found.</td></tr>
+                                                    ) : payments.map(payment => (
+                                                        <tr key={payment.id} className="group hover:bg-zinc-50/50 transition-colors">
+                                                            <td className="px-8 py-6">
+                                                                <p className="font-black text-zinc-950 tracking-tight">{(payment.type || '').replace('_', ' ').toUpperCase()}</p>
+                                                                <p className="text-xs font-bold text-zinc-400 mt-0.5">TrxID: {payment.transactionId}</p>
+                                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-1">Prop: {payment.propertyName || 'N/A'}</p>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                <span className="font-black text-emerald-600">৳{payment.amount?.toLocaleString()}</span>
+                                                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">{payment.method}</p>
+                                                            </td>
+                                                            <td className="px-8 py-6 text-center">
+                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${payment.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : payment.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+                                                                    {payment.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                {payment.status === 'pending' && (
+                                                                    <div className="flex justify-center gap-2">
+                                                                        <button onClick={() => handleApprovePayment(payment)} className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-colors" title="Approve">
+                                                                            <CheckCircle size={16} />
+                                                                        </button>
+                                                                        <button onClick={() => handleRejectPayment(payment)} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-500 hover:text-white transition-colors" title="Reject">
+                                                                            <Trash2 size={16} />
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
+                                        <div className="px-8 py-8 border-b border-zinc-50">
+                                            <h3 className="text-2xl font-black text-zinc-950">Escrow Management</h3>
+                                            <p className="text-sm text-zinc-400 font-bold mt-1">
+                                                {escrowDeposits.filter(e => e.status === 'held').length} deposits currently held
+                                            </p>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="text-zinc-400 text-[10px] font-black uppercase tracking-widest border-b border-zinc-50">
+                                                        <th className="px-8 py-5">Property & Tenant</th>
+                                                        <th className="px-8 py-5">Deposit</th>
+                                                        <th className="px-8 py-5 text-center">Status</th>
+                                                        <th className="px-8 py-5 text-center">Confirmations</th>
+                                                        <th className="px-8 py-5 text-center">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-zinc-50">
+                                                    {escrowDeposits.length === 0 ? (
+                                                        <tr><td colSpan="5" className="text-center py-8 text-zinc-400">No escrow deposits.</td></tr>
+                                                    ) : escrowDeposits.map(escrow => (
+                                                        <tr key={escrow.id} className="group hover:bg-zinc-50/50 transition-colors">
+                                                            <td className="px-8 py-6">
+                                                                <p className="font-black text-zinc-950 tracking-tight">{escrow.propertyName}</p>
+                                                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Tenant ID: {escrow.tenantId?.slice(0,6)}...</p>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                <span className="font-black text-emerald-600">৳{escrow.depositAmount?.toLocaleString()}</span>
+                                                            </td>
+                                                            <td className="px-8 py-6 text-center">
+                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${escrow.status === 'released' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                                    {escrow.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-8 py-6 text-center">
+                                                                <div className="flex flex-col gap-1 items-center">
+                                                                    <span className={`text-[9px] font-black uppercase tracking-widest ${escrow.confirmedByTenant ? 'text-emerald-500' : 'text-zinc-400'}`}>
+                                                                        Tenant: {escrow.confirmedByTenant ? 'Yes' : 'No'}
+                                                                    </span>
+                                                                    <span className={`text-[9px] font-black uppercase tracking-widest ${escrow.confirmedByOwner ? 'text-emerald-500' : 'text-zinc-400'}`}>
+                                                                        Owner: {escrow.confirmedByOwner ? 'Yes' : 'No'}
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                {escrow.status === 'held' && escrow.confirmedByTenant && escrow.confirmedByOwner && (
+                                                                    <div className="flex justify-center">
+                                                                        <button onClick={() => handleReleaseEscrow(escrow.id)} className="px-4 py-2 bg-emerald-500 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20">
+                                                                            Release Funds
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            } />
+
                             {/* ── Reports ── */}
                             <Route path="reports" element={
                                 <div className="space-y-6">
@@ -1074,17 +1296,25 @@ export default function AdminPanel() {
                             </div>
                         </div>
 
-                        {/* Drawer Footer — Approve CTA */}
-                        {!selectedListing.isApproved && (
-                            <div className="flex-shrink-0 px-8 py-5 border-t border-zinc-100 bg-white">
+                        {/* Drawer Footer */}
+                        <div className="flex-shrink-0 px-8 py-5 border-t border-zinc-100 bg-white flex flex-col gap-3">
+                            <button
+                                onClick={() => handleToggleVerification(selectedListing)}
+                                className={`w-full py-3.5 font-black rounded-2xl transition-all text-sm active:scale-[0.98] flex items-center justify-center gap-2 ${selectedListing.isVerified ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100'}`}
+                            >
+                                <ShieldCheck size={18} />
+                                {selectedListing.isVerified ? 'Remove Verification' : 'Verify Landlord'}
+                            </button>
+
+                            {!selectedListing.isApproved && (
                                 <button
                                     onClick={() => handleApproveListing(selectedListing)}
                                     className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl transition-all text-sm shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
                                 >
                                     ✓ Approve This Listing
                                 </button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </aside>
                 </>
             )}

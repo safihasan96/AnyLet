@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { ArrowLeft, Camera, MapPin } from 'lucide-react';
+import { ArrowLeft, Camera, MapPin, MessageCircle } from 'lucide-react';
 
 export default function EditProfile() {
     const { currentUser } = useAuth();
@@ -18,6 +18,7 @@ export default function EditProfile() {
         fullName: '',
         email: '',
         phone: '',
+        whatsappNumber: '',
         location: '',
         photoURL: ''
     });
@@ -38,6 +39,7 @@ export default function EditProfile() {
                         fullName: data.fullName || '',
                         email: currentUser.email || '',
                         phone: data.phone || '',
+                        whatsappNumber: data.whatsappNumber || '',
                         location: data.location || '',
                         photoURL: data.photoURL || currentUser.photoURL || ''
                     });
@@ -75,9 +77,12 @@ export default function EditProfile() {
             setMessage({ type: '', text: '' });
 
             const userRef = doc(db, 'users', currentUser.uid);
+            // Sanitise WhatsApp number to digits only
+            const waDigits = formData.whatsappNumber ? formData.whatsappNumber.replace(/\D/g, '') : '';
             await updateDoc(userRef, {
                 fullName: formData.fullName,
                 phone: phoneDigits,
+                whatsappNumber: waDigits,
                 location: formData.location,
                 photoURL: formData.photoURL
             });
@@ -238,6 +243,26 @@ export default function EditProfile() {
                             value={formData.phone}
                             onChange={handleChange}
                         />
+                    </div>
+
+                    {/* WhatsApp Number */}
+                    <div className="space-y-1.5">
+                        <label className="text-[14px] font-[800] text-[#1e293b] dark:text-slate-200 ml-1 flex items-center gap-2">
+                            <MessageCircle size={15} className="text-[#25D366]" />
+                            WhatsApp Number
+                            <span className="text-[11px] font-semibold text-slate-400 normal-case">(optional)</span>
+                        </label>
+                        <input
+                            type="tel"
+                            name="whatsappNumber"
+                            placeholder="01812345678"
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] py-[16px] px-5 font-semibold text-slate-900 dark:text-white outline-none focus:border-[#25D366] focus:ring-1 focus:ring-[#25D366] transition-all shadow-sm text-[15px]"
+                            value={formData.whatsappNumber}
+                            onChange={handleChange}
+                        />
+                        <p className="text-[11px] text-slate-400 font-semibold ml-1 mt-1">
+                            Enables a "Chat on WhatsApp" button on your listings.
+                        </p>
                     </div>
 
                     <div className="space-y-1.5">

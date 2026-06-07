@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { registerSW } from 'virtual:pwa-register'
 import { HelmetProvider } from 'react-helmet-async';
 import './index.css'
@@ -25,7 +26,9 @@ createRoot(document.getElementById('root')).render(
         <AuthProvider>
           <ThemeProvider>
             <LanguageProvider>
-              <App />
+              <ToastProvider>
+                <App />
+              </ToastProvider>
             </LanguageProvider>
           </ThemeProvider>
         </AuthProvider>

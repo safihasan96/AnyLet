@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
 
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Search, Eye, MessageSquare, Clock, Trash2, Home, Phone } from 'lucide-react';
+import { ArrowLeft, Search, Eye, Clock, Trash2, Home, Phone, DoorOpen, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ConfirmationModal from '../components/ConfirmationModal';
 import TenantDetailsModal from '../components/TenantDetailsModal';
 import ListingPreviewModal from '../components/ListingPreviewModal';
+import MoveInModal from '../components/MoveInModal';
+import WriteReviewModal from '../components/WriteReviewModal';
+import { useToast } from '../contexts/ToastContext';
 
 export default function Requests() {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
+    const toast = useToast();
     const [activeTab, setActiveTab] = useState('received'); // 'sent' or 'received'
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -29,6 +33,21 @@ export default function Requests() {
 
     const [callModalOpen, setCallModalOpen] = useState(false);
     const [phoneNumberToCall, setPhoneNumberToCall] = useState('');
+
+    // Move-In & Review modals
+    const [moveInModal, setMoveInModal] = useState({ isOpen: false, request: null });
+    const [reviewModal, setReviewModal] = useState({ isOpen: false, moveIn: null, ownerId: null, ownerName: '' });
+    const [movedInRequestIds, setMovedInRequestIds] = useState(new Set());
+
+    // Fetch existing move-ins for current user to know which requests are already moved in
+    useEffect(() => {
+        if (!currentUser) return;
+        const q = query(collection(db, 'tenantMoveIns'), where('tenantId', '==', currentUser.uid));
+        const unsub = onSnapshot(q, (snap) => {
+            setMovedInRequestIds(new Set(snap.docs.map(d => d.data().viewingRequestId)));
+        });
+        return () => unsub();
+    }, [currentUser]);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -88,7 +107,7 @@ export default function Requests() {
             setRequestToDelete(null);
         } catch (error) {
             console.error("Error deleting request:", error);
-            alert("Failed to delete request. Please try again.");
+            toast.error("Failed to delete request. Please try again.");
         } finally {
             setIsDeleting(false);
         }
@@ -167,6 +186,7 @@ export default function Requests() {
                             request={request}
                             isReceived={activeTab === 'received'}
                             formatDate={formatDate}
+                            isMovedIn={movedInRequestIds.has(request.id)}
                             onDelete={() => promptDeleteRequest(request.id)}
                             onReview={async () => {
                                 setSelectedRequest(request);
@@ -190,9 +210,10 @@ export default function Requests() {
                                     setPhoneNumberToCall(phone);
                                     setCallModalOpen(true);
                                 } else {
-                                    alert("Phone number not available");
+                                    toast.error("Phone number not available");
                                 }
                             }}
+                            onMoveIn={() => setMoveInModal({ isOpen: true, request })}
                         />
                     ))
                 )}
@@ -242,11 +263,36 @@ export default function Requests() {
                 }}
                 onCancel={() => setCallModalOpen(false)}
             />
+
+            <MoveInModal
+                isOpen={moveInModal.isOpen}
+                request={moveInModal.request}
+                onClose={() => setMoveInModal({ isOpen: false, request: null })}
+                onMoveInSuccess={(action) => {
+                    if (action === 'writeReview' && moveInModal.request) {
+                        setReviewModal({
+                            isOpen: true,
+                            moveIn: { ...moveInModal.request, firestoreId: null },
+                            ownerId: moveInModal.request.ownerId,
+                            ownerName: 'the landlord',
+                        });
+                    }
+                    setMoveInModal({ isOpen: false, request: null });
+                }}
+            />
+
+            <WriteReviewModal
+                isOpen={reviewModal.isOpen}
+                onClose={() => setReviewModal({ isOpen: false, moveIn: null, ownerId: null, ownerName: '' })}
+                moveIn={reviewModal.moveIn}
+                ownerId={reviewModal.ownerId}
+                ownerName={reviewModal.ownerName}
+            />
         </div>
     );
 }
 
-function RequestCard({ request, isReceived, formatDate, onDelete, onReview, onListingClick, onCallClick }) {
+function RequestCard({ request, isReceived, formatDate, onDelete, onReview, onListingClick, onCallClick, onMoveIn, isMovedIn }) {
     // Generate a placeholder avatar if none exists
     const seed = request.tenantId || Math.random();
     const avatarUrl = `https://api.dicebear.com/7.x/notionists/svg?seed=${seed}&backgroundColor=f1f5f9`;
@@ -327,16 +373,30 @@ function RequestCard({ request, isReceived, formatDate, onDelete, onReview, onLi
                         </button>
                     </>
                 ) : (
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onDelete();
-                        }}
-                        className="flex-1 flex items-center justify-center gap-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 font-bold py-3.5 rounded-2xl transition-colors hover:bg-rose-100 dark:hover:bg-rose-900/40 active:scale-95 border border-rose-100 dark:border-rose-900/50"
-                    >
-                        <Trash2 size={18} />
-                        Withdraw Request
-                    </button>
+                    <>
+                        {isMovedIn ? (
+                            <div className="flex-1 flex items-center justify-center gap-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold py-3.5 rounded-2xl border border-amber-100 dark:border-amber-500/20 text-sm">
+                                <Star size={16} className="fill-amber-500 text-amber-500" />
+                                Moved In
+                            </div>
+                        ) : (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onMoveIn && onMoveIn(); }}
+                                className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold py-3.5 rounded-2xl transition-colors hover:bg-emerald-100 dark:hover:bg-emerald-500/20 active:scale-95 border border-emerald-100 dark:border-emerald-500/20 text-sm"
+                            >
+                                <DoorOpen size={18} /> Moved In?
+                            </button>
+                        )}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete();
+                            }}
+                            className="size-[50px] shrink-0 flex items-center justify-center bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 font-bold rounded-2xl transition-colors hover:bg-rose-100 dark:hover:bg-rose-900/40 active:scale-95 border border-rose-100 dark:border-rose-900/50"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    </>
                 )}
             </div>
         </div>

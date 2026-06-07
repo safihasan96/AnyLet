@@ -20,6 +20,46 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Tenant move-in records — tenant owns their own, public readable for owner profile
+    match /tenantMoveIns/{docId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.tenantId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.tenantId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.tenantId == request.auth.uid;
+    }
+
+    // Owner reviews — public read (approved only handled client-side), auth create
+    match /ownerReviews/{docId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.reviewerId == request.auth.uid;
+      allow update, delete: if request.auth != null &&
+        (resource.data.reviewerId == request.auth.uid ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // Payments — users create their own, read their own. Admins can read/write all.
+    match /payments/{docId} {
+      allow read: if request.auth != null &&
+        (resource.data.userId == request.auth.uid ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Escrow deposits — tenant or owner can read. Only admin can update status.
+    match /escrowDeposits/{docId} {
+      allow read: if request.auth != null &&
+        (resource.data.tenantId == request.auth.uid ||
+         resource.data.ownerId == request.auth.uid ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      allow create: if request.auth != null && request.resource.data.tenantId == request.auth.uid;
+      allow update: if request.auth != null &&
+        (resource.data.tenantId == request.auth.uid ||
+         resource.data.ownerId == request.auth.uid ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
     // Default: require auth for private data (requests, profiles, etc.)
     match /{document=**} {
       allow read, write: if request.auth != null;

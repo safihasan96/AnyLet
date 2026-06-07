@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Bed, DoorOpen, Building2, Heart } from 'lucide-react';
+import { MapPin, Bed, DoorOpen, Building2, Heart, Star, CheckCircle2, Clock, Lock } from 'lucide-react';
 import useSavedProperties from '../hooks/useSavedProperties';
 
 export default function HorizontalPropertyCard({ property }) {
-    const { id, title, rent, beds, baths, sqft, image, type, utilitiesCost } = property;
+    const { id, title, rent, beds, baths, sqft, image, type, utilitiesCost, isVerified } = property;
     const { toggleSaveProperty, isPropertySaved } = useSavedProperties();
     const isSaved = isPropertySaved(id);
 
@@ -23,6 +23,18 @@ export default function HorizontalPropertyCard({ property }) {
             {/* Image Container */}
             <div className="relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-[20px]">
                 <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={displayImage} alt={title || 'Property'} />
+                {property.status && property.status !== 'Available' && (
+                    <div className={`absolute top-2 left-2 backdrop-blur-md px-2 py-1 rounded-lg font-black text-[8px] uppercase tracking-wider shadow-sm flex items-center gap-1 border ${
+                        property.status === 'Let Agreed' 
+                            ? 'bg-rose-500/80 text-white border-rose-400/50' 
+                            : property.status === 'Booked'
+                                ? 'bg-blue-500/80 text-white border-blue-400/50'
+                                : 'bg-amber-500/80 text-white border-amber-400/50'
+                    }`}>
+                        {property.status === 'Let Agreed' ? <CheckCircle2 size={10} strokeWidth={3} /> : property.status === 'Booked' ? <Lock size={10} strokeWidth={3} /> : <Clock size={10} strokeWidth={3} />}
+                        {property.status}
+                    </div>
+                )}
                 <div className="absolute top-2 right-2">
                     <button
                         className={`size-8 rounded-full bg-white/60 backdrop-blur-md flex items-center justify-center shadow-sm transition-colors hover:scale-110 active:scale-95 ${isSaved ? 'text-rose-500' : 'text-slate-400 hover:text-rose-500'}`}
@@ -31,6 +43,12 @@ export default function HorizontalPropertyCard({ property }) {
                         <Heart size={16} fill={isSaved ? "currentColor" : "none"} strokeWidth={isSaved ? 0 : 2.5} />
                     </button>
                 </div>
+                {isVerified && (
+                    <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur text-emerald-600 px-2 py-1.5 rounded-lg font-black text-[8px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm border border-emerald-100">
+                        <Star size={10} className="fill-emerald-600 shrink-0" />
+                        <span className="truncate">Verified Landlord</span>
+                    </div>
+                )}
             </div>
 
             {/* Content Container */}

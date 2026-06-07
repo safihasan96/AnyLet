@@ -3,10 +3,20 @@ import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import PropertyCard from './PropertyCard';
 import { StaggerGrid, CardPopItem } from '../utils/animations';
+import useInfiniteScroll from '../hooks/useInfiniteScroll';
 
 export default function FeaturedListings({ category = 'All', division = '' }) {
     const [listings, setListings] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [displayCount, setDisplayCount] = useState(12);
+
+    const { sentinelRef } = useInfiniteScroll(() => {
+        setDisplayCount(prev => prev + 12);
+    });
+
+    useEffect(() => {
+        setDisplayCount(12);
+    }, [category, division]);
 
     useEffect(() => {
         setLoading(true);
@@ -27,9 +37,14 @@ export default function FeaturedListings({ category = 'All', division = '' }) {
                     };
                 })
                 .filter(item => {
+                    const yearAgo = new Date();
+                    yearAgo.setDate(yearAgo.getDate() - 365);
+                    const propDate = item.updatedAt?.toDate() || item.createdAt?.toDate() || new Date(0);
+                    
+                    const isNotExpired = propDate >= yearAgo;
                     const matchesCategory = category === 'All' || item.type === category;
                     const matchesDivision = !division || item.division === division;
-                    return item.isApproved && matchesCategory && matchesDivision;
+                    return item.isApproved && isNotExpired && matchesCategory && matchesDivision;
                 });
 
             setListings(listingsData);
@@ -81,12 +96,17 @@ export default function FeaturedListings({ category = 'All', division = '' }) {
                 </p>
             </div>
             <StaggerGrid className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {listings.map((listing) => (
+                {listings.slice(0, displayCount).map((listing) => (
                     <CardPopItem key={listing.id} className="h-full">
                         <PropertyCard property={listing} />
                     </CardPopItem>
                 ))}
             </StaggerGrid>
+            {listings.length > displayCount && (
+                <div ref={sentinelRef} className="h-12 flex items-center justify-center mt-8">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                </div>
+            )}
         </div>
     );
 }

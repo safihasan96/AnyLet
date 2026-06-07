@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import HorizontalPropertyCard from '../components/HorizontalPropertyCard';
 import { bdLocations } from '../data/locations';
 import { Helmet } from 'react-helmet-async';
+import useInfiniteScroll from '../hooks/useInfiniteScroll';
 
 // Constants
 const BILLING_CYCLES = ["Day", "Week", "Month"];
@@ -83,6 +84,16 @@ export default function Search() {
         beds: 'Any', baths: 'Any',
         utilities: [], features: []
     });
+    
+    const [displayCount, setDisplayCount] = useState(12);
+
+    const { sentinelRef } = useInfiniteScroll(() => {
+        setDisplayCount(prev => prev + 12);
+    });
+
+    useEffect(() => {
+        setDisplayCount(12);
+    }, [filterState, searchTerm]);
 
     useEffect(() => {
         if (location.state && (location.state.division !== undefined || location.state.type !== undefined)) {
@@ -125,8 +136,15 @@ export default function Search() {
     }, []);
 
     const filteredProperties = useMemo(() => {
+        const yearAgo = new Date();
+        yearAgo.setDate(yearAgo.getDate() - 365);
+        
         return properties.filter(p => {
             if (p.isApproved === false) return false;
+            
+            const propDate = p.updatedAt?.toDate() || p.createdAt?.toDate() || new Date(0);
+            if (propDate < yearAgo) return false;
+            
             if (filterState.division && p.division !== filterState.division) return false;
             if (filterState.district && p.district !== filterState.district) return false;
             if (filterState.upazila && p.upazila !== filterState.upazila) return false;
@@ -287,14 +305,16 @@ export default function Search() {
                             {[1, 2, 3, 4].map(n => <div key={n} className="animate-pulse h-48 w-full rounded-3xl bg-white dark:bg-slate-900" />)}
                         </div>
                     ) : (
-                        <motion.div layout className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-24 md:pb-10">
+                        <motion.div layout className="flex flex-col gap-6 pb-24 md:pb-10">
                             <AnimatePresence mode="popLayout">
                                 {filteredProperties.length > 0 ? (
-                                    filteredProperties.map((p, idx) => (
-                                        <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: idx * 0.05 }} className="h-full">
-                                            <HorizontalPropertyCard property={p} />
-                                        </motion.div>
-                                    ))
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {filteredProperties.slice(0, displayCount).map((p, idx) => (
+                                            <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: (idx % 12) * 0.05 }} className="h-full">
+                                                <HorizontalPropertyCard property={p} />
+                                            </motion.div>
+                                        ))}
+                                    </div>
                                 ) : (
                                     <div className="col-span-full py-20 text-center flex flex-col items-center gap-6">
                                         <div className="size-24 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-slate-300"><SearchIcon size={48} /></div>
@@ -306,6 +326,12 @@ export default function Search() {
                                     </div>
                                 )}
                             </AnimatePresence>
+                            
+                            {filteredProperties.length > displayCount && (
+                                <div ref={sentinelRef} className="h-12 flex items-center justify-center mt-4">
+                                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </main>

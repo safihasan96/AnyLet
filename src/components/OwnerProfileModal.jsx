@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { X, Phone, Mail, User, ShieldCheck } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { BottomSheet3D } from './Modal3D';
+import { useToast } from '../contexts/ToastContext';
 
 export default function OwnerProfileModal({ isOpen, onClose, owner }) {
     const [callModalOpen, setCallModalOpen] = useState(false);
     const [phoneNumberToCall, setPhoneNumberToCall] = useState('');
+    const toast = useToast();
 
     // Fallbacks for missing data
     const displayName = owner?.fullName || owner?.name || owner?.displayName || "Property Owner";
@@ -65,7 +67,7 @@ export default function OwnerProfileModal({ isOpen, onClose, owner }) {
                                         setPhoneNumberToCall(displayPhone);
                                         setCallModalOpen(true);
                                     } else {
-                                        alert("Phone number not available");
+                                        toast.error("Phone number not available");
                                     }
                                 }}
                                 className="w-full flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors group text-left"
@@ -107,6 +109,8 @@ export default function OwnerProfileModal({ isOpen, onClose, owner }) {
                 message="Are you sure you want to call the property owner? Your phone dialer will be launched."
                 confirmText="Call"
                 confirmColor="#16a34a"
+                icon={Phone}
+                variant="success"
                 onConfirm={() => {
                     window.location.href = `tel:${phoneNumberToCall}`;
                     setCallModalOpen(false);
