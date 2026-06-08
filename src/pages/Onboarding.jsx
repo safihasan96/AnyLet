@@ -162,6 +162,16 @@ export default function Onboarding() {
         finally { setSaving(false); }
     }
 
+    /* ── Skip Phone ────────────────────────────────────────────────────── */
+    async function skipPhone() {
+        setSaving(true);
+        try {
+            await updateUserProfile({ onboardingStep: 'profile_setup' });
+            goNext();
+        } catch { setError('Something went wrong.'); }
+        finally { setSaving(false); }
+    }
+
     /* ── STEP C: Profile Photo, Bio, Role ─────────────────────────────── */
     function handlePhotoChange(e) {
         const file = e.target.files[0];
@@ -188,6 +198,16 @@ export default function Onboarding() {
             });
             goNext();
         } catch { setError('Failed to upload photo. Please try again.'); }
+        finally { setSaving(false); }
+    }
+
+    /* ── Skip Profile ──────────────────────────────────────────────────── */
+    async function skipProfile() {
+        setSaving(true);
+        try {
+            await updateUserProfile({ onboardingStep: 'kyc_upload' });
+            goNext();
+        } catch { setError('Something went wrong.'); }
         finally { setSaving(false); }
     }
 
@@ -328,7 +348,7 @@ export default function Onboarding() {
                                         <input
                                             value={firstName}
                                             onChange={e => setFirstName(e.target.value)}
-                                            placeholder="Safi"
+                                            placeholder="First Name"
                                             className="w-full px-4 py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-slate-900 dark:text-white focus:border-[#1a227f] focus:outline-none transition-colors"
                                         />
                                     </div>
@@ -337,7 +357,7 @@ export default function Onboarding() {
                                         <input
                                             value={lastName}
                                             onChange={e => setLastName(e.target.value)}
-                                            placeholder="Hasan"
+                                            placeholder="Last Name"
                                             className="w-full px-4 py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-slate-900 dark:text-white focus:border-[#1a227f] focus:outline-none transition-colors"
                                         />
                                     </div>
@@ -386,9 +406,14 @@ export default function Onboarding() {
                                     <p className="mt-2 text-xs text-slate-400 font-medium">Enter a BD number (01XXXXXXXXX) or international number with country code</p>
                                 </div>
                                 {error && <ErrorBanner message={error} />}
-                                <div className="flex gap-3">
-                                    <button onClick={goBack} className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><ArrowLeft size={20} /></button>
-                                    <ContinueButton onClick={submitPhone} loading={saving} className="flex-1" />
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex gap-3">
+                                        <button onClick={goBack} className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><ArrowLeft size={20} /></button>
+                                        <ContinueButton onClick={submitPhone} loading={saving} className="flex-1" />
+                                    </div>
+                                    <button onClick={skipPhone} className="text-center text-xs text-slate-400 font-bold underline underline-offset-2 hover:text-slate-600 transition-colors">
+                                        Skip for now
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -451,9 +476,14 @@ export default function Onboarding() {
                                     </div>
                                 </div>
                                 {error && <ErrorBanner message={error} />}
-                                <div className="flex gap-3">
-                                    <button onClick={goBack} className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><ArrowLeft size={20} /></button>
-                                    <ContinueButton onClick={submitProfile} loading={saving} className="flex-1" />
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex gap-3">
+                                        <button onClick={goBack} className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><ArrowLeft size={20} /></button>
+                                        <ContinueButton onClick={submitProfile} loading={saving} className="flex-1" />
+                                    </div>
+                                    <button onClick={skipProfile} className="text-center text-xs text-slate-400 font-bold underline underline-offset-2 hover:text-slate-600 transition-colors">
+                                        Skip for now
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -501,13 +531,15 @@ export default function Onboarding() {
                                     <p className="text-xs font-medium text-slate-500">Your document is stored in an encrypted, private bucket. It is never visible to other users or hosts.</p>
                                 </div>
                                 {error && <ErrorBanner message={error} />}
-                                <div className="flex gap-3">
-                                    <button onClick={goBack} className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><ArrowLeft size={20} /></button>
-                                    <ContinueButton onClick={submitKyc} loading={saving} label="Submit & Finish" className="flex-1" />
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex gap-3">
+                                        <button onClick={goBack} className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><ArrowLeft size={20} /></button>
+                                        <ContinueButton onClick={submitKyc} loading={saving} label="Submit & Finish" className="flex-1" />
+                                    </div>
+                                    <button onClick={skipKyc} className="text-center text-xs text-slate-400 font-bold underline underline-offset-2 hover:text-slate-600 transition-colors">
+                                        Skip for now — I'll verify later
+                                    </button>
                                 </div>
-                                <button onClick={skipKyc} className="text-center text-xs text-slate-400 font-bold underline underline-offset-2 hover:text-slate-600 transition-colors">
-                                    Skip for now — I'll verify later
-                                </button>
                             </div>
                         )}
                     </motion.div>

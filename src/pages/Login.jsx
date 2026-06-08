@@ -80,7 +80,8 @@ export default function Login() {
                 // Same email exists under password — prompt to link
                 setLinkPending({ email: err.email, pendingCredential: err.pendingCredential });
             } else if (err.code !== 'auth/popup-closed-by-user') {
-                setError('Google sign-in failed. Please try again.');
+                console.error("Google Auth Error:", err);
+                setError(`Google sign-in failed: ${err.message}`);
             }
         } finally {
             setGoogleLoading(false);

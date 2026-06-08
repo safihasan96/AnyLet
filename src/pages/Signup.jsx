@@ -32,6 +32,7 @@ export default function Signup() {
     const [loading, setLoading] = useState(false);
     const [googleLoading, setGoogleLoading] = useState(false);
     const [refBanner, setRefBanner] = useState('');
+    const [agreeTerms, setAgreeTerms] = useState(false);
 
     const { signup, createUserDoc, signInWithGoogle } = useAuth();
     const navigate = useNavigate();
@@ -50,6 +51,10 @@ export default function Signup() {
     async function handleSignup(e) {
         e.preventDefault();
         setError('');
+        if (!agreeTerms) {
+            setError('You must agree to the Terms and Conditions to sign up.');
+            return;
+        }
         setLoading(true);
         try {
             const userCredential = await signup(email, password);
@@ -115,7 +120,8 @@ export default function Signup() {
             navigate('/onboarding');
         } catch (err) {
             if (err.code !== 'auth/popup-closed-by-user') {
-                setError('Google sign-up failed. Please try again.');
+                console.error("Google Auth Error:", err);
+                setError(`Google sign-up failed: ${err.message}`);
             }
         } finally {
             setGoogleLoading(false);
@@ -196,6 +202,21 @@ export default function Signup() {
                         autoComplete="new-password" placeholder="Create Password (min 6 chars)"
                         value={password} onChange={(e) => setPassword(e.target.value)}
                     />
+
+                    <label className="flex items-start gap-3 mt-4 cursor-pointer group">
+                        <div className="relative flex items-center justify-center mt-0.5">
+                            <input
+                                type="checkbox"
+                                checked={agreeTerms}
+                                onChange={(e) => setAgreeTerms(e.target.checked)}
+                                className="peer appearance-none w-5 h-5 border-2 border-slate-300 dark:border-slate-600 rounded-md checked:bg-[#1a227f] checked:border-[#1a227f] transition-all"
+                            />
+                            <ShieldCheck size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" strokeWidth={3} />
+                        </div>
+                        <span className="text-[11px] font-bold text-slate-500 leading-snug">
+                            By signing up, I agree to AnyLet's <a href="#" className="text-[#1a227f] dark:text-indigo-400 hover:underline">Terms of Service</a> and acknowledge the <a href="#" className="text-[#1a227f] dark:text-indigo-400 hover:underline">Privacy Policy</a>.
+                        </span>
+                    </label>
 
                     <button
                         disabled={loading}
