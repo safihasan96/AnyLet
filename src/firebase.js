@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
-import { getAuth } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration using Environment Variables
@@ -22,11 +22,16 @@ if (typeof window !== "undefined") {
     analytics = getAnalytics(app);
 }
 
-// Initialize Cloud Firestore and get a reference to the service
+// Initialize Cloud Firestore
 export const db = getFirestore(app);
 
-// Initialize Firebase Authentication and get a reference to the service
+// Initialize Firebase Authentication with persistent sessions
 export const auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence).catch(() => {});
 
-// Initialize Firebase Storage and get a reference to the service
+// Google Auth Provider — configured for account linking
+export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+
+// Initialize Firebase Storage
 export const storage = getStorage(app);

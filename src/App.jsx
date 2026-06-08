@@ -43,6 +43,8 @@ import ReportProperty from './pages/ReportProperty';
 import VerifyEmail from './pages/VerifyEmail';
 import ReferralDashboard from './pages/ReferralDashboard';
 import MapPage from './pages/MapPage';
+import Onboarding from './pages/Onboarding';
+import OnboardingGuard from './components/OnboardingGuard';
 import './App.css';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -110,10 +112,15 @@ function App() {
                   <PageWrapper><Requests /></PageWrapper>
                 </ProtectedRoute>
               } />
-              <Route path="/post-ad" element={
+              <Route path="/onboarding" element={
                 <ProtectedRoute>
-                  <PageWrapper><AddProperty /></PageWrapper>
+                  <PageWrapper><Onboarding /></PageWrapper>
                 </ProtectedRoute>
+              } />
+              <Route path="/post-ad" element={
+                <OnboardingGuard requireOnboarded>
+                  <PageWrapper><AddProperty /></PageWrapper>
+                </OnboardingGuard>
               } />
 
               <Route path="/profile" element={
@@ -163,9 +170,9 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="/enquiry" element={
-                <ProtectedRoute>
+                <OnboardingGuard requirePhoneVerified>
                   <PageWrapper><Enquiry /></PageWrapper>
-                </ProtectedRoute>
+                </OnboardingGuard>
               } />
               <Route path="/report-property/:id" element={
                 <ProtectedRoute>

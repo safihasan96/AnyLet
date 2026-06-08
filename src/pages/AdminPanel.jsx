@@ -5,7 +5,7 @@ import {
     LogOut, UserCheck, UserMinus, Trash2, TrendingUp, ShieldCheck,
     Bell, ChevronRight, ChevronLeft, Activity, Database, Lock,
     Menu, CheckCircle, Clock, Building2, MessageSquare, Flag, AlertCircle,
-    CreditCard, Banknote, HelpCircle, Star
+    CreditCard, Banknote, HelpCircle, Star, FileCheck
 } from 'lucide-react';
 import { collection, onSnapshot, updateDoc, deleteDoc, doc, getDoc, getDocs, addDoc, serverTimestamp, setDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -14,6 +14,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
 import AdminReviewsTab from '../components/AdminReviewsTab';
+import AdminKycTab from '../components/AdminKycTab';
 import '../index.css';
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
     { path: '/admin/payments', icon: CreditCard, label: 'Payments & Escrow' },
     { path: '/admin/enquiries', icon: MessageSquare, label: 'Enquiries' },
     { path: '/admin/reviews', icon: Star, label: 'Reviews' },
+    { path: '/admin/kyc', icon: FileCheck, label: 'KYC Verification' },
     { path: '/admin/reports', icon: Flag, label: 'Reports' },
     { path: '/admin/settings', icon: Settings, label: 'System Health' },
 ];
@@ -1149,6 +1151,22 @@ export default function AdminPanel() {
                                         </div>
                                     </div>
                                     <AdminReviewsTab openModal={showModal} />
+                                </div>
+                            } />
+
+                            {/* ── KYC Verification ── */}
+                            <Route path="kyc" element={
+                                <div className="space-y-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-500 shadow-inner">
+                                            <FileCheck size={24} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-2xl font-black text-zinc-950 tracking-tight">KYC Verification</h2>
+                                            <p className="text-sm font-bold text-zinc-400">Review and approve user identity documents</p>
+                                        </div>
+                                    </div>
+                                    <AdminKycTab openModal={showModal} />
                                 </div>
                             } />
 
