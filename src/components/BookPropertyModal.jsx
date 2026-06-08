@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import PaymentModal from './PaymentModal';
 import ConfirmationModal from './ConfirmationModal';
+import { createNotification } from '../utils/notificationService';
 import { createPortal } from 'react-dom';
 import {
     X, Shield, Lock, ArrowRight, CheckCircle2, Home,
@@ -64,6 +65,20 @@ export default function BookPropertyModal({ isOpen, onClose, property }) {
                 confirmedByOwner: false,
                 releaseRequested: false,
             });
+
+            // Notify Owner
+            const targetOwnerId = property.ownerId || property.userId;
+            if (targetOwnerId) {
+                await createNotification(
+                    targetOwnerId,
+                    'booking_confirmed',
+                    'Booking Deposit Received',
+                    `A tenant has paid the booking deposit for ${property.title}. The funds are securely held in escrow.`,
+                    '/requests',
+                    { propertyId: property.id }
+                );
+            }
+
             toast.success('Booking submitted! The owner will be notified.');
         } catch (err) {
             console.error('Escrow creation error:', err);
@@ -140,7 +155,7 @@ export default function BookPropertyModal({ isOpen, onClose, property }) {
                                                 </div>
 
                                                 <div className="text-center mb-8">
-                                                    <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
+                                                    <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary dark:text-indigo-400 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
                                                         <Shield size={12} /> Secure Booking
                                                     </div>
                                                     <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3 leading-tight">
@@ -160,7 +175,7 @@ export default function BookPropertyModal({ isOpen, onClose, property }) {
                                                         { icon: <CheckCircle2 size={18} />, title: 'Funds released to owner', desc: 'Only after your confirmation' },
                                                     ].map((item, i) => (
                                                         <div key={i} className="flex items-start gap-4">
-                                                            <div className="size-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0 mt-0.5">
+                                                            <div className="size-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 shrink-0 mt-0.5">
                                                                 {item.icon}
                                                             </div>
                                                             <div>
@@ -237,8 +252,8 @@ export default function BookPropertyModal({ isOpen, onClose, property }) {
                                                 <div className="flex items-start gap-3 bg-primary/5 dark:bg-primary/10 border border-primary/20 dark:border-primary/20 rounded-2xl p-4 mb-6">
                                                     <Lock size={18} className="text-primary dark:text-indigo-400 shrink-0 mt-0.5" />
                                                     <div>
-                                                        <p className="text-xs font-black text-primary dark:text-indigo-300 mb-1">Your money is protected</p>
-                                                        <p className="text-[11px] font-medium text-primary/80 dark:text-indigo-400/80 leading-relaxed">
+                                                        <p className="text-xs font-black text-primary dark:text-indigo-400 mb-1">Your money is protected</p>
+                                                        <p className="text-[11px] font-medium text-primary dark:text-indigo-400/80 dark:text-indigo-400/80 leading-relaxed">
                                                             The security deposit (৳{depositAmount.toLocaleString()}) is held by Any-Let and only released to the owner after you confirm your move-in. The ৳{SERVICE_FEE} service fee is non-refundable.
                                                         </p>
                                                     </div>

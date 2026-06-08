@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { ArrowLeft, Camera, MapPin, MessageCircle } from 'lucide-react';
 
 export default function EditProfile() {
-    const { currentUser } = useAuth();
+    const { currentUser, refreshUser } = useAuth();
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
@@ -76,22 +76,29 @@ export default function EditProfile() {
             setSaving(true);
             setMessage({ type: '', text: '' });
 
-            const userRef = doc(db, 'users', currentUser.uid);
+            const uid = currentUser?.uid || auth.currentUser?.uid;
+            if (!uid) throw new Error("User session not found. Please log in again.");
+
+            const userRef = doc(db, 'users', uid);
             // Sanitise WhatsApp number to digits only
             const waDigits = formData.whatsappNumber ? formData.whatsappNumber.replace(/\D/g, '') : '';
-            await updateDoc(userRef, {
+            await setDoc(userRef, {
                 fullName: formData.fullName,
                 phone: phoneDigits,
                 whatsappNumber: waDigits,
                 location: formData.location,
                 photoURL: formData.photoURL
-            });
+            }, { merge: true });
 
-            if (currentUser) {
-                await updateProfile(currentUser, { 
+            if (auth.currentUser) {
+                await updateProfile(auth.currentUser, { 
                     displayName: formData.fullName,
                     photoURL: formData.photoURL 
                 });
+            }
+
+            if (refreshUser) {
+                await refreshUser();
             }
 
             setMessage({ type: 'success', text: 'Profile updated successfully!' });
@@ -99,8 +106,8 @@ export default function EditProfile() {
             // Optional: navigate back after a short delay
             // setTimeout(() => navigate('/profile'), 1500);
         } catch (err) {
-            console.error(err);
-            setMessage({ type: 'error', text: 'Failed to update profile.' });
+            console.error("Profile update error:", err);
+            setMessage({ type: 'error', text: `Failed to update profile: ${err.message || err}` });
         } finally {
             setSaving(false);
         }

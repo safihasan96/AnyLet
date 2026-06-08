@@ -62,7 +62,7 @@ export default function Login() {
             <header className="flex items-center mb-6">
                 <button 
                     onClick={() => navigate(-1)} 
-                    className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all active:scale-95 border border-slate-100 dark:border-slate-700"
+                    className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary dark:text-indigo-400 transition-all active:scale-95 border border-slate-100 dark:border-slate-700"
                 >
                     <ArrowLeft size={20} strokeWidth={3} />
                 </button>
@@ -72,7 +72,7 @@ export default function Login() {
                     <div className="size-10 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
                         <HomeIcon size={24} />
                     </div>
-                    <h2 className="text-2xl font-black uppercase tracking-tighter text-primary">Rent.BD</h2>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-primary dark:text-indigo-400">Rent.BD</h2>
                 </div>
 
                 <div className="mb-10">
@@ -104,7 +104,7 @@ export default function Login() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="relative group">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary dark:text-indigo-400 transition-colors" size={20} />
                         <input
                             type="email"
                             placeholder="Email Address"
@@ -116,7 +116,7 @@ export default function Login() {
                     </div>
 
                     <div className="relative group">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary dark:text-indigo-400 transition-colors" size={20} />
                         <input
                             type="password"
                             placeholder="Password"
@@ -128,7 +128,7 @@ export default function Login() {
                     </div>
 
                     <div className="flex justify-end pt-2">
-                        <Link to="/forgot-password" className="text-[10px] uppercase font-black text-primary tracking-widest cursor-pointer hover:underline">Forgot Password?</Link>
+                        <Link to="/forgot-password" className="text-[10px] uppercase font-black text-primary dark:text-indigo-400 tracking-widest cursor-pointer hover:underline">Forgot Password?</Link>
                     </div>
 
                     <button
@@ -142,7 +142,7 @@ export default function Login() {
 
                 <div className="mt-12 text-center">
                     <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">
-                        Don't have an account? <Link to="/signup" className="text-primary font-black ml-1">Create One</Link>
+                        Don't have an account? <Link to="/signup" className="text-primary dark:text-indigo-400 font-black ml-1">Create One</Link>
                     </p>
                 </div>
             </div>

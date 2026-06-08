@@ -11,7 +11,7 @@ export default function Contact() {
                 <div className="flex justify-start mb-8">
                     <button 
                         onClick={() => navigate(-1)} 
-                        className="flex items-center gap-2 text-slate-500 hover:text-primary font-bold transition-colors"
+                        className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 font-bold transition-colors"
                     >
                         <ArrowLeft size={20} /> Back to previous
                     </button>
@@ -25,7 +25,7 @@ export default function Contact() {
                     {/* Contact Info */}
                     <div className="space-y-8">
                         <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] shadow-sm border border-slate-100 dark:border-slate-800 flex items-start gap-5">
-                            <div className="p-4 bg-primary/10 rounded-2xl text-primary shrink-0"><MapPin size={24} /></div>
+                            <div className="p-4 bg-primary/10 rounded-2xl text-primary dark:text-indigo-400 shrink-0"><MapPin size={24} /></div>
                             <div>
                                 <h3 className="font-bold text-slate-900 dark:text-white mb-1">Office Address</h3>
                                 <p className="text-slate-500 text-sm leading-relaxed">Gulshan 1, Dhaka 1212<br/>Bangladesh</p>

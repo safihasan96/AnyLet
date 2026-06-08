@@ -5,10 +5,10 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Shield, Lock, CheckCircle2, Clock, Home, ChevronRight, AlertTriangle, Banknote, Search } from 'lucide-react';
-import ConfirmationModal from '../components/ConfirmationModal';
 import PaymentStatusModal from '../components/PaymentStatusModal';
 import { useToast } from '../contexts/ToastContext';
 import { Helmet } from 'react-helmet-async';
+import { createNotification } from '../utils/notificationService';
 
 const STATUS_MAP = {
     held: { label: 'Deposit Held', color: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 border-blue-100 dark:border-blue-500/20', icon: Lock },
@@ -51,6 +51,18 @@ export default function MyBookings() {
             await updateDoc(doc(db, 'escrowDeposits', confirmModal.bookingId), {
                 confirmedByTenant: true,
             });
+
+            const booking = bookings.find(b => b.firestoreId === confirmModal.bookingId);
+            if (booking && booking.ownerId) {
+                await createNotification(
+                    booking.ownerId,
+                    'system',
+                    'Move-in Confirmed',
+                    `Tenant has confirmed move-in for ${booking.propertyName || 'the property'}. Please confirm from your side to release the deposit.`,
+                    '/requests'
+                );
+            }
+
             toast.success('Move-in confirmed! The deposit will be released once the owner also confirms.');
             setConfirmModal({ isOpen: false, bookingId: null });
         } catch (err) {
@@ -152,7 +164,7 @@ export default function MyBookings() {
                                                 </div>
                                                 <div className="border-t border-slate-200 dark:border-slate-700 pt-2 flex justify-between text-sm">
                                                     <span className="font-black text-slate-700 dark:text-slate-300">Total Paid</span>
-                                                    <span className="font-black text-primary text-base">৳{booking.totalPaid?.toLocaleString()}</span>
+                                                    <span className="font-black text-primary dark:text-indigo-400 text-base">৳{booking.totalPaid?.toLocaleString()}</span>
                                                 </div>
                                             </div>
 

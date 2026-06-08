@@ -10,7 +10,7 @@
 .city-grid-header h2 {
     font-size: 2.2rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--text-primary dark:text-indigo-400);
     margin-bottom: 0.5rem;
 }
 

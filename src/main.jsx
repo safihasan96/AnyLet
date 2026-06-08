@@ -7,6 +7,7 @@ import { LanguageProvider } from './contexts/LanguageContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { registerSW } from 'virtual:pwa-register'
 import { HelmetProvider } from 'react-helmet-async';
+import ErrorBoundary from './components/ErrorBoundary';
 import './index.css'
 import App from './App.jsx'
 
@@ -21,18 +22,20 @@ registerSW({
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <HelmetProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <ThemeProvider>
-            <LanguageProvider>
-              <ToastProvider>
-                <App />
-              </ToastProvider>
-            </LanguageProvider>
-          </ThemeProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </HelmetProvider>
+    <ErrorBoundary>
+      <HelmetProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <ThemeProvider>
+              <LanguageProvider>
+                <ToastProvider>
+                  <App />
+                </ToastProvider>
+              </LanguageProvider>
+            </ThemeProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </HelmetProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )

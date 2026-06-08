@@ -115,7 +115,7 @@ export default function ReportProperty() {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 px-4 md:px-6">
             <div className="max-w-2xl mx-auto">
-                <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors mb-8 font-bold">
+                <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 transition-colors mb-8 font-bold">
                     <ArrowLeft size={20} /> Back
                 </button>
 
@@ -137,7 +137,7 @@ export default function ReportProperty() {
                                 {REPORT_REASONS.map((r) => (
                                     <label 
                                         key={r}
-                                        className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${reason === r ? 'border-primary bg-primary/5 text-primary' : 'border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-200'}`}
+                                        className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer ${reason === r ? 'border-primary bg-primary/5 text-primary dark:text-indigo-400' : 'border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-200'}`}
                                     >
                                         <input 
                                             type="radio" 

@@ -5,13 +5,15 @@ import {
     LogOut, UserCheck, UserMinus, Trash2, TrendingUp, ShieldCheck,
     Bell, ChevronRight, ChevronLeft, Activity, Database, Lock,
     Menu, CheckCircle, Clock, Building2, MessageSquare, Flag, AlertCircle,
-    CreditCard, Banknote, HelpCircle
+    CreditCard, Banknote, HelpCircle, Star
 } from 'lucide-react';
-import { collection, onSnapshot, updateDoc, deleteDoc, doc, getDoc, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, onSnapshot, updateDoc, deleteDoc, doc, getDoc, getDocs, addDoc, serverTimestamp, setDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../contexts/ToastContext';
+import { createNotification } from '../utils/notificationService';
+import AdminReviewsTab from '../components/AdminReviewsTab';
 import '../index.css';
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -24,6 +26,7 @@ const NAV_ITEMS = [
     { path: '/admin/requests', icon: ClipboardList, label: 'Live Pipeline' },
     { path: '/admin/payments', icon: CreditCard, label: 'Payments & Escrow' },
     { path: '/admin/enquiries', icon: MessageSquare, label: 'Enquiries' },
+    { path: '/admin/reviews', icon: Star, label: 'Reviews' },
     { path: '/admin/reports', icon: Flag, label: 'Reports' },
     { path: '/admin/settings', icon: Settings, label: 'System Health' },
 ];
@@ -188,6 +191,19 @@ export default function AdminPanel() {
             if (selectedListing?.id === listing.id) {
                 setSelectedListing(prev => ({ ...prev, isApproved: true, isActive: true }));
             }
+
+            // Notify owner
+            const targetOwner = listing.ownerId || listing.userId;
+            if (targetOwner) {
+                await createNotification(
+                    targetOwner,
+                    'property_approved',
+                    'Property Approved! 🎉',
+                    `Your property "${listing.title}" has been approved and is now live on the platform.`,
+                    '/my-listings',
+                    { propertyId: listing.id }
+                );
+            }
         } catch (e) { console.error('Approve listing error:', e); }
     };
 
@@ -332,6 +348,22 @@ export default function AdminPanel() {
             onConfirm: async () => {
                 setModal(p => ({ ...p, isLoading: true }));
                 try {
+                    // Notify owner before deleting
+                    const propSnap = await getDoc(doc(db, 'properties', report.propertyId));
+                    if (propSnap.exists()) {
+                        const propData = propSnap.data();
+                        const ownerId = propData.ownerId || propData.userId;
+                        if (ownerId) {
+                            await createNotification(
+                                ownerId,
+                                'system',
+                                'Listing Removed',
+                                `Your property "${report.propertyTitle}" has been removed by our team due to a violation report.`,
+                                '/my-listings'
+                            );
+                        }
+                    }
+
                     // Delete the property
                     await deleteDoc(doc(db, 'properties', report.propertyId));
                     // Delete the report
@@ -356,6 +388,17 @@ export default function AdminPanel() {
             // If it's a listing fee, approve the property
             if (payment.type === 'listing_fee' && payment.propertyId) {
                 await updateDoc(doc(db, 'properties', payment.propertyId), { isApproved: true });
+                // Notify owner
+                if (payment.userId) {
+                    await createNotification(
+                        payment.userId,
+                        'property_approved',
+                        'Property Approved! 🎉',
+                        `Your payment has been confirmed and your property is now live on the platform.`,
+                        '/my-listings',
+                        { propertyId: payment.propertyId }
+                    );
+                }
             }
             // If it's a verification fee, set property to onsite verified
             if (payment.type === 'verification_fee' && payment.propertyId) {
@@ -363,6 +406,16 @@ export default function AdminPanel() {
                     verificationStatus: 'verified',
                     isOnsiteVerified: true
                 });
+                if (payment.userId) {
+                    await createNotification(
+                        payment.userId,
+                        'property_approved',
+                        'Property Verified ✅',
+                        `Your property has been onsite verified by our team.`,
+                        '/my-listings',
+                        { propertyId: payment.propertyId }
+                    );
+                }
             }
             // If it's an escrow deposit, set property status to Booked
             if (payment.type === 'escrow_deposit' && payment.propertyId) {
@@ -403,10 +456,35 @@ export default function AdminPanel() {
             onConfirm: async () => {
                 setModal(p => ({ ...p, isLoading: true }));
                 try {
+                    const escrowSnap = await getDoc(doc(db, 'escrowDeposits', escrowId));
                     await updateDoc(doc(db, 'escrowDeposits', escrowId), { 
                         status: 'released',
                         releasedAt: serverTimestamp() 
                     });
+
+                    // Notify both tenant and owner
+                    if (escrowSnap.exists()) {
+                        const escrow = escrowSnap.data();
+                        if (escrow.tenantId) {
+                            await createNotification(
+                                escrow.tenantId,
+                                'booking_confirmed',
+                                'Deposit Released',
+                                `Your escrow deposit for ${escrow.propertyName || 'the property'} has been released.`,
+                                '/my-bookings'
+                            );
+                        }
+                        if (escrow.ownerId) {
+                            await createNotification(
+                                escrow.ownerId,
+                                'booking_confirmed',
+                                'Escrow Funds Released',
+                                `The deposit for ${escrow.propertyName || 'your property'} has been released to you.`,
+                                '/my-listings'
+                            );
+                        }
+                    }
+
                     setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
                     setTimeout(closeModal, 1500);
                 } catch (e) {
@@ -879,7 +957,7 @@ export default function AdminPanel() {
                                                             <div>
                                                                 <div className="flex items-center gap-2">
                                                                     <p className="font-black text-zinc-950">{enquiry.topic}</p>
-                                                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${enquiry.type === 'support' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${enquiry.type === 'support' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600 dark:text-blue-400'}`}>
                                                                         {enquiry.type || 'Support'}
                                                                     </span>
                                                                 </div>
@@ -1026,7 +1104,7 @@ export default function AdminPanel() {
                                                                 <span className="font-black text-emerald-600">৳{escrow.depositAmount?.toLocaleString()}</span>
                                                             </td>
                                                             <td className="px-8 py-6 text-center">
-                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${escrow.status === 'released' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${escrow.status === 'released' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600 dark:text-blue-400'}`}>
                                                                     {escrow.status}
                                                                 </span>
                                                             </td>
@@ -1055,6 +1133,22 @@ export default function AdminPanel() {
                                             </table>
                                         </div>
                                     </div>
+                                </div>
+                            } />
+
+                            {/* ── Reviews ── */}
+                            <Route path="reviews" element={
+                                <div className="space-y-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500 shadow-inner">
+                                            <Star size={24} className="fill-amber-500" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-2xl font-black text-zinc-950 tracking-tight">Review Moderation</h2>
+                                            <p className="text-sm font-bold text-zinc-400">Manage property and landlord reviews</p>
+                                        </div>
+                                    </div>
+                                    <AdminReviewsTab openModal={showModal} />
                                 </div>
                             } />
 

@@ -52,7 +52,7 @@ export default function ForgotPassword() {
                     We've sent a password reset link to
                 </p>
                 <div className="px-5 py-2.5 bg-primary/10 rounded-2xl mb-8">
-                    <span className="text-primary font-black text-sm">{email}</span>
+                    <span className="text-primary dark:text-indigo-400 font-black text-sm">{email}</span>
                 </div>
 
                 <p className="text-slate-400 dark:text-slate-500 text-xs text-center font-semibold mb-10 max-w-[240px]">
@@ -91,7 +91,7 @@ export default function ForgotPassword() {
             {/* Back button */}
             <button
                 onClick={() => navigate(-1)}
-                className="text-slate-500 dark:text-slate-400 p-2 -ml-2 flex items-center gap-2 font-bold text-sm hover:text-primary transition-colors w-fit mb-6"
+                className="text-slate-500 dark:text-slate-400 p-2 -ml-2 flex items-center gap-2 font-bold text-sm hover:text-primary dark:text-indigo-400 transition-colors w-fit mb-6"
             >
                 <ArrowLeft size={20} strokeWidth={2.5} /> Back
             </button>
@@ -103,12 +103,12 @@ export default function ForgotPassword() {
                     <div className="size-10 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
                         <HomeIcon size={22} fill="currentColor" />
                     </div>
-                    <h2 className="text-xl font-[900] uppercase tracking-tighter text-primary">Any.Let</h2>
+                    <h2 className="text-xl font-[900] uppercase tracking-tighter text-primary dark:text-indigo-400">Any.Let</h2>
                 </div>
 
                 {/* Icon */}
                 <div className="size-20 bg-primary/10 dark:bg-primary/20 rounded-[28px] flex items-center justify-center mb-8">
-                    <Mail size={36} className="text-primary" strokeWidth={1.5} />
+                    <Mail size={36} className="text-primary dark:text-indigo-400" strokeWidth={1.5} />
                 </div>
 
                 {/* Heading */}
@@ -130,7 +130,7 @@ export default function ForgotPassword() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="relative group">
                         <Mail
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors"
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary dark:text-indigo-400 transition-colors"
                             size={20} strokeWidth={2.5}
                         />
                         <input
@@ -156,7 +156,7 @@ export default function ForgotPassword() {
 
                 {/* Back to login link */}
                 <div className="mt-10 text-center">
-                    <Link to="/login" className="inline-flex items-center gap-2 text-primary font-black text-[11px] uppercase tracking-widest hover:underline">
+                    <Link to="/login" className="inline-flex items-center gap-2 text-primary dark:text-indigo-400 font-black text-[11px] uppercase tracking-widest hover:underline">
                         <ArrowLeft size={14} strokeWidth={3} /> Back to Login
                     </Link>
                 </div>

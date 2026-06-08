@@ -9,7 +9,7 @@ export default function Pricing() {
                 <div className="flex justify-start mb-8">
                     <button 
                         onClick={() => navigate(-1)} 
-                        className="flex items-center gap-2 text-slate-500 hover:text-primary font-bold transition-colors"
+                        className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 font-bold transition-colors"
                     >
                         <ArrowLeft size={20} /> Back to previous
                     </button>
@@ -43,7 +43,7 @@ export default function Pricing() {
                             <Star size={12} className="fill-yellow-950" /> Most Popular
                         </div>
                         <div className="mb-6">
-                            <span className="text-xs font-black uppercase tracking-widest text-primary-200 text-white/70">Premium</span>
+                            <span className="text-xs font-black uppercase tracking-widest text-primary dark:text-indigo-400-200 text-white/70">Premium</span>
                             <div className="text-4xl font-black text-white mt-2">৳999 
                                 <span className="text-lg text-white/70 font-bold">/mo</span>
                             </div>
@@ -62,7 +62,7 @@ export default function Pricing() {
                                 </li>
                             ))}
                         </ul>
-                        <button className="w-full py-4 rounded-2xl bg-white text-primary font-black hover:scale-[1.02] active:scale-95 transition-transform shadow-xl">Upgrade with bKash</button>
+                        <button className="w-full py-4 rounded-2xl bg-white text-primary dark:text-indigo-400 font-black hover:scale-[1.02] active:scale-95 transition-transform shadow-xl">Upgrade with bKash</button>
                     </div>
 
                     {/* Agent Plan */}

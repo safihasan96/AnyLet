@@ -37,7 +37,7 @@ export default function AgentProfile() {
                                 {agent.name}
                                 <ShieldCheck className="text-emerald-500" size={20} />
                             </h1>
-                            <p className="text-primary font-bold">{agent.agency}</p>
+                            <p className="text-primary dark:text-indigo-400 font-bold">{agent.agency}</p>
                             
                             <div className="flex items-center justify-center gap-4 mt-4 text-sm font-bold text-slate-600 dark:text-slate-400">
                                 <span className="flex items-center gap-1"><MapPin size={16} /> {agent.city}</span>
@@ -82,7 +82,7 @@ export default function AgentProfile() {
                         <section className="bg-white dark:bg-slate-900 p-8 rounded-[32px] shadow-sm border border-slate-100 dark:border-slate-800">
                             <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6 flex justify-between items-center">
                                 Active Properties
-                                <Link to="/search" className="text-sm font-bold text-primary">View All &gt;</Link>
+                                <Link to="/search" className="text-sm font-bold text-primary dark:text-indigo-400">View All &gt;</Link>
                             </h2>
                             <div className="flex items-center justify-center py-20 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl">
                                 <div className="text-center">

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Bed, DoorOpen, Building2, Star, Heart, Zap, CheckCircle2, Clock, Lock } from 'lucide-react';
+import { MapPin, Bed, DoorOpen, Building2, Star, Heart, Zap, CheckCircle2, Clock, Lock, ShieldCheck } from 'lucide-react';
 import useSavedProperties from '../hooks/useSavedProperties';
 import { motion } from 'framer-motion';
 import { popIn } from '../utils/animations';
@@ -67,8 +67,14 @@ export default function PropertyCard({ property }) {
                     <div className="absolute top-4 left-4 flex flex-col gap-2 items-start">
                         {isVerified && (
                             <div className="bg-white/90 backdrop-blur text-emerald-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm border border-emerald-100">
-                                <Star size={12} className="fill-emerald-600" />
+                                <ShieldCheck size={12} className="fill-emerald-600" />
                                 Verified Landlord
+                            </div>
+                        )}
+                        {property.reviewCount > 0 && (
+                            <div className="bg-white/90 backdrop-blur text-amber-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm border border-amber-100">
+                                <Star size={12} className="fill-amber-500" />
+                                {Number(property.reviewScore || 0).toFixed(1)} ({property.reviewCount})
                             </div>
                         )}
                         {property.status && property.status !== 'Available' && (
@@ -91,7 +97,7 @@ export default function PropertyCard({ property }) {
                         <span className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shrink-0">{type}</span>
                     </div>
                     <div className="flex items-start gap-1.5 text-slate-500 dark:text-slate-400 text-sm mb-2">
-                        <MapPin size={14} className="text-primary shrink-0 mt-0.5" />
+                        <MapPin size={14} className="text-primary dark:text-indigo-400 shrink-0 mt-0.5" />
                         <span className="font-semibold line-clamp-2" title={displayLocation}>{displayLocation}</span>
                     </div>
 
@@ -105,13 +111,13 @@ export default function PropertyCard({ property }) {
                     <div className="flex items-center justify-between border-t border-slate-50 dark:border-slate-700/50 pt-4 mt-auto">
                         <div className="flex gap-4">
                             <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                                <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-primary">
+                                <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-primary dark:text-indigo-400">
                                     <Bed size={16} />
                                 </div>
                                 <span className="text-xs font-black">{beds} Bed</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
-                                <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-primary">
+                                <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-lg text-primary dark:text-indigo-400">
                                     <DoorOpen size={16} />
                                 </div>
                                 <span className="text-xs font-black">{baths} Bath</span>

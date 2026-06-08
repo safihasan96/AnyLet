@@ -87,7 +87,7 @@ export default function FeaturedListings({ category = 'All', division = '' }) {
                 <div className="flex items-center justify-between">
                     <h3 className="font-black text-2xl text-slate-900 dark:text-white uppercase tracking-tight">
                         {category === 'All' ? 'Latest' : category} Properties
-                        {division && <span className="text-primary font-bold ml-2">in {division}</span>}
+                        {division && <span className="text-primary dark:text-indigo-400 font-bold ml-2">in {division}</span>}
                     </h3>
                     <div className="hidden md:block h-1 bg-primary w-20 rounded-full"></div>
                 </div>

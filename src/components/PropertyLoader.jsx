@@ -15,7 +15,7 @@ export default function PropertyLoader() {
                 }}
                 className="bg-primary/10 p-4 rounded-[1.25rem] relative"
             >
-                <Home size={36} className="text-primary" strokeWidth={1.5} />
+                <Home size={36} className="text-primary dark:text-indigo-400" strokeWidth={1.5} />
                 <motion.div 
                     initial={{ opacity: 0.5, scale: 1 }}
                     animate={{ opacity: 0, scale: 1.5 }}

@@ -66,7 +66,7 @@ export default function ShareModal({ isOpen, onClose, property }) {
                             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 truncate mb-2">
                                 {property.upazila}, {property.district}
                             </p>
-                            <div className="text-xs font-black text-primary">
+                            <div className="text-xs font-black text-primary dark:text-indigo-400">
                                 ৳{property.rent?.toLocaleString()} <span className="text-slate-400 font-medium">/{property.billingCycle}</span>
                             </div>
                         </div>

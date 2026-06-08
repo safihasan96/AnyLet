@@ -60,7 +60,7 @@ export default function Favorites() {
         fetchFavorites();
     }, [currentUser, hookLoading, savedProperties]);
 
-    if (loading || hookLoading) return <div className="p-20 text-center animate-pulse text-primary">Loading favorites...</div>;
+    if (loading || hookLoading) return <div className="p-20 text-center animate-pulse text-primary dark:text-indigo-400">Loading favorites...</div>;
 
     return (
         <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark pb-32">

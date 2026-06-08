@@ -85,7 +85,7 @@ export default function VerifyEmail() {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col p-6">
             <header className="max-w-xl mx-auto w-full py-6">
-                <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold text-sm">
+                <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 transition-colors font-bold text-sm">
                     <ArrowLeft size={18} /> Back
                 </button>
             </header>
@@ -100,7 +100,7 @@ export default function VerifyEmail() {
                         Verify Your <br /> Email Address
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 font-bold text-sm mb-6 leading-relaxed">
-                        We've sent a verification link to <span className="text-primary">{currentUser?.email}</span>. 
+                        We've sent a verification link to <span className="text-primary dark:text-indigo-400">{currentUser?.email}</span>. 
                     </p>
 
                     <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-2xl p-4 mb-10 text-left flex gap-3">

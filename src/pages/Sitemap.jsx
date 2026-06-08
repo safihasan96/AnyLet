@@ -52,7 +52,7 @@ export default function Sitemap() {
                             <ul className="space-y-4">
                                 {section.links.map((link, ldx) => (
                                     <li key={ldx}>
-                                        <Link to={link.path} className="font-bold text-slate-600 dark:text-slate-300 hover:text-primary transition-colors">
+                                        <Link to={link.path} className="font-bold text-slate-600 dark:text-slate-300 hover:text-primary dark:text-indigo-400 transition-colors">
                                             {link.name}
                                         </Link>
                                     </li>

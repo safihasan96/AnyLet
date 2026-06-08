@@ -54,7 +54,7 @@ export default function Download() {
           </div>
 
           <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white mb-3">
-            Get <span className="text-primary">Any-Let</span> App
+            Get <span className="text-primary dark:text-indigo-400">Any-Let</span> App
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-base max-w-xs leading-relaxed mb-8">
             Find long-term apartment rentals in Bangladesh, right from your phone.
@@ -86,7 +86,7 @@ export default function Download() {
               { label: "Offline", sub: "Works offline" },
             ].map((f) => (
               <div key={f.label} className="bg-white dark:bg-slate-800 rounded-2xl p-3 shadow-sm border border-slate-100 dark:border-slate-700 text-center">
-                <p className="font-black text-primary text-base">{f.label}</p>
+                <p className="font-black text-primary dark:text-indigo-400 text-base">{f.label}</p>
                 <p className="text-slate-400 text-[10px] font-medium">{f.sub}</p>
               </div>
             ))}
@@ -103,7 +103,7 @@ export default function Download() {
               onClick={() => setActiveTab('android')}
               className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-colors ${
                 activeTab === 'android'
-                  ? 'text-primary border-b-2 border-primary bg-primary/5'
+                  ? 'text-primary dark:text-indigo-400 border-b-2 border-primary bg-primary/5'
                   : 'text-slate-400 dark:text-slate-500'
               }`}
             >
@@ -114,7 +114,7 @@ export default function Download() {
               onClick={() => setActiveTab('ios')}
               className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-bold transition-colors ${
                 activeTab === 'ios'
-                  ? 'text-primary border-b-2 border-primary bg-primary/5'
+                  ? 'text-primary dark:text-indigo-400 border-b-2 border-primary bg-primary/5'
                   : 'text-slate-400 dark:text-slate-500'
               }`}
             >
@@ -130,12 +130,12 @@ export default function Download() {
               return (
                 <div key={i}>
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 shrink-0">
                       <Icon size={20} />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] text-primary font-black uppercase tracking-widest">Step {i + 1}</span>
+                        <span className="text-[10px] text-primary dark:text-indigo-400 font-black uppercase tracking-widest">Step {i + 1}</span>
                       </div>
                       <h3 className="font-bold text-slate-900 dark:text-white text-sm mb-0.5">{step.title}</h3>
                       <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">{step.desc}</p>

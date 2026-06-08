@@ -19,7 +19,7 @@ export default function LoadingScreen() {
                     }}
                     className="relative bg-white dark:bg-slate-800 shadow-2xl shadow-primary/20 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-700"
                 >
-                    <Home size={64} className="text-primary" strokeWidth={1.5} />
+                    <Home size={64} className="text-primary dark:text-indigo-400" strokeWidth={1.5} />
                     
                     {/* Ring animation */}
                     <motion.div 

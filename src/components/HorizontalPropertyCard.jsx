@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Bed, DoorOpen, Building2, Heart, Star, CheckCircle2, Clock, Lock } from 'lucide-react';
+import { MapPin, Bed, DoorOpen, Building2, Heart, Star, CheckCircle2, Clock, Lock, ShieldCheck } from 'lucide-react';
 import useSavedProperties from '../hooks/useSavedProperties';
 
 export default function HorizontalPropertyCard({ property }) {
@@ -45,8 +45,14 @@ export default function HorizontalPropertyCard({ property }) {
                 </div>
                 {isVerified && (
                     <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur text-emerald-600 px-2 py-1.5 rounded-lg font-black text-[8px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm border border-emerald-100">
-                        <Star size={10} className="fill-emerald-600 shrink-0" />
+                        <ShieldCheck size={10} className="fill-emerald-600 shrink-0" />
                         <span className="truncate">Verified Landlord</span>
+                    </div>
+                )}
+                {property.reviewCount > 0 && !isVerified && (
+                    <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur text-amber-600 px-2 py-1.5 rounded-lg font-black text-[8px] uppercase tracking-wider flex items-center justify-center gap-1 shadow-sm border border-amber-100">
+                        <Star size={10} className="fill-amber-500 shrink-0" />
+                        <span className="truncate">{Number(property.reviewScore || 0).toFixed(1)} ({property.reviewCount})</span>
                     </div>
                 )}
             </div>
@@ -56,9 +62,17 @@ export default function HorizontalPropertyCard({ property }) {
                 <div>
                     <div className="flex justify-between items-start gap-2 mb-1">
                         <h4 className="font-[800] text-[15px] text-slate-900 dark:text-white leading-tight line-clamp-2 flex-1" title={title || 'Property Title'}>{title || 'Property Title'}</h4>
-                        <div className="flex items-baseline gap-0.5 shrink-0 ml-2">
-                            <span className="font-[900] text-[15px] text-primary dark:text-indigo-400">৳ {displayRent.toLocaleString()}</span>
-                            <span className="text-[10px] font-bold text-slate-400">/mo</span>
+                        <div className="flex flex-col items-end shrink-0 ml-2">
+                            <div className="flex items-baseline gap-0.5">
+                                <span className="font-[900] text-[15px] text-primary dark:text-indigo-400">৳ {displayRent.toLocaleString()}</span>
+                                <span className="text-[10px] font-bold text-slate-400">/mo</span>
+                            </div>
+                            {property.reviewCount > 0 && isVerified && (
+                                <div className="flex items-center gap-1 text-[10px] font-black text-amber-500 mt-1">
+                                    <Star size={10} className="fill-amber-500" />
+                                    {Number(property.reviewScore || 0).toFixed(1)} <span className="text-amber-500/60">({property.reviewCount})</span>
+                                </div>
+                            )}
                         </div>
                     </div>
 

@@ -8,7 +8,7 @@
   --color-primary-light: #e8ebff;
 
   --color-background-light: #f6f6f8;
-  --color-background-dark: #121320;
+  --color-background-dark: #161626;
 
   --font-sans: "Inter", "Outfit", system-ui, sans-serif;
   --font-display: "Outfit", "Inter", sans-serif;
@@ -16,6 +16,11 @@
   --radius-xl: 0.75rem;
   --radius-2xl: 1rem;
   --radius-3xl: 1.5rem;
+
+  --color-slate-950: var(--dyn-slate-950, #020617);
+  --color-slate-900: var(--dyn-slate-900, #0f172a);
+  --color-slate-800: var(--dyn-slate-800, #1e293b);
+  --color-slate-700: var(--dyn-slate-700, #334155);
 }
 
 @utility min-h-screen {
@@ -36,11 +41,16 @@
 }
 
 [data-theme='dark'] {
-  --color-bg: #121320;
-  --color-surface: #1e1f2e;
+  --color-bg: #161626;
+  --color-surface: #25243B;
   --color-text-main: #f8fafc;
-  --color-text-muted: #94a3b8;
-  --color-border: #2d2e3d;
+  --color-text-muted: #8B8BA7;
+  --color-border: #33324C;
+  
+  --dyn-slate-950: #11111c;
+  --dyn-slate-900: #161626;
+  --dyn-slate-800: #25243B;
+  --dyn-slate-700: #33324C;
 }
 
 body {
@@ -56,13 +66,9 @@ body {
 }
 
 [data-theme='dark'] body {
-  background-color: #121320;
-  background-image: url('/site-background.png');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  filter: brightness(0.6);
-  color: #f8fafc;
+  background-color: var(--color-bg);
+  background-image: none; /* Removed muddy site-background.png in favor of solid premium dark color */
+  color: var(--color-text-main);
 }
 
 [data-theme='dark'] .app-container {

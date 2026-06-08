@@ -368,7 +368,7 @@ function ListingCard({ property, onClick, onDelete, onStatusChange, onRefresh, o
                     </button>
                     <button 
                         onClick={() => !isBooked && onStatusChange('Booked')}
-                        className={`flex-1 min-w-fit whitespace-nowrap py-1.5 px-2 rounded-lg text-[11px] font-bold transition-colors ${isBooked ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                        className={`flex-1 min-w-fit whitespace-nowrap py-1.5 px-2 rounded-lg text-[11px] font-bold transition-colors ${isBooked ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                     >
                         Booked
                     </button>
@@ -383,7 +383,7 @@ function ListingCard({ property, onClick, onDelete, onStatusChange, onRefresh, o
                 <motion.button 
                     whileTap={{ scale: 0.95 }}
                     onClick={onRefresh}
-                    className="flex items-center justify-center gap-1.5 text-primary bg-primary/10 hover:bg-primary/20 text-xs font-bold py-2 px-4 rounded-xl transition-colors shrink-0"
+                    className="flex items-center justify-center gap-1.5 text-primary dark:text-indigo-400 bg-primary/10 hover:bg-primary/20 text-xs font-bold py-2 px-4 rounded-xl transition-colors shrink-0"
                 >
                     <RefreshCcw size={14} /> Bump
                 </motion.button>

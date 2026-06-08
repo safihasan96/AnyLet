@@ -60,9 +60,9 @@ export default function Agents() {
                                     <img src={agent.avatar} alt={agent.name} className="size-20 w-20 h-20 rounded-2xl object-cover bg-slate-100 dark:bg-slate-800" />
                                     <div className="flex-1 min-w-0">
                                         <Link to={`/agent/${agent.id}`} className="block">
-                                            <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight mb-1 truncate group-hover:text-primary transition-colors">{agent.name}</h3>
+                                            <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight mb-1 truncate group-hover:text-primary dark:text-indigo-400 transition-colors">{agent.name}</h3>
                                         </Link>
-                                        <p className="text-sm font-bold text-primary mb-1 truncate">{agent.agency}</p>
+                                        <p className="text-sm font-bold text-primary dark:text-indigo-400 mb-1 truncate">{agent.agency}</p>
                                         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-slate-500">
                                             <span className="flex items-center gap-1"><MapPin size={12} /> {agent.city}</span>
                                             <span className="flex items-center gap-1"><Star size={12} className="text-yellow-500 fill-yellow-500" /> {agent.rating} Rating</span>
@@ -81,7 +81,7 @@ export default function Agents() {
                                     </div>
                                 </div>
                                 
-                                <Link to={`/agent/${agent.id}`} className="w-full py-4 rounded-2xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-2 border-slate-100 dark:border-slate-700 font-bold hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2 group-hover:bg-slate-50">
+                                <Link to={`/agent/${agent.id}`} className="w-full py-4 rounded-2xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white border-2 border-slate-100 dark:border-slate-700 font-bold hover:border-primary hover:text-primary dark:text-indigo-400 transition-colors flex items-center justify-center gap-2 group-hover:bg-slate-50">
                                     <Building2 size={18} /> View Profile
                                 </Link>
                             </div>

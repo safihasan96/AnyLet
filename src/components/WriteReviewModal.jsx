@@ -9,12 +9,22 @@ import {
     X, Star, ArrowRight, ArrowLeft, Loader2, MessageSquare,
     Send, CheckCircle2, Eye
 } from 'lucide-react';
+import { createNotification } from '../utils/notificationService';
+import { submitOwnerReview, submitPropertyReview } from '../utils/reviewService';
 
-const CATEGORIES = [
+const OWNER_CATEGORIES = [
     { key: 'communication', label: 'Communication', emoji: '💬' },
     { key: 'responsiveness', label: 'Responsiveness', emoji: '⚡' },
     { key: 'cleanliness', label: 'Cleanliness', emoji: '✨' },
     { key: 'accuracy', label: 'Accuracy', emoji: '🎯' },
+];
+
+const PROPERTY_CATEGORIES = [
+    { key: 'location', label: 'Location', emoji: '📍' },
+    { key: 'value', label: 'Value', emoji: '💰' },
+    { key: 'cleanliness', label: 'Cleanliness', emoji: '✨' },
+    { key: 'accuracy', label: 'Accuracy', emoji: '🎯' },
+    { key: 'communication', label: 'Communication', emoji: '💬' },
 ];
 
 const MIN_CHARS = 30;
@@ -53,9 +63,11 @@ const stepVariants = {
     exit: (dir) => ({ opacity: 0, x: dir > 0 ? -60 : 60 }),
 };
 
-export default function WriteReviewModal({ isOpen, onClose, moveIn, ownerId, ownerName }) {
+export default function WriteReviewModal({ isOpen, onClose, moveIn, ownerId, ownerName, mode = 'owner' }) {
     const { currentUser, userData } = useAuth();
     const toast = useToast();
+
+    const CATEGORIES = mode === 'property' ? PROPERTY_CATEGORIES : OWNER_CATEGORIES;
 
     const [step, setStep] = useState(0); // 0=ratings, 1=text, 2=preview, 3=done
     const [dir, setDir] = useState(1);
@@ -67,6 +79,8 @@ export default function WriteReviewModal({ isOpen, onClose, moveIn, ownerId, own
         responsiveness: 0,
         cleanliness: 0,
         accuracy: 0,
+        location: 0,
+        value: 0
     });
     const [body, setBody] = useState('');
 
@@ -87,15 +101,16 @@ export default function WriteReviewModal({ isOpen, onClose, moveIn, ownerId, own
         setLoading(true);
         try {
             // Guard: one review per moveIn
+            const reviewCollection = mode === 'property' ? 'propertyReviews' : 'ownerReviews';
             const existing = await getDocs(
                 query(
-                    collection(db, 'ownerReviews'),
+                    collection(db, reviewCollection),
                     where('moveInId', '==', moveIn.id),
                     where('reviewerId', '==', currentUser.uid)
                 )
             );
             if (!existing.empty) {
-                toast.warning('You have already submitted a review for this move-in.');
+                toast.warning(`You have already submitted a ${mode} review for this move-in.`);
                 onClose();
                 return;
             }
@@ -103,8 +118,7 @@ export default function WriteReviewModal({ isOpen, onClose, moveIn, ownerId, own
             const reviewerName = userData?.fullName || userData?.name || currentUser.displayName || 'Anonymous';
             const reviewerAvatar = currentUser.photoURL || null;
 
-            await addDoc(collection(db, 'ownerReviews'), {
-                ownerId,
+            const reviewData = {
                 reviewerId: currentUser.uid,
                 reviewerName,
                 reviewerAvatar,
@@ -112,20 +126,25 @@ export default function WriteReviewModal({ isOpen, onClose, moveIn, ownerId, own
                 propertyId: moveIn.propertyId,
                 propertyName: moveIn.propertyName,
                 rating: ratings.overall,
-                categories: {
-                    communication: ratings.communication,
-                    responsiveness: ratings.responsiveness,
-                    cleanliness: ratings.cleanliness,
-                    accuracy: ratings.accuracy,
-                },
+                categories: CATEGORIES.reduce((acc, cat) => {
+                    acc[cat.key] = ratings[cat.key];
+                    return acc;
+                }, {}),
                 body: body.trim(),
-                createdAt: serverTimestamp(),
-                isApproved: true,
-            });
+            };
 
-            // Mark move-in as reviewed
-            if (moveIn.firestoreId) {
+            if (mode === 'property') {
+                reviewData.ownerId = ownerId; // to notify owner
+                await submitPropertyReview(moveIn.propertyId, reviewData);
+            } else {
+                await submitOwnerReview(ownerId, reviewData);
+            }
+
+            // Mark move-in as reviewed (if owner mode, we assume that's the final step. Maybe we shouldn't mark it if they need to do both? Let's just mark it here to avoid blocking them, they can still write the other one if we track them separately in moveIn doc).
+            if (moveIn.firestoreId && mode === 'owner') {
                 await updateDoc(doc(db, 'tenantMoveIns', moveIn.firestoreId), { hasReviewed: true });
+            } else if (moveIn.firestoreId && mode === 'property') {
+                await updateDoc(doc(db, 'tenantMoveIns', moveIn.firestoreId), { hasReviewedProperty: true });
             }
 
             setDir(1);
@@ -237,7 +256,7 @@ export default function WriteReviewModal({ isOpen, onClose, moveIn, ownerId, own
                                                 Rate your experience
                                             </h2>
                                             <p className="text-sm text-slate-500 font-medium">
-                                                Reviewing <span className="font-bold text-primary">{ownerName || 'this landlord'}</span>
+                                                Reviewing <span className="font-bold text-primary dark:text-indigo-400">{mode === 'property' ? moveIn?.propertyName : ownerName || 'this landlord'}</span>
                                             </p>
                                         </div>
 
@@ -304,7 +323,7 @@ export default function WriteReviewModal({ isOpen, onClose, moveIn, ownerId, own
                                             <textarea
                                                 value={body}
                                                 onChange={(e) => setBody(e.target.value.slice(0, MAX_CHARS))}
-                                                placeholder="Tell future renters about your experience with this landlord — their communication style, reliability, how they handled issues..."
+                                                placeholder={mode === 'property' ? "Tell future renters about this property — the location, noise levels, what was great and what could be better..." : "Tell future renters about your experience with this landlord — their communication style, reliability, how they handled issues..."}
                                                 rows={7}
                                                 className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-primary/30 rounded-3xl p-5 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-400 font-medium resize-none outline-none transition-all leading-relaxed"
                                             />
@@ -350,7 +369,7 @@ export default function WriteReviewModal({ isOpen, onClose, moveIn, ownerId, own
                                         <div className="bg-slate-50 dark:bg-slate-800 rounded-3xl p-6 mb-6 space-y-5">
                                             {/* Reviewer */}
                                             <div className="flex items-center gap-3">
-                                                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-base">
+                                                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 font-black text-base">
                                                     {(userData?.fullName || currentUser?.displayName || 'U')[0].toUpperCase()}
                                                 </div>
                                                 <div>

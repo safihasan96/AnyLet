@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { createPortal } from 'react-dom';
 import { X, Home, CheckCircle2, Star, ArrowRight, Loader2, Building2 } from 'lucide-react';
+import { createNotification } from '../utils/notificationService';
 
 const stepVariants = {
     enter: (dir) => ({ opacity: 0, x: dir > 0 ? 60 : -60 }),
@@ -52,6 +53,17 @@ export default function MoveInModal({ isOpen, onClose, request, onMoveInSuccess 
                 paymentStatus: 'pending', // Future Airbnb payment hook
                 hasReviewed: false,
             });
+
+            // Notify Owner
+            if (request.ownerId) {
+                await createNotification(
+                    request.ownerId,
+                    'system',
+                    'Tenant Moved In',
+                    `A tenant has confirmed they moved into ${request.propertyName || 'your property'}.`,
+                    '/requests'
+                );
+            }
 
             setDir(1);
             setStep(1);
@@ -142,7 +154,7 @@ export default function MoveInModal({ isOpen, onClose, request, onMoveInSuccess 
                                         </div>
 
                                         <div className="text-center mb-8">
-                                            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-4">
+                                            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary dark:text-indigo-400 px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest mb-4">
                                                 <Home size={14} /> Move-In Declaration
                                             </div>
                                             <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3 leading-tight">

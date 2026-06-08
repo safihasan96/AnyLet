@@ -23,8 +23,8 @@ export default function Home() {
     useEffect(() => {
         if (!currentUser) return;
         const q = query(
-            collection(db, 'viewing_requests'),
-            where('ownerId', '==', currentUser.uid),
+            collection(db, 'notifications'),
+            where('userId', '==', currentUser.uid),
             where('isRead', '==', false)
         );
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -58,7 +58,7 @@ export default function Home() {
                                     <option key={div} value={div}>{div}</option>
                                 ))}
                             </select>
-                            <ChevronDown size={14} className="text-primary absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <ChevronDown size={14} className="text-primary dark:text-indigo-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
                     </div>
                 </div>
@@ -68,9 +68,6 @@ export default function Home() {
                         {hasUnread && (
                             <span className="absolute top-2 right-2 size-2 bg-rose-500 rounded-full border-2 border-white dark:border-slate-800" />
                         )}
-                    </Link>
-                    <Link to="/profile" className="flex size-10 items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm border border-slate-100 dark:border-slate-700 transition-transform active:scale-95">
-                        <User size={20} />
                     </Link>
                 </div>
             </header>
@@ -83,7 +80,7 @@ export default function Home() {
                             animate={{ x: 0, opacity: 1 }}
                             className="text-3xl md:text-6xl font-black tracking-tight leading-tight text-slate-900 dark:text-white max-w-2xl"
                         >
-                            {t('hero_title')} <span className="text-primary italic">{t('hero_perfect')}</span> {t('hero_space')} <span className="underline decoration-primary decoration-4 underline-offset-8">{t('hero_seconds')}</span>.
+                            {t('hero_title')} <span className="text-primary dark:text-indigo-400 italic">{t('hero_perfect')}</span> {t('hero_space')} <span className="underline decoration-primary decoration-4 underline-offset-8">{t('hero_seconds')}</span>.
                         </motion.h1>
 
                         <motion.div
@@ -94,7 +91,7 @@ export default function Home() {
                             <div className="flex flex-col w-full max-w-4xl">
                                 <div className="flex w-full items-stretch rounded-3xl h-16 md:h-20 bg-white dark:bg-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 overflow-hidden group">
                                     <div className="hidden md:flex items-center border-r border-slate-100 dark:border-slate-700 pl-6 pr-2 relative">
-                                        <MapPin size={20} className="text-primary mr-2" />
+                                        <MapPin size={20} className="text-primary dark:text-indigo-400 mr-2" />
                                         <select 
                                             value={selectedDivision}
                                             onChange={(e) => setSelectedDivision(e.target.value)}
@@ -111,7 +108,7 @@ export default function Home() {
                                         onClick={() => navigate('/search', { state: { division: selectedDivision } })}
                                         className="flex-1 flex items-stretch cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
                                     >
-                                        <div className="text-slate-400 flex items-center justify-center pl-6 group-hover:text-primary transition-colors">
+                                        <div className="text-slate-400 flex items-center justify-center pl-6 group-hover:text-primary dark:text-indigo-400 transition-colors">
                                             <Search size={26} />
                                         </div>
                                         <div className="flex items-center w-full px-4 text-lg font-semibold text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
@@ -240,11 +237,11 @@ function CategoryItem({ icon, label, active = false, onClick }) {
         >
             <div className={`size-16 rounded-2xl shadow-lg flex items-center justify-center transition-all ${active
                 ? 'bg-primary text-white shadow-primary/30 scale-105'
-                : 'bg-white dark:bg-slate-800 text-primary border border-slate-100 dark:border-slate-700 shadow-slate-200/50 dark:shadow-none'
+                : 'bg-white dark:bg-slate-800 text-primary dark:text-indigo-400 border border-slate-100 dark:border-slate-700 shadow-slate-200/50 dark:shadow-none'
                 }`}>
                 {icon}
             </div>
-            <p className={`text-[11px] font-black uppercase tracking-wider ${active ? 'text-primary' : 'text-slate-500'}`}>{label}</p>
+            <p className={`text-[11px] font-black uppercase tracking-wider ${active ? 'text-primary dark:text-indigo-400' : 'text-slate-500'}`}>{label}</p>
         </motion.button>
     );
 }

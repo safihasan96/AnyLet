@@ -120,7 +120,7 @@ export default function Signup() {
             <header className="flex items-center mb-6 relative z-10">
                 <button
                     onClick={() => navigate(-1)}
-                    className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all active:scale-95 border border-slate-100 dark:border-slate-700 shadow-sm"
+                    className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary dark:text-indigo-400 transition-all active:scale-95 border border-slate-100 dark:border-slate-700 shadow-sm"
                 >
                     <ArrowLeft size={20} strokeWidth={3} />
                 </button>
@@ -137,7 +137,7 @@ export default function Signup() {
                     <div className="size-10 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
                         <HomeIcon size={22} fill="currentColor" />
                     </div>
-                    <h2 className="text-xl font-[900] uppercase tracking-tighter text-primary">Any.Let</h2>
+                    <h2 className="text-xl font-[900] uppercase tracking-tighter text-primary dark:text-indigo-400">Any.Let</h2>
                 </div>
 
                 {/* Referral banner */}
@@ -203,7 +203,7 @@ export default function Signup() {
                 <div className="mt-12 text-center">
                     <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">
                         Already have an account?{' '}
-                        <Link to="/login" className="text-primary font-black ml-1">Log In</Link>
+                        <Link to="/login" className="text-primary dark:text-indigo-400 font-black ml-1">Log In</Link>
                     </p>
                 </div>
             </div>
@@ -215,7 +215,7 @@ function InputField({ icon: Icon, ...props }) {
     return (
         <div className="relative group">
             <Icon
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary dark:text-indigo-400 transition-colors"
                 size={20} strokeWidth={2.5}
             />
             <input

@@ -25,7 +25,7 @@ export default function OwnerProfileModal({ isOpen, onClose, owner }) {
                     {/* Header */}
                     <header className="flex items-center justify-between px-6 pt-4 pb-0">
                         <h2 className="text-[18px] font-black text-slate-900 dark:text-white flex items-center gap-2">
-                            <User size={20} className="text-primary" />
+                            <User size={20} className="text-primary dark:text-indigo-400" />
                             Host Profile
                         </h2>
                         <button
@@ -39,7 +39,7 @@ export default function OwnerProfileModal({ isOpen, onClose, owner }) {
                     <main className="p-6 pt-6 flex flex-col items-center">
                         {/* Avatar */}
                         <div className="relative mb-4">
-                            <div className="size-24 rounded-[28px] bg-primary/10 flex items-center justify-center text-primary overflow-hidden shadow-inner border-4 border-white dark:border-slate-800 shadow-xl shadow-primary/10">
+                            <div className="size-24 rounded-[28px] bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 overflow-hidden shadow-inner border-4 border-white dark:border-slate-800 shadow-xl shadow-primary/10">
                                 {displayAvatar ? (
                                     <img src={displayAvatar} alt={displayName} className="w-full h-full object-cover" />
                                 ) : (
@@ -55,7 +55,7 @@ export default function OwnerProfileModal({ isOpen, onClose, owner }) {
 
                         {/* Name & Role */}
                         <h3 className="text-xl font-black text-slate-900 dark:text-white text-center mb-1 leading-tight">{displayName}</h3>
-                        <p className="text-[11px] font-black uppercase tracking-widest text-primary mb-8 px-3 py-1 bg-primary/10 rounded-lg">
+                        <p className="text-[11px] font-black uppercase tracking-widest text-primary dark:text-indigo-400 mb-8 px-3 py-1 bg-primary/10 rounded-lg">
                             {displayRole}
                         </p>
 
@@ -72,7 +72,7 @@ export default function OwnerProfileModal({ isOpen, onClose, owner }) {
                                 }}
                                 className="w-full flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors group text-left"
                             >
-                                <div className="size-10 shrink-0 rounded-xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                <div className="size-10 shrink-0 rounded-xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-primary dark:text-indigo-400 group-hover:scale-110 transition-transform">
                                     <Phone size={18} strokeWidth={2.5} />
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -82,7 +82,7 @@ export default function OwnerProfileModal({ isOpen, onClose, owner }) {
                             </button>
 
                             <a href={`mailto:${displayEmail}`} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 hover:border-primary/30 transition-colors group">
-                                <div className="size-10 rounded-xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                <div className="size-10 rounded-xl bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-primary dark:text-indigo-400 group-hover:scale-110 transition-transform">
                                     <Mail size={18} strokeWidth={2.5} />
                                 </div>
                                 <div className="flex-1 min-w-0">

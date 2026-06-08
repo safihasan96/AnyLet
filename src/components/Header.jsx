@@ -26,6 +26,7 @@ export default function Header() {
   const [language, setLanguage] = useState('EN');
   const [currency, setCurrency] = useState('BDT');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const dropdownRef = useRef(null);
   const { currentUser, logout, userProfile, login } = useAuth();
   const navigate = useNavigate();
@@ -34,20 +35,34 @@ export default function Header() {
   useEffect(() => {
     if (!currentUser) {
         setUnreadCount(0);
+        setUnreadNotificationCount(0);
         return;
     }
 
-    const q = query(
+    const qReq = query(
         collection(db, 'viewing_requests'),
         where('ownerId', '==', currentUser.uid),
         where('isRead', '==', false)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubReq = onSnapshot(qReq, (snapshot) => {
         setUnreadCount(snapshot.size);
     });
 
-    return () => unsubscribe();
+    const qNotif = query(
+        collection(db, 'notifications'),
+        where('userId', '==', currentUser.uid),
+        where('isRead', '==', false)
+    );
+
+    const unsubNotif = onSnapshot(qNotif, (snapshot) => {
+        setUnreadNotificationCount(snapshot.size);
+    });
+
+    return () => {
+        unsubReq();
+        unsubNotif();
+    };
   }, [currentUser]);
 
   useEffect(() => {
@@ -94,18 +109,18 @@ export default function Header() {
           {location.pathname !== '/' && (
             <button 
               onClick={() => navigate(-1)}
-              className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary transition-all active:scale-95 border border-slate-100 dark:border-slate-700"
+              className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary dark:text-indigo-400 transition-all active:scale-95 border border-slate-100 dark:border-slate-700"
               title="Go Back"
             >
               <ArrowLeft size={20} strokeWidth={3} />
             </button>
           )}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="bg-primary p-2.5 rounded-2xl text-white shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">
+            <div className="bg-primary dark:bg-indigo-500 p-2.5 rounded-2xl text-white shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform">
               <Building2 size={24} />
             </div>
             <span className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
-              any<span className="text-primary italic">.let</span>
+              any<span className="text-primary dark:text-indigo-400 italic">.let</span>
             </span>
           </Link>
         </div>
@@ -142,7 +157,7 @@ export default function Header() {
               >
                 <div className="relative size-10 rounded-xl bg-primary text-white flex items-center justify-center font-black text-sm">
                   {currentUser.email?.charAt(0).toUpperCase()}
-                  {unreadCount > 0 && (
+                  {(unreadCount > 0 || unreadNotificationCount > 0) && (
                       <span className="absolute -top-1 -right-1 flex size-3">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
                           <span className="relative inline-flex size-3 rounded-full bg-rose-500 border-2 border-white dark:border-slate-800" />
@@ -171,6 +186,7 @@ export default function Header() {
                     <div className="p-2 space-y-1">
                       <DropdownItem to="/my-listings" onClick={() => setIsDropdownOpen(false)} icon={<List size={18} />} label="My Ads" />
                       <DropdownItem to="/requests" onClick={() => setIsDropdownOpen(false)} icon={<MessageSquare size={18} />} label="Messages" badgeCount={unreadCount} />
+                      <DropdownItem to="/notifications" onClick={() => setIsDropdownOpen(false)} icon={<Bell size={18} />} label="Notifications" badgeCount={unreadNotificationCount} />
                       <DropdownItem to="/profile" onClick={() => setIsDropdownOpen(false)} icon={<User size={18} />} label="My Profile" />
                       <DropdownItem to="/favorites" onClick={() => setIsDropdownOpen(false)} icon={<Heart size={18} />} label="Saved Items" />
                       {userProfile?.role === 'admin' && (
@@ -191,7 +207,7 @@ export default function Header() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Link to="/login" className="hidden sm:block text-sm font-black text-slate-600 dark:text-slate-300 hover:text-primary px-4">Log in</Link>
+              <Link to="/login" className="hidden sm:block text-sm font-black text-slate-600 dark:text-slate-300 hover:text-primary dark:text-indigo-400 px-4">Log in</Link>
               <Link to="/signup" className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-2xl font-black text-sm shadow-lg shadow-primary/20 hover:scale-105 transition-transform active:scale-95">
                 Join Now
               </Link>
@@ -205,7 +221,7 @@ export default function Header() {
 
 function DropdownItem({ to, icon, label, onClick, badgeCount }) {
   return (
-    <Link to={to} onClick={onClick} className="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-primary transition-all font-bold text-sm group">
+    <Link to={to} onClick={onClick} className="flex items-center justify-between px-4 py-3 rounded-2xl text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-primary dark:text-indigo-400 transition-all font-bold text-sm group">
       <div className="flex items-center gap-3">
         {icon}
         {label}

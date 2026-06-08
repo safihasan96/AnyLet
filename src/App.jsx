@@ -1,7 +1,5 @@
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { db } from './firebase';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import InstallPrompt from './components/InstallPrompt';
@@ -9,6 +7,7 @@ import CustomCursor from './components/CustomCursor';
 import Home from './pages/Home';
 import Search from './pages/Search';
 import PropertyDetails from './pages/PropertyDetails';
+import PropertyReviews from './pages/PropertyReviews';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Profile from './pages/Profile';
@@ -86,6 +85,7 @@ function App() {
               <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
               <Route path="/search" element={<PageWrapper><Search /></PageWrapper>} />
               <Route path="/property/:id" element={<PageWrapper><PropertyDetails /></PageWrapper>} />
+              <Route path="/property/:id/reviews" element={<PageWrapper><PropertyReviews /></PageWrapper>} />
               <Route path="/owner/:id" element={<PageWrapper><OwnerProfile /></PageWrapper>} />
               <Route path="/login" element={<PageWrapper><Login /></PageWrapper>} />
               <Route path="/signup" element={<PageWrapper><Signup /></PageWrapper>} />

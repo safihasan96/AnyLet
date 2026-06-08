@@ -221,7 +221,7 @@ export default function ReferralDashboard() {
     if (loading) {
         return (
             <div className="flex flex-col min-h-screen items-center justify-center bg-white dark:bg-slate-950">
-                <RefreshCw size={28} className="animate-spin text-primary mb-3" />
+                <RefreshCw size={28} className="animate-spin text-primary dark:text-indigo-400 mb-3" />
                 <p className="text-sm font-bold text-slate-400">Loading your earnings...</p>
             </div>
         );
@@ -268,8 +268,8 @@ export default function ReferralDashboard() {
 
                         <div className="flex items-center gap-2 pt-1">
                             <p className="text-[10px] font-bold text-slate-400">Code:</p>
-                            <span className="font-black text-xs text-primary bg-primary/10 px-3 py-1 rounded-lg tracking-wide">{referralCode}</span>
-                            <button onClick={shareLink} className="ml-auto flex items-center gap-1.5 text-xs font-black text-primary hover:text-primary/80 transition-colors">
+                            <span className="font-black text-xs text-primary dark:text-indigo-400 bg-primary/10 px-3 py-1 rounded-lg tracking-wide">{referralCode}</span>
+                            <button onClick={shareLink} className="ml-auto flex items-center gap-1.5 text-xs font-black text-primary dark:text-indigo-400 hover:text-primary dark:text-indigo-400/80 transition-colors">
                                 <Share2 size={14} /> Share
                             </button>
                         </div>
@@ -369,7 +369,7 @@ export default function ReferralDashboard() {
                             { step: '04', text: 'Withdraw your earnings anytime (min. ৳100).' },
                         ].map(({ step, text }) => (
                             <div key={step} className="flex items-start gap-4">
-                                <span className="text-[10px] font-black text-primary bg-primary/10 px-2.5 py-1 rounded-lg shrink-0">{step}</span>
+                                <span className="text-[10px] font-black text-primary dark:text-indigo-400 bg-primary/10 px-2.5 py-1 rounded-lg shrink-0">{step}</span>
                                 <p className="text-xs font-bold text-slate-600 dark:text-slate-400 leading-relaxed">{text}</p>
                             </div>
                         ))}

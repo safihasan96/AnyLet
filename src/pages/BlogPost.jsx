@@ -24,7 +24,7 @@ export default function BlogPost() {
             <div className="max-w-4xl mx-auto px-6 -mt-32 relative z-10">
                 <div className="bg-white dark:bg-slate-900 rounded-[40px] p-8 md:p-12 shadow-xl border border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-3 mb-6">
-                        <span className="bg-primary/10 text-primary px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest">Area Guides</span>
+                        <span className="bg-primary/10 text-primary dark:text-indigo-400 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest">Area Guides</span>
                     </div>
                     
                     <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white leading-tight mb-8">
@@ -44,7 +44,7 @@ export default function BlogPost() {
                         <div className="flex items-center gap-6 text-sm font-bold text-slate-500">
                             <span className="flex items-center gap-1.5"><Calendar size={16} /> Oct 15, 2026</span>
                             <span className="flex items-center gap-1.5"><Clock size={16} /> 5 min read</span>
-                            <button className="flex items-center gap-1.5 text-primary hover:opacity-80 transition-opacity">
+                            <button className="flex items-center gap-1.5 text-primary dark:text-indigo-400 hover:opacity-80 transition-opacity">
                                 <Share2 size={16} /> Share
                             </button>
                         </div>

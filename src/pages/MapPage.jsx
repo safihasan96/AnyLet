@@ -133,14 +133,14 @@ export default function MapPage() {
                 {loading ? (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-950 gap-4">
                         <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center">
-                            <MapIcon size={32} className="text-primary animate-pulse" />
+                            <MapIcon size={32} className="text-primary dark:text-indigo-400 animate-pulse" />
                         </div>
                         <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Loading Map…</p>
                     </div>
                 ) : (
                     <Suspense fallback={
                         <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-950 gap-4">
-                            <MapIcon size={32} className="text-primary animate-pulse" />
+                            <MapIcon size={32} className="text-primary dark:text-indigo-400 animate-pulse" />
                             <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Loading Map…</p>
                         </div>
                     }>
@@ -174,7 +174,7 @@ export default function MapPage() {
                             {/* Header */}
                             <div className="flex items-center justify-between px-6 py-4 shrink-0 border-b border-slate-100 dark:border-slate-800">
                                 <h2 className="text-xl font-black text-slate-900 dark:text-white">Filter Map</h2>
-                                <button onClick={resetFilters} className="text-sm font-black text-primary">Reset all</button>
+                                <button onClick={resetFilters} className="text-sm font-black text-primary dark:text-indigo-400">Reset all</button>
                             </div>
 
                             {/* Scrollable body */}

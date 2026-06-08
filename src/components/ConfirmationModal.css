@@ -47,7 +47,7 @@
 .confirmation-header h3 {
     margin: 0;
     font-size: 1.25rem;
-    color: var(--text-primary);
+    color: var(--text-primary dark:text-indigo-400);
     font-weight: 600;
 }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -293,8 +293,8 @@ export default function Requests() {
 }
 
 function RequestCard({ request, isReceived, formatDate, onDelete, onReview, onListingClick, onCallClick, onMoveIn, isMovedIn }) {
-    // Generate a placeholder avatar if none exists
-    const seed = request.tenantId || Math.random();
+    // Use a stable seed (tenantId) to avoid impure Math.random() calls during render
+    const seed = request.tenantId || request.id || 'default';
     const avatarUrl = `https://api.dicebear.com/7.x/notionists/svg?seed=${seed}&backgroundColor=f1f5f9`;
 
     return (

@@ -195,7 +195,7 @@ export default function Search() {
                         <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
                             <div className="flex items-center justify-between mb-8">
                                 <h2 className="text-xl font-black text-slate-900 dark:text-white">Filters</h2>
-                                <button onClick={resetFilters} className="text-primary text-sm font-black hover:underline underline-offset-4">Reset</button>
+                                <button onClick={resetFilters} className="text-primary dark:text-indigo-400 text-sm font-black hover:underline underline-offset-4">Reset</button>
                             </div>
                             <FilterContent 
                                 filterState={filterState} setFilterState={setFilterState}
@@ -216,7 +216,7 @@ export default function Search() {
                                 <ArrowLeft size={20} strokeWidth={2.5} />
                             </button>
                             <div className="relative flex-1 group">
-                                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors pointer-events-none">
+                                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary dark:text-indigo-400 transition-colors pointer-events-none">
                                     <SearchIcon size={22} strokeWidth={2.5} />
                                 </div>
                                 <input
@@ -275,7 +275,7 @@ export default function Search() {
                                                 className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-3.5 pr-2 py-2 group"
                                             >
                                                 <button
-                                                    className="text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-primary transition-colors"
+                                                    className="text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-primary dark:text-indigo-400 transition-colors"
                                                     onClick={() => { setSearchTerm(item); commitSearch(item); }}
                                                 >
                                                     {item}
@@ -346,7 +346,7 @@ export default function Search() {
                             <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto my-4 shrink-0" />
                             <header className="flex items-center justify-between px-8 pb-4 shrink-0">
                                 <h2 className="text-2xl font-black text-slate-900 dark:text-white">Filters</h2>
-                                <button onClick={resetFilters} className="text-primary font-black">Reset</button>
+                                <button onClick={resetFilters} className="text-primary dark:text-indigo-400 font-black">Reset</button>
                             </header>
                             <div className="flex-1 overflow-y-auto px-8 pb-32">
                                 <FilterContent 
@@ -372,7 +372,7 @@ function FilterContent({ filterState, setFilterState, districts, thanas, PROPERT
     return (
         <div className="space-y-10">
             <section>
-                <div className="flex items-center gap-2 mb-4 text-primary"><RotateCcw size={16} /><h3 className="text-[15px] font-black uppercase tracking-wider">Location Setup</h3></div>
+                <div className="flex items-center gap-2 mb-4 text-primary dark:text-indigo-400"><RotateCcw size={16} /><h3 className="text-[15px] font-black uppercase tracking-wider">Location Setup</h3></div>
                 <div className="space-y-4">
                     <Select label="Division" value={filterState.division} onChange={(e) => setFilterState(prev => ({ ...prev, division: e.target.value, district: '', upazila: '' }))} options={Object.keys(bdLocations)} />
                     <div className="grid grid-cols-2 gap-4">
@@ -417,7 +417,7 @@ function FilterContent({ filterState, setFilterState, districts, thanas, PROPERT
                 <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Amenities</h3>
                 <div className="flex flex-wrap gap-2">
                     {UTILITY_OPTIONS.map(u => (
-                        <button key={u} onClick={() => toggleList('utilities', u)} className={`py-2 px-4 rounded-xl text-xs font-bold border-2 transition-all flex items-center gap-2 ${filterState.utilities.includes(u) ? 'bg-primary/10 border-primary text-primary' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'}`}>
+                        <button key={u} onClick={() => toggleList('utilities', u)} className={`py-2 px-4 rounded-xl text-xs font-bold border-2 transition-all flex items-center gap-2 ${filterState.utilities.includes(u) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'}`}>
                             {filterState.utilities.includes(u) && <Check size={12} strokeWidth={4} />}{u}
                         </button>
                     ))}

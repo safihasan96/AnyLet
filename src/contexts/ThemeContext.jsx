@@ -13,9 +13,7 @@ export function ThemeProvider({ children }) {
         if (savedTheme) {
             return savedTheme;
         }
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            return 'dark';
-        }
+        // Removed automatic dark mode preference to default to light mode by system
         return 'light';
     });
 

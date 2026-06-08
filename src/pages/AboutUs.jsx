@@ -9,7 +9,7 @@ export default function AboutUs() {
                 <div className="flex justify-start mb-8">
                     <button 
                         onClick={() => navigate(-1)} 
-                        className="flex items-center gap-2 text-slate-500 hover:text-primary font-bold transition-colors"
+                        className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 font-bold transition-colors"
                     >
                         <ArrowLeft size={20} /> Back to previous
                     </button>

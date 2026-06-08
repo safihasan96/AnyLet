@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,6 +12,8 @@ import PropertyCard from '../components/PropertyCard';
 import PropertyLoader from '../components/PropertyLoader';
 import WriteReviewModal from '../components/WriteReviewModal';
 import { Helmet } from 'react-helmet-async';
+import { useToast } from '../contexts/ToastContext';
+import { toggleHelpfulVote, submitLandlordReply } from '../utils/reviewService';
 
 const CATEGORIES = [
     { key: 'communication', label: 'Communication', emoji: '💬' },
@@ -44,6 +46,7 @@ export default function OwnerProfile() {
     const { id } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const toast = useToast();
 
     const [owner, setOwner] = useState(null);
     const [properties, setProperties] = useState([]);
@@ -113,6 +116,57 @@ export default function OwnerProfile() {
         }).finally(() => setReviewsLoading(false));
     }, [id]);
 
+    const handleHelpfulVote = async (reviewId) => {
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+        try {
+            await toggleHelpfulVote('ownerReviews', reviewId, currentUser.uid);
+            // Optimistic update
+            setReviews(reviews.map(r => {
+                if (r.id === reviewId) {
+                    const hasVoted = (r.helpfulUsers || []).includes(currentUser.uid);
+                    return {
+                        ...r,
+                        helpfulUsers: hasVoted ? r.helpfulUsers.filter(uid => uid !== currentUser.uid) : [...(r.helpfulUsers || []), currentUser.uid],
+                        helpfulVotes: hasVoted ? Math.max(0, (r.helpfulVotes || 1) - 1) : (r.helpfulVotes || 0) + 1
+                    };
+                }
+                return r;
+            }));
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to register vote");
+        }
+    };
+
+    const handleReply = async (reviewId, text) => {
+        if (!currentUser || !text.trim()) return;
+        try {
+             const ownerName = currentUser.displayName || 'Property Owner';
+             await submitLandlordReply('ownerReviews', reviewId, text, currentUser.uid, ownerName);
+             setReviews(reviews.map(r => {
+                 if (r.id === reviewId) {
+                     return {
+                         ...r,
+                         landlordReply: {
+                             text,
+                             ownerId: currentUser.uid,
+                             ownerName: ownerName,
+                             createdAt: new Date()
+                         }
+                     };
+                 }
+                 return r;
+             }));
+             toast.success("Reply posted!");
+        } catch (error) {
+             console.error(error);
+             toast.error("Failed to post reply");
+        }
+    };
+
     // Computed stats
     const stats = useMemo(() => {
         if (reviews.length === 0) return null;
@@ -153,7 +207,7 @@ export default function OwnerProfile() {
 
             {/* Back */}
             <div className="max-w-5xl mx-auto px-4 md:px-6 pt-6">
-                <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold mb-6">
+                <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 transition-colors font-bold mb-6">
                     <ArrowLeft size={20} /> Back
                 </button>
             </div>
@@ -168,7 +222,7 @@ export default function OwnerProfile() {
                         <div className="flex flex-col sm:flex-row sm:items-end gap-6">
                             {/* Avatar */}
                             <div className="relative">
-                                <div className="size-28 rounded-[28px] bg-white dark:bg-slate-800 border-4 border-white dark:border-slate-900 shadow-xl flex items-center justify-center text-4xl font-black text-primary overflow-hidden">
+                                <div className="size-28 rounded-[28px] bg-white dark:bg-slate-800 border-4 border-white dark:border-slate-900 shadow-xl flex items-center justify-center text-4xl font-black text-primary dark:text-indigo-400 overflow-hidden">
                                     {owner.photoURL ? (
                                         <img src={owner.photoURL} alt={displayName} className="w-full h-full object-cover" />
                                     ) : (
@@ -227,7 +281,7 @@ export default function OwnerProfile() {
                                 animate={{ opacity: 1, y: 0 }}
                                 className="mt-6 bg-gradient-to-r from-primary/5 to-indigo-500/5 border border-primary/20 dark:border-primary/30 rounded-3xl p-5 flex items-center gap-4"
                             >
-                                <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 shrink-0">
                                     <Award size={24} />
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -289,7 +343,7 @@ export default function OwnerProfile() {
                         <motion.div key="reviews" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
                             {reviewsLoading ? (
                                 <div className="flex justify-center py-16">
-                                    <Loader2 size={32} className="animate-spin text-primary" />
+                                    <Loader2 size={32} className="animate-spin text-primary dark:text-indigo-400" />
                                 </div>
                             ) : reviews.length === 0 ? (
                                 <div className="py-16 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
@@ -371,7 +425,15 @@ export default function OwnerProfile() {
                                     {/* Reviews List */}
                                     <div className="space-y-4">
                                         {reviews.map((review, idx) => (
-                                            <ReviewCard key={review.id} review={review} idx={idx} />
+                                            <ReviewCard 
+                                                key={review.id} 
+                                                review={review} 
+                                                idx={idx} 
+                                                onHelpful={() => handleHelpfulVote(review.id)}
+                                                currentUserId={currentUser?.uid}
+                                                isOwner={currentUser?.uid === id}
+                                                onReply={(text) => handleReply(review.id, text)}
+                                            />
                                         ))}
                                     </div>
                                 </div>
@@ -393,12 +455,17 @@ export default function OwnerProfile() {
     );
 }
 
-function ReviewCard({ review, idx }) {
+function ReviewCard({ review, idx, onHelpful, currentUserId, isOwner, onReply }) {
+    const [replyText, setReplyText] = useState('');
+    const [isReplying, setIsReplying] = useState(false);
+
     const formatDate = (ts) => {
         if (!ts) return '';
         const date = ts.toDate ? ts.toDate() : new Date(ts);
         return new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(date);
     };
+
+    const hasVotedHelpful = (review.helpfulUsers || []).includes(currentUserId);
 
     return (
         <motion.div
@@ -409,9 +476,9 @@ function ReviewCard({ review, idx }) {
         >
             {/* Reviewer header */}
             <div className="flex items-start gap-4 mb-4">
-                <div className="size-11 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-base shrink-0">
+                <div className="size-11 rounded-full bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 font-black text-base shrink-0 overflow-hidden">
                     {review.reviewerAvatar ? (
-                        <img src={review.reviewerAvatar} alt={review.reviewerName} className="w-full h-full rounded-full object-cover" />
+                        <img src={review.reviewerAvatar} alt={review.reviewerName} className="w-full h-full object-cover" />
                     ) : (
                         (review.reviewerName || 'A')[0].toUpperCase()
                     )}
@@ -426,7 +493,7 @@ function ReviewCard({ review, idx }) {
                         </div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{formatDate(review.createdAt)}</span>
                         {review.propertyName && (
-                            <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full truncate max-w-[140px]">
+                            <span className="text-[10px] font-bold text-primary dark:text-indigo-400 bg-primary/10 px-2 py-0.5 rounded-full truncate max-w-[140px]">
                                 {review.propertyName}
                             </span>
                         )}
@@ -439,13 +506,13 @@ function ReviewCard({ review, idx }) {
             </div>
 
             {/* Body */}
-            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium mb-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium mb-4 whitespace-pre-wrap">
                 {review.body}
             </p>
 
             {/* Category pills */}
             {review.categories && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mb-4">
                     {CATEGORIES.map(cat => {
                         const val = review.categories[cat.key];
                         if (!val) return null;
@@ -459,6 +526,67 @@ function ReviewCard({ review, idx }) {
                     })}
                 </div>
             )}
+
+            {/* Actions & Replies */}
+            <div className="flex flex-col gap-4 mt-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+                <div className="flex items-center justify-between">
+                    <button 
+                        onClick={onHelpful}
+                        className={`flex items-center gap-1.5 text-xs font-bold transition-colors px-3 py-1.5 rounded-full ${hasVotedHelpful ? 'bg-primary/10 text-primary dark:text-indigo-400' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'}`}
+                    >
+                        <ThumbsUp size={14} className={hasVotedHelpful ? 'fill-primary dark:fill-indigo-400' : ''} /> 
+                        Helpful ({review.helpfulVotes || 0})
+                    </button>
+                    
+                    {isOwner && !review.landlordReply && !isReplying && (
+                        <button 
+                            onClick={() => setIsReplying(true)}
+                            className="flex items-center gap-1.5 text-xs font-bold text-primary dark:text-indigo-400 hover:text-indigo-600 transition-colors"
+                        >
+                            <MessageSquare size={14} /> Reply
+                        </button>
+                    )}
+                </div>
+
+                {/* Landlord Reply Box */}
+                {review.landlordReply && (
+                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl ml-4 sm:ml-8 border border-slate-100 dark:border-slate-700 relative">
+                         <div className="absolute top-0 left-0 w-1 h-full bg-primary/30 rounded-l-2xl"></div>
+                         <div className="flex items-center gap-2 mb-2">
+                             <div className="size-6 bg-primary/20 text-primary rounded-full flex items-center justify-center font-bold text-xs">
+                                 {review.landlordReply.ownerName?.[0] || 'O'}
+                             </div>
+                             <span className="text-xs font-black text-slate-900 dark:text-white">Response from {review.landlordReply.ownerName || 'Owner'}</span>
+                             <span className="text-[10px] text-slate-400">{formatDate(review.landlordReply.createdAt)}</span>
+                         </div>
+                         <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed pl-8 whitespace-pre-wrap">
+                             {review.landlordReply.text}
+                         </p>
+                     </div>
+                )}
+
+                {/* Reply Input Form */}
+                {isOwner && !review.landlordReply && isReplying && (
+                     <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+                         <textarea
+                             value={replyText}
+                             onChange={e => setReplyText(e.target.value)}
+                             placeholder="Write a public response to this review..."
+                             className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none min-h-[80px] mb-3"
+                         />
+                         <div className="flex justify-end gap-2">
+                             <button onClick={() => setIsReplying(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700">Cancel</button>
+                             <button 
+                                onClick={() => { onReply(replyText); setIsReplying(false); }}
+                                disabled={!replyText.trim()}
+                                className="px-4 py-2 bg-primary text-white text-xs font-bold rounded-lg disabled:opacity-50"
+                             >
+                                 Post Reply
+                             </button>
+                         </div>
+                     </div>
+                )}
+            </div>
         </motion.div>
     );
 }

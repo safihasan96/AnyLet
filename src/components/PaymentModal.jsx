@@ -61,7 +61,7 @@ const getTheme = (type) => {
         gradient: 'from-primary to-indigo-900',
         gradientBr: 'from-primary to-indigo-900',
         textLight: 'text-indigo-300',
-        textDark: 'text-primary dark:text-indigo-300',
+        textDark: 'text-primary dark:text-indigo-400',
         bgMain: 'bg-primary',
         bgLight: 'bg-primary/10',
         borderLight: 'border-primary/20',
@@ -71,7 +71,7 @@ const getTheme = (type) => {
         shadowLg: 'shadow-primary/30',
         dot: 'bg-indigo-400',
         ring: 'focus:border-primary/50',
-        success: 'text-primary'
+        success: 'text-primary dark:text-indigo-400'
     };
 };
 
@@ -254,8 +254,8 @@ export default function PaymentModal({
                                         {/* Premium Order Card */}
                                         <div className="bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20 rounded-3xl p-6 mb-6">
                                             <div className="flex items-center gap-2 mb-5">
-                                                <CreditCard size={16} className="text-primary dark:text-primary" />
-                                                <p className="text-primary/70 dark:text-primary/80 text-xs font-black uppercase tracking-widest">Order Summary</p>
+                                                <CreditCard size={16} className="text-primary dark:text-indigo-400 dark:text-indigo-400" />
+                                                <p className="text-primary dark:text-indigo-400/70 dark:text-primary dark:text-indigo-400/80 text-xs font-black uppercase tracking-widest">Order Summary</p>
                                             </div>
 
                                             <div className="space-y-3 mb-5">
@@ -269,7 +269,7 @@ export default function PaymentModal({
 
                                             <div className="border-t border-primary/10 dark:border-primary/20 pt-4 flex items-center justify-between">
                                                 <span className="text-slate-900 dark:text-white font-black text-sm">Total</span>
-                                                <span className="text-2xl font-black text-primary dark:text-primary">৳{amount.toLocaleString()}</span>
+                                                <span className="text-2xl font-black text-primary dark:text-indigo-400 dark:text-indigo-400">৳{amount.toLocaleString()}</span>
                                             </div>
                                         </div>
 
@@ -376,7 +376,7 @@ export default function PaymentModal({
                                                                         </span>
                                                                         <button
                                                                             onClick={copyNumber}
-                                                                            className="text-primary hover:text-primary/80 transition-colors"
+                                                                            className="text-primary dark:text-indigo-400 hover:text-primary dark:text-indigo-400/80 transition-colors"
                                                                         >
                                                                             {copied ? <CheckCircle2 size={16} className={`${theme.success}`} /> : <Copy size={16} />}
                                                                         </button>

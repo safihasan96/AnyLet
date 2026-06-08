@@ -21,6 +21,7 @@ import {
   Share2,
   Heart,
   User,
+  Star,
   Info,
   Flag,
   AlertTriangle,
@@ -35,6 +36,7 @@ import PropertyLoader from '../components/PropertyLoader';
 import ShareModal from '../components/ShareModal';
 import BookPropertyModal from '../components/BookPropertyModal';
 import { useToast } from '../contexts/ToastContext';
+import { createNotification } from '../utils/notificationService';
 
 export default function PropertyDetails() {
     const { id } = useParams();
@@ -99,6 +101,20 @@ export default function PropertyDetails() {
                 createdAt: serverTimestamp(),
                 tenantDetails: formData
             });
+
+            // Notify Owner
+            const targetOwnerId = property.ownerId || property.userId;
+            if (targetOwnerId) {
+                await createNotification(
+                    targetOwnerId,
+                    'request_received',
+                    'New Viewing Request',
+                    `${formData.name} is interested in renting ${property.title}.`,
+                    '/requests',
+                    { propertyId: id }
+                );
+            }
+
             setRequestSent(true);
             setIsModalOpen(false);
         } catch (error) {
@@ -118,7 +134,7 @@ export default function PropertyDetails() {
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 text-center">
             <div>
                 <h1 className="text-2xl font-black mb-4">{t('no_properties')}</h1>
-                <Link to="/search" className="text-primary font-bold">{t('search')}</Link>
+                <Link to="/search" className="text-primary dark:text-indigo-400 font-bold">{t('search')}</Link>
             </div>
         </div>
     );
@@ -163,12 +179,12 @@ export default function PropertyDetails() {
             <div className="max-w-7xl mx-auto px-0 md:px-6 py-4 md:py-8">
                 {/* Navigation Row with Back and Share */}
                 <div className="flex items-center justify-between px-4 md:px-0 mb-4 md:mb-6">
-                    <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary transition-colors font-bold">
+                    <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 transition-colors font-bold">
                         <ArrowLeft size={20} /> {t('back_to_discovery')}
                     </button>
                     <button 
                         onClick={() => setShareModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary border border-slate-100 dark:border-slate-800 hover:border-primary/20 dark:hover:border-primary/20 transition-all font-bold text-sm shadow-sm hover:shadow-md"
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:text-primary dark:text-indigo-400 dark:hover:text-primary dark:text-indigo-400 border border-slate-100 dark:border-slate-800 hover:border-primary/20 dark:hover:border-primary/20 transition-all font-bold text-sm shadow-sm hover:shadow-md"
                     >
                         <Share2 size={16} />
                         <span>Share</span>
@@ -223,7 +239,7 @@ export default function PropertyDetails() {
                                     {property.title}
                                 </h1>
                                 <div className="flex flex-wrap items-center gap-3 md:gap-6 text-sm md:text-base text-slate-500 font-bold">
-                                    <span className="flex items-center gap-1.5 break-all md:break-normal"><MapPin size={18} className="text-primary shrink-0" /> {property.addressDetails ? `${property.addressDetails}, ` : ''}{property.upazila}, {property.district}</span>
+                                    <span className="flex items-center gap-1.5 break-all md:break-normal"><MapPin size={18} className="text-primary dark:text-indigo-400 shrink-0" /> {property.addressDetails ? `${property.addressDetails}, ` : ''}{property.upazila}, {property.district}</span>
                                     {property.area && <span className="flex items-center gap-1.5"><Maximize size={18} className="shrink-0" /> {property.area} {t('sqft')}</span>}
                                     {property.isVerified && <span className="flex items-center gap-1.5 text-emerald-600"><ShieldCheck size={18} className="text-emerald-600 shrink-0" /> Verified Landlord</span>}
                                     {property.isOnsiteVerified && (
@@ -231,14 +247,23 @@ export default function PropertyDetails() {
                                             <Shield size={14} className="fill-blue-100 dark:fill-blue-500/20" /> Onsite Verified
                                         </span>
                                     )}
+                                    {property.reviewCount > 0 && (
+                                        <a href="#reviews" onClick={(e) => {
+                                            e.preventDefault();
+                                            document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' });
+                                        }} className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3 py-1 rounded-lg text-xs font-black hover:bg-amber-100 transition-colors cursor-pointer">
+                                            <Star size={14} className="fill-amber-500" />
+                                            {Number(property.reviewScore || 0).toFixed(1)} ({property.reviewCount} Reviews)
+                                        </a>
+                                    )}
                                 </div>
                             </div>
                             
                             {/* Price Tag & Utilities */}
                             <div className="bg-primary/5 p-5 md:p-6 rounded-3xl border border-primary/10 shrink-0 flex flex-col md:items-end">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-primary/70 mb-1">{t('rent')}</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary dark:text-indigo-400/70 mb-1">{t('rent')}</p>
                                 <div className="flex items-baseline gap-2 mb-2">
-                                    <span className="text-3xl md:text-4xl font-black text-primary hover:scale-105 transition-transform origin-left md:origin-right">৳{property.rent?.toLocaleString()}</span>
+                                    <span className="text-3xl md:text-4xl font-black text-primary dark:text-indigo-400 hover:scale-105 transition-transform origin-left md:origin-right">৳{property.rent?.toLocaleString()}</span>
                                     <span className="text-lg font-bold text-slate-500">/{property.billingCycle}</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-400">
@@ -272,7 +297,7 @@ export default function PropertyDetails() {
                                             if (!currentUser) return navigate('/login');
                                             setBookModalOpen(true);
                                         }}
-                                        className="w-full md:w-auto py-4 px-8 bg-white hover:bg-slate-50 text-primary font-black text-base md:text-lg rounded-2xl shadow-xl shadow-black/10 active:scale-95 transition-all shrink-0 relative z-10 flex items-center justify-center gap-2"
+                                        className="w-full md:w-auto py-4 px-8 bg-white hover:bg-slate-50 text-primary dark:text-indigo-400 font-black text-base md:text-lg rounded-2xl shadow-xl shadow-black/10 active:scale-95 transition-all shrink-0 relative z-10 flex items-center justify-center gap-2"
                                     >
                                         <Shield size={20} className="fill-indigo-100" /> Book Now
                                     </button>
@@ -292,12 +317,12 @@ export default function PropertyDetails() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-10">
                             <section className="bg-white dark:bg-slate-900 p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800">
                                 <h3 className="text-lg md:text-xl font-black mb-4 md:mb-6 flex items-center gap-3">
-                                    <Zap size={20} className="text-primary md:w-6 md:h-6" /> {t('amenities')}
+                                    <Zap size={20} className="text-primary dark:text-indigo-400 md:w-6 md:h-6" /> {t('amenities')}
                                 </h3>
                                 <div className="grid grid-cols-1 gap-4">
                                     {property.features?.length > 0 ? property.features.map(f => (
                                         <div key={f} className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold text-sm">
-                                            <div className="size-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0"><CheckCircle2 size={14} /></div>
+                                            <div className="size-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 shrink-0"><CheckCircle2 size={14} /></div>
                                             {f}
                                         </div>
                                     )) : <div className="text-sm text-slate-400">None specified</div>}
@@ -305,7 +330,7 @@ export default function PropertyDetails() {
                             </section>
                             <section className="bg-white dark:bg-slate-900 p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800">
                                 <h3 className="text-lg md:text-xl font-black mb-4 md:mb-6 flex items-center gap-3">
-                                    <Info size={20} className="text-primary md:w-6 md:h-6" /> {t('inclusions')}
+                                    <Info size={20} className="text-primary dark:text-indigo-400 md:w-6 md:h-6" /> {t('inclusions')}
                                 </h3>
                                 <div className="grid grid-cols-1 gap-4">
                                     {property.utilities?.length > 0 ? property.utilities.map(u => (
@@ -377,7 +402,7 @@ export default function PropertyDetails() {
                                 </div>
                             ) : (
                                 <div className="hidden lg:block bg-primary/5 p-8 rounded-[40px] border border-primary/20 text-center space-y-4">
-                                    <h3 className="text-sm font-black uppercase tracking-widest text-primary mb-2">Your Property</h3>
+                                    <h3 className="text-sm font-black uppercase tracking-widest text-primary dark:text-indigo-400 mb-2">Your Property</h3>
                                     <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">You are viewing your own listing.</p>
                                 </div>
                             ) }
@@ -386,11 +411,11 @@ export default function PropertyDetails() {
                             <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl md:rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">{t('owner_contact')}</h3>
                                 <Link to={`/owner/${property.ownerId || property.userId}`} className="flex items-center gap-4 group cursor-pointer">
-                                    <div className="size-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary shadow-inner group-hover:bg-primary group-hover:text-white transition-colors">
+                                    <div className="size-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary dark:text-indigo-400 shadow-inner group-hover:bg-primary group-hover:text-white transition-colors">
                                         <User size={32} />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-lg font-black text-slate-900 dark:text-white leading-none mb-1 group-hover:text-primary transition-colors">{owner?.name || 'Owner / Agent'}</p>
+                                        <p className="text-lg font-black text-slate-900 dark:text-white leading-none mb-1 group-hover:text-primary dark:text-indigo-400 transition-colors">{owner?.name || 'Owner / Agent'}</p>
                                         <p className="text-sm font-bold text-slate-500">Tap to view profile &amp; ads &gt;</p>
                                     </div>
                                 </Link>
@@ -411,6 +436,33 @@ export default function PropertyDetails() {
                         </div>
                     </div>
                 </div>
+
+                {/* Property Reviews Section (Bottom full width) */}
+                {property.reviewCount > 0 && (
+                    <div className="mt-8 mb-6 px-4 md:px-0">
+                        <div className="bg-white dark:bg-slate-900 rounded-[32px] md:rounded-[40px] p-6 md:p-10 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div className="flex items-center gap-6 w-full md:w-auto">
+                                <div className="size-16 rounded-3xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                                    <Star size={28} className="fill-amber-500" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white mb-1">Guest Reviews</h3>
+                                    <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                                        <span className="text-slate-900 dark:text-white text-base">{property.reviewScore?.toFixed(1)} overall rating</span>
+                                        <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                                        <span>Based on {property.reviewCount} reviews</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <Link 
+                                to={`/property/${property.id}/reviews`}
+                                className="w-full md:w-auto px-8 py-4 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-black rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 shrink-0"
+                            >
+                                Read all reviews <ChevronRight size={18} />
+                            </Link>
+                        </div>
+                    </div>
+                )}
 
                 {/* Dynamic Bottom Action Bar (Scroll flow) */}
                 {!isOwner && (

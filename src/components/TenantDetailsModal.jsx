@@ -67,7 +67,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
                 </button>
 
                 <div style={{ marginBottom: '24px' }}>
-                    <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '8px' }}>
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--text-primary dark:text-indigo-400)', marginBottom: '8px' }}>
                         Submission Details
                     </h2>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -87,7 +87,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
                                 <User size={18} style={{ color: 'var(--text-secondary)', marginTop: '2px' }} />
                                 <div>
                                     <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '0.85rem' }}>Name</span>
-                                    <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                                    <span style={{ fontWeight: '500', color: 'var(--text-primary dark:text-indigo-400)' }}>
                                         {request?.tenantDetails?.name || request?.userName || request?.name || 'N/A'}
                                     </span>
                                 </div>
@@ -97,7 +97,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
                                 <Phone size={18} style={{ color: 'var(--text-secondary)', marginTop: '2px' }} />
                                 <div>
                                     <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '0.85rem' }}>Phone</span>
-                                    <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                                    <span style={{ fontWeight: '500', color: 'var(--text-primary dark:text-indigo-400)' }}>
                                         <button 
                                             onClick={() => {
                                                 const phone = request?.tenantDetails?.phone || request?.userPhone || request?.phone || '';
@@ -120,7 +120,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
                                 <Mail size={18} style={{ color: 'var(--text-secondary)', marginTop: '2px' }} />
                                 <div>
                                     <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '0.85rem' }}>Email</span>
-                                    <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                                    <span style={{ fontWeight: '500', color: 'var(--text-primary dark:text-indigo-400)' }}>
                                         <a href={`mailto:${request?.tenantDetails?.email || request?.userEmail || request?.email || ''}`} style={{ color: 'var(--primary-color)', textDecoration: 'none' }}>
                                             {request?.tenantDetails?.email || request?.userEmail || request?.email || 'N/A'}
                                         </a>
@@ -132,7 +132,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
                                 <Briefcase size={18} style={{ color: 'var(--text-secondary)', marginTop: '2px' }} />
                                 <div>
                                     <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '0.85rem' }}>Profession</span>
-                                    <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                                    <span style={{ fontWeight: '500', color: 'var(--text-primary dark:text-indigo-400)' }}>
                                         {request?.tenantDetails?.profession || 'Not provided'}
                                     </span>
                                 </div>
@@ -142,7 +142,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
                                 <Users size={18} style={{ color: 'var(--text-secondary)', marginTop: '2px' }} />
                                 <div>
                                     <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '0.85rem' }}>Total Occupants</span>
-                                    <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                                    <span style={{ fontWeight: '500', color: 'var(--text-primary dark:text-indigo-400)' }}>
                                         {request?.tenantDetails?.numberOfOccupants
                                             ? `${request.tenantDetails?.numberOfOccupants} ${Number(request.tenantDetails?.numberOfOccupants) === 1 ? 'person' : 'people'}`
                                             : 'Not provided'
@@ -163,7 +163,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
                                 <Calendar size={18} style={{ color: 'var(--text-secondary)', marginTop: '2px' }} />
                                 <div>
                                     <span style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '0.85rem' }}>Preferred Viewing Time</span>
-                                    <span style={{ fontWeight: '500', color: 'var(--text-primary)' }}>
+                                    <span style={{ fontWeight: '500', color: 'var(--text-primary dark:text-indigo-400)' }}>
                                         {request?.tenantDetails?.preferredDate || request?.preferredDate || 'Not specified'}
                                     </span>
                                 </div>
@@ -178,7 +178,7 @@ export default function TenantDetailsModal({ isOpen, request, onClose }) {
                                         padding: '12px',
                                         borderRadius: '6px',
                                         border: '1px solid #e2e8f0',
-                                        color: 'var(--text-primary)',
+                                        color: 'var(--text-primary dark:text-indigo-400)',
                                         lineHeight: '1.5',
                                         whiteSpace: 'pre-wrap',
                                         fontSize: '0.95rem'

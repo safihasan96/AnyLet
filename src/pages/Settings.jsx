@@ -64,7 +64,7 @@ export default function Settings() {
                             <select 
                                 value={language}
                                 onChange={(e) => setLanguage(e.target.value)}
-                                className="bg-transparent border-none text-primary font-[900] text-sm uppercase tracking-wider outline-none"
+                                className="bg-transparent border-none text-primary dark:text-indigo-400 font-[900] text-sm uppercase tracking-wider outline-none"
                             >
                                 <option value="en">English</option>
                                 <option value="bn">বাংলা</option>

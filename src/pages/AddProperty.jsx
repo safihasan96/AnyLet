@@ -16,6 +16,7 @@ import LocationPickerMap from '../components/LocationPickerMap';
 import PaymentModal from '../components/PaymentModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../contexts/ToastContext';
+import { createNotification } from '../utils/notificationService';
 
 export default function AddProperty() {
     const { currentUser, userProfile } = useAuth();
@@ -224,6 +225,16 @@ export default function AddProperty() {
             };
 
             await addDoc(collection(db, 'properties'), propertyData);
+
+            // Notify the owner that listing was submitted
+            await createNotification(
+                currentUser.uid,
+                'system',
+                'Listing Submitted',
+                `Your property "${formData.title}" has been submitted for review. It will go live once our team verifies it — usually under 30 minutes.`,
+                '/my-listings'
+            );
+
             setPaymentModalOpen(false);
             setShowSuccess(true);
             setTimeout(() => navigate('/'), 4000);
@@ -422,7 +433,7 @@ export default function AddProperty() {
                                                 htmlFor="image-upload"
                                                 className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
                                             >
-                                                <div className="p-2 bg-primary/10 rounded-xl text-primary mb-1">
+                                                <div className="p-2 bg-primary/10 rounded-xl text-primary dark:text-indigo-400 mb-1">
                                                     <ImageIcon size={20} />
                                                 </div>
                                                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
@@ -466,7 +477,7 @@ export default function AddProperty() {
                                                 key={opt.id}
                                                 type="button"
                                                 onClick={() => toggleItem('utilities', opt.id)}
-                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.utilities.includes(opt.id) ? 'bg-primary/10 border-primary text-primary' : 'bg-slate-50 dark:bg-slate-900/50 border-transparent text-slate-500'}`}
+                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.utilities.includes(opt.id) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-slate-900/50 border-transparent text-slate-500'}`}
                                             >
                                                 {opt.icon}
                                                 <span className="truncate">{opt.id}</span>
@@ -485,7 +496,7 @@ export default function AddProperty() {
                                                 key={opt.id}
                                                 type="button"
                                                 onClick={() => toggleItem('features', opt.id)}
-                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.features.includes(opt.id) ? 'bg-primary/10 border-primary text-primary' : 'bg-slate-50 dark:bg-slate-900/50 border-transparent text-slate-500'}`}
+                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.features.includes(opt.id) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-slate-900/50 border-transparent text-slate-500'}`}
                                             >
                                                 {opt.icon}
                                                 <span className="truncate">{opt.id}</span>
@@ -568,7 +579,7 @@ export default function AddProperty() {
 
                         <button
                             onClick={() => setStep(2)}
-                            className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-primary transition-colors mt-2"
+                            className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-primary dark:text-indigo-400 transition-colors mt-2"
                         >
                             Wait, go back and edit
                         </button>
@@ -612,7 +623,7 @@ export default function AddProperty() {
 function Section({ title, icon, children }) {
     return (
         <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-primary">
+            <div className="flex items-center gap-2 text-primary dark:text-indigo-400">
                 {icon}
                 <h3 className="font-black uppercase text-xs tracking-widest">{title}</h3>
             </div>

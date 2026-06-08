@@ -178,11 +178,11 @@ function MoveInCard({ moveIn, ownerName, formatDate, onReview, onViewOwner }) {
                         onClick={onViewOwner}
                         className="flex items-center gap-2 group"
                     >
-                        <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-black group-hover:bg-primary group-hover:text-white transition-colors">
+                        <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 text-sm font-black group-hover:bg-primary group-hover:text-white transition-colors">
                             {ownerName[0]?.toUpperCase()}
                         </div>
                         <div className="text-left">
-                            <p className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-primary transition-colors">{ownerName}</p>
+                            <p className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-primary dark:text-indigo-400 transition-colors">{ownerName}</p>
                             <p className="text-[10px] text-slate-400 font-bold">Landlord · View Profile</p>
                         </div>
                     </button>
