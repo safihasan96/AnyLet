@@ -68,14 +68,13 @@ export default function AdminKycTab({ openModal }) {
                     await updateDoc(doc(db, 'users', user.id), {
                         'verification.isKycApproved': false,
                         onboardingStatus: 'REJECTED',
-                        onboardingStep: 'kyc_upload',
                     });
                     await createNotification(
                         user.id,
                         'kyc_rejected',
                         'ID Verification Failed',
                         'We couldn\'t verify your ID. Please re-upload a clearer, valid document.',
-                        '/onboarding'
+                        '/profile'
                     );
                     toast.success('Rejection sent');
                 } catch (err) {

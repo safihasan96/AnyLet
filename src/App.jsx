@@ -170,9 +170,9 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="/enquiry" element={
-                <OnboardingGuard requirePhoneVerified>
+                <ProtectedRoute>
                   <PageWrapper><Enquiry /></PageWrapper>
-                </OnboardingGuard>
+                </ProtectedRoute>
               } />
               <Route path="/report-property/:id" element={
                 <ProtectedRoute>
