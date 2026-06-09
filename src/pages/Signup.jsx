@@ -119,7 +119,9 @@ export default function Signup() {
             // signInWithGoogle creates the user doc — redirect to onboarding
             navigate('/onboarding');
         } catch (err) {
-            if (err.code !== 'auth/popup-closed-by-user') {
+            if (err.code === 'auth/unauthorized-domain') {
+                setError('Google Sign-In failed: This domain is not authorized. Please add it in Firebase Console > Authentication > Settings > Authorized domains.');
+            } else if (err.code !== 'auth/popup-closed-by-user') {
                 console.error("Google Auth Error:", err);
                 setError(`Google sign-up failed: ${err.message}`);
             }

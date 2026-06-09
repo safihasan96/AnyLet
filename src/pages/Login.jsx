@@ -79,6 +79,8 @@ export default function Login() {
             if (err.code === 'auth/link-required') {
                 // Same email exists under password — prompt to link
                 setLinkPending({ email: err.email, pendingCredential: err.pendingCredential });
+            } else if (err.code === 'auth/unauthorized-domain') {
+                setError('Google Sign-In failed: This domain is not authorized. Please add it in Firebase Console > Authentication > Settings > Authorized domains.');
             } else if (err.code !== 'auth/popup-closed-by-user') {
                 console.error("Google Auth Error:", err);
                 setError(`Google sign-in failed: ${err.message}`);
