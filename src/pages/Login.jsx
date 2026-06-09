@@ -81,6 +81,8 @@ export default function Login() {
                 setLinkPending({ email: err.email, pendingCredential: err.pendingCredential });
             } else if (err.code === 'auth/unauthorized-domain') {
                 setError('Google Sign-In failed: This domain is not authorized. Please add it in Firebase Console > Authentication > Settings > Authorized domains.');
+            } else if (err.code === 'auth/popup-blocked') {
+                setError('Google Sign-In failed: Popup blocked by your browser. Please disable popup blockers or use a standard browser like Chrome or Safari.');
             } else if (err.code !== 'auth/popup-closed-by-user') {
                 console.error("Google Auth Error:", err);
                 setError(`Google sign-in failed: ${err.message}`);
