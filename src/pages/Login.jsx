@@ -51,12 +51,7 @@ export default function Login() {
             setLoading(true);
             const userCredential = await login(email, password);
 
-            if (!userCredential.user.emailVerified) {
-                await signOut(auth);
-                setUnverified(true);
-                setLoading(false);
-                return;
-            }
+
 
             const snap = await getDoc(doc(db, 'users', userCredential.user.uid));
             const data = snap.exists() ? snap.data() : {};
