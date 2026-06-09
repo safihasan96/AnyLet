@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -301,34 +302,6 @@ export default function AddProperty() {
                 )}
             </AnimatePresence>
 
-            <AnimatePresence>
-                {showPhoneModal && (
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-6"
-                    >
-                        <motion.div 
-                            initial={{ scale: 0.9, y: 20 }}
-                            animate={{ scale: 1, y: 0 }}
-                            className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 text-center max-w-sm w-full"
-                        >
-                            <div className="size-20 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center text-rose-500 mx-auto mb-6">
-                                <Phone size={36} strokeWidth={2.5} />
-                            </div>
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3">Phone Number Required</h2>
-                            <p className="text-slate-500 dark:text-slate-400 font-medium mb-8 text-sm">
-                                Please add your phone number to your profile before posting a property. We need this for tenant inquiries.
-                            </p>
-                            <div className="flex flex-col gap-3">
-                                <button 
-                                    onClick={() => navigate('/edit-profile')}
-                                    className="w-full py-4 bg-[#1a227f] text-white rounded-2xl font-black text-sm shadow-xl shadow-[#1a227f]/20 flex items-center justify-center gap-2 transition-all active:scale-95"
-                                >
-                                    Add Phone Number <ArrowRight size={16} />
-                                </button>
-                                <button 
-                                    onClick={() => navigate(-1)}
                                     className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-bold text-sm transition-all active:scale-95"
                                 >
                                     Go Back
