@@ -64,8 +64,6 @@ const slide = {
 const STEPS = [
     { id: 'personal_details', label: 'Personal', icon: User },
     { id: 'phone_verification', label: 'Phone', icon: Phone },
-    { id: 'profile_setup', label: 'Profile', icon: Camera },
-    { id: 'kyc_upload', label: 'Verify ID', icon: ShieldCheck },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -98,19 +96,6 @@ export default function Onboarding() {
     const [phone, setPhone] = useState(userData?.personalDetails?.phoneNumber || '');
     const [phoneError, setPhoneError] = useState('');
 
-    // Step C
-    const [photoFile, setPhotoFile] = useState(null);
-    const [photoPreview, setPhotoPreview] = useState(userData?.photoURL || currentUser?.photoURL || '');
-    const [bio, setBio] = useState(userData?.bio || '');
-    const [userRole, setUserRoleLocal] = useState(userData?.userRole || 'tenant');
-    const photoRef = useRef();
-
-    // Step D
-    const [docType, setDocType] = useState('nid');
-    const [docFile, setDocFile] = useState(null);
-    const [docFileName, setDocFileName] = useState('');
-    const docRef = useRef();
-
     // If already completed, send them home
     if (savedStep === 'completed' && initialStepIdx === STEPS.length) {
         navigate(nextRoute, { replace: true });
@@ -118,7 +103,6 @@ export default function Onboarding() {
     }
 
     const currentStep = STEPS[stepIdx];
-    const progress = ((stepIdx) / STEPS.length) * 100;
 
     function goNext() { setDir(1); setStepIdx(s => s + 1); setError(''); }
     function goBack() { setDir(-1); setStepIdx(s => Math.max(0, s - 1)); setError(''); }
@@ -155,9 +139,10 @@ export default function Onboarding() {
             await updateUserProfile({
                 'personalDetails.phoneNumber': clean,
                 'personalDetails.isPhoneVerified': true,
-                onboardingStep: 'profile_setup',
+                onboardingStep: 'completed',
+                onboardingStatus: 'COMPLETED',
             });
-            goNext();
+            navigate(nextRoute, { replace: true });
         } catch { setError('Failed to save. Please try again.'); }
         finally { setSaving(false); }
     }
@@ -166,84 +151,10 @@ export default function Onboarding() {
     async function skipPhone() {
         setSaving(true);
         try {
-            await updateUserProfile({ onboardingStep: 'profile_setup' });
-            goNext();
-        } catch { setError('Something went wrong.'); }
-        finally { setSaving(false); }
-    }
-
-    /* ── STEP C: Profile Photo, Bio, Role ─────────────────────────────── */
-    function handlePhotoChange(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        setPhotoFile(file);
-        setPhotoPreview(URL.createObjectURL(file));
-    }
-
-    async function submitProfile() {
-        setSaving(true);
-        try {
-            let photoURL = userData?.photoURL || currentUser?.photoURL || '';
-            if (photoFile) {
-                const compressed = await compressImage(photoFile);
-                const storageRef = ref(storage, `profilePhotos/${currentUser.uid}/avatar.jpg`);
-                await uploadBytes(storageRef, compressed);
-                photoURL = await getDownloadURL(storageRef);
-            }
-            await updateUserProfile({
-                photoURL,
-                bio: bio.trim(),
-                userRole,
-                onboardingStep: 'kyc_upload',
-            });
-            goNext();
-        } catch { setError('Failed to upload photo. Please try again.'); }
-        finally { setSaving(false); }
-    }
-
-    /* ── Skip Profile ──────────────────────────────────────────────────── */
-    async function skipProfile() {
-        setSaving(true);
-        try {
-            await updateUserProfile({ onboardingStep: 'kyc_upload' });
-            goNext();
-        } catch { setError('Something went wrong.'); }
-        finally { setSaving(false); }
-    }
-
-    /* ── STEP D: KYC Document Upload ───────────────────────────────────── */
-    function handleDocChange(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        setDocFile(file);
-        setDocFileName(file.name);
-    }
-
-    async function submitKyc() {
-        if (!docFile) { setError('Please upload your ID document.'); return; }
-        setSaving(true);
-        try {
-            const storageRef = ref(storage, `kycDocuments/${currentUser.uid}/${docType}_${Date.now()}`);
-            await uploadBytes(storageRef, docFile);
-            const idDocumentUrl = await getDownloadURL(storageRef);
-            await updateUserProfile({
-                'verification.idDocumentUrl': idDocumentUrl,
-                'verification.isKycApproved': false,
-                'verification.submittedAt': new Date().toISOString(),
-                'verification.docType': docType,
+            await updateUserProfile({ 
                 onboardingStep: 'completed',
-                onboardingStatus: 'PENDING_VERIFICATION',
+                onboardingStatus: 'COMPLETED',
             });
-            goNext(); // → completion screen
-        } catch { setError('Failed to upload document. Please try again.'); }
-        finally { setSaving(false); }
-    }
-
-    /* ── Skip KYC (can do later) ───────────────────────────────────────── */
-    async function skipKyc() {
-        setSaving(true);
-        try {
-            await updateUserProfile({ onboardingStep: 'completed', onboardingStatus: 'COMPLETED' });
             navigate(nextRoute, { replace: true });
         } catch { setError('Something went wrong.'); }
         finally { setSaving(false); }
@@ -265,11 +176,8 @@ export default function Onboarding() {
                 </motion.div>
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                     <h1 className="text-3xl font-black text-white mb-3">You're all set! 🎉</h1>
-                    <p className="text-white/60 font-medium text-sm max-w-xs mx-auto mb-2">
-                        Your profile is complete. Your ID is under review — this usually takes 24 hours.
-                    </p>
-                    <p className="text-white/40 text-xs font-medium mb-10">
-                        You can browse and save listings while we verify your identity.
+                    <p className="text-white/60 font-medium text-sm max-w-xs mx-auto mb-10">
+                        Your profile is complete. You can now explore and add properties on AnyLet.
                     </p>
                     <motion.button
                         whileTap={{ scale: 0.95 }}
@@ -409,135 +317,10 @@ export default function Onboarding() {
                                 <div className="flex flex-col gap-3">
                                     <div className="flex gap-3">
                                         <button onClick={goBack} className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><ArrowLeft size={20} /></button>
-                                        <ContinueButton onClick={submitPhone} loading={saving} className="flex-1" />
+                                        <ContinueButton onClick={submitPhone} loading={saving} className="flex-1" label="Submit & Finish" />
                                     </div>
                                     <button onClick={skipPhone} className="text-center text-xs text-slate-400 font-bold underline underline-offset-2 hover:text-slate-600 transition-colors">
                                         Skip for now
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* ── STEP C ─────────────────────────────────────────────── */}
-                        {currentStep.id === 'profile_setup' && (
-                            <div className="flex flex-col gap-6">
-                                <div>
-                                    <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-1">Your profile</h1>
-                                    <p className="text-sm font-medium text-slate-500">A face and bio builds trust. Hosts are 4x more likely to respond to complete profiles.</p>
-                                </div>
-                                {/* Photo */}
-                                <div className="flex flex-col items-center gap-3">
-                                    <button
-                                        onClick={() => photoRef.current?.click()}
-                                        className="relative size-28 rounded-3xl overflow-hidden bg-slate-100 dark:bg-slate-800 border-4 border-dashed border-slate-300 dark:border-slate-600 hover:border-[#1a227f] transition-colors group"
-                                    >
-                                        {photoPreview
-                                            ? <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
-                                            : <div className="flex flex-col items-center justify-center h-full gap-1"><Camera size={28} className="text-slate-400" /><span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Add Photo</span></div>
-                                        }
-                                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Camera size={24} className="text-white" />
-                                        </div>
-                                    </button>
-                                    <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
-                                    <span className="text-xs text-slate-400 font-medium">Tap to upload · Auto-compressed</span>
-                                </div>
-                                {/* Bio */}
-                                <div>
-                                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Short Bio <span className="text-slate-400 font-medium">(optional)</span></label>
-                                    <textarea
-                                        value={bio}
-                                        onChange={e => setBio(e.target.value)}
-                                        maxLength={200}
-                                        rows={3}
-                                        placeholder="Tell hosts a bit about yourself — occupation, lifestyle, why you're moving..."
-                                        className="w-full px-4 py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl font-medium text-sm text-slate-900 dark:text-white focus:border-[#1a227f] focus:outline-none resize-none transition-colors"
-                                    />
-                                    <p className="text-right text-xs text-slate-400 mt-1">{bio.length}/200</p>
-                                </div>
-                                {/* Role */}
-                                <div>
-                                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-3 block">I am primarily...</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {[
-                                            { val: 'tenant', label: 'Looking to Rent', icon: Users },
-                                            { val: 'host', label: 'Listing a Property', icon: Building2 },
-                                            { val: 'dual', label: 'Both', icon: HomeIcon },
-                                        ].map(({ val, label, icon: Icon }) => (
-                                            <button
-                                                key={val}
-                                                onClick={() => setUserRoleLocal(val)}
-                                                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all ${userRole === val ? 'border-[#1a227f] bg-[#1a227f]/5 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'}`}
-                                            >
-                                                <Icon size={20} className={userRole === val ? 'text-[#1a227f] dark:text-indigo-400' : 'text-slate-400'} />
-                                                <span className={`text-[10px] font-black text-center uppercase tracking-wider leading-tight ${userRole === val ? 'text-[#1a227f] dark:text-indigo-400' : 'text-slate-500'}`}>{label}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                {error && <ErrorBanner message={error} />}
-                                <div className="flex flex-col gap-3">
-                                    <div className="flex gap-3">
-                                        <button onClick={goBack} className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><ArrowLeft size={20} /></button>
-                                        <ContinueButton onClick={submitProfile} loading={saving} className="flex-1" />
-                                    </div>
-                                    <button onClick={skipProfile} className="text-center text-xs text-slate-400 font-bold underline underline-offset-2 hover:text-slate-600 transition-colors">
-                                        Skip for now
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* ── STEP D ─────────────────────────────────────────────── */}
-                        {currentStep.id === 'kyc_upload' && (
-                            <div className="flex flex-col gap-6">
-                                <div>
-                                    <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-1">Verify your identity</h1>
-                                    <p className="text-sm font-medium text-slate-500">Securely uploaded. Only reviewed by our trust team. Never shared publicly.</p>
-                                </div>
-                                {/* Doc type */}
-                                <div>
-                                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-3 block">Document Type</label>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        {[
-                                            { val: 'nid', label: 'National ID' },
-                                            { val: 'passport', label: 'Passport' },
-                                            { val: 'license', label: 'Driving License' },
-                                        ].map(({ val, label }) => (
-                                            <button
-                                                key={val}
-                                                onClick={() => setDocType(val)}
-                                                className={`py-3 px-2 rounded-2xl border-2 text-xs font-black uppercase tracking-wider transition-all ${docType === val ? 'border-[#1a227f] bg-[#1a227f]/5 text-[#1a227f] dark:bg-indigo-900/20 dark:text-indigo-400' : 'border-slate-200 dark:border-slate-700 text-slate-500 bg-white dark:bg-slate-800'}`}
-                                            >
-                                                {label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                {/* Upload */}
-                                <button
-                                    onClick={() => docRef.current?.click()}
-                                    className={`flex flex-col items-center justify-center gap-3 w-full py-10 rounded-3xl border-2 border-dashed transition-all ${docFile ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-[#1a227f]'}`}
-                                >
-                                    {docFile
-                                        ? <><FileCheck size={32} className="text-emerald-500" /><span className="text-sm font-black text-emerald-700 dark:text-emerald-400">{docFileName}</span><span className="text-xs text-emerald-500 font-medium">Tap to change</span></>
-                                        : <><Upload size={32} className="text-slate-400" /><span className="text-sm font-black text-slate-600 dark:text-slate-300">Tap to upload document</span><span className="text-xs text-slate-400 font-medium">JPG, PNG or PDF · Max 10MB</span></>
-                                    }
-                                </button>
-                                <input ref={docRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleDocChange} />
-                                {/* Privacy note */}
-                                <div className="flex items-start gap-2 p-3 bg-slate-100 dark:bg-slate-800 rounded-2xl">
-                                    <ShieldCheck size={16} className="text-[#1a227f] dark:text-indigo-400 mt-0.5 shrink-0" />
-                                    <p className="text-xs font-medium text-slate-500">Your document is stored in an encrypted, private bucket. It is never visible to other users or hosts.</p>
-                                </div>
-                                {error && <ErrorBanner message={error} />}
-                                <div className="flex flex-col gap-3">
-                                    <div className="flex gap-3">
-                                        <button onClick={goBack} className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><ArrowLeft size={20} /></button>
-                                        <ContinueButton onClick={submitKyc} loading={saving} label="Submit & Finish" className="flex-1" />
-                                    </div>
-                                    <button onClick={skipKyc} className="text-center text-xs text-slate-400 font-bold underline underline-offset-2 hover:text-slate-600 transition-colors">
-                                        Skip for now — I'll verify later
                                     </button>
                                 </div>
                             </div>
