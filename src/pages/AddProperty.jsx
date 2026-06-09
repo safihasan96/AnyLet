@@ -270,7 +270,7 @@ export default function AddProperty() {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark pb-10 text-slate-900 dark:text-slate-100">
+        <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark pb-32 text-slate-900 dark:text-slate-100">
             <AnimatePresence>
                 {showSuccess && (
                     <motion.div 

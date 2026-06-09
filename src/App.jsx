@@ -195,9 +195,13 @@ function App() {
       </main>
 
       {!isAdminPath && !isAuthPath && !location.pathname.startsWith('/property/') && (
-        <div className="md:hidden">
-          <BottomNav />
-        </div>
+        <>
+          {/* Spacer to prevent content overlap with fixed bottom nav */}
+          <div className="md:hidden h-24" />
+          <div className="md:hidden">
+            <BottomNav />
+          </div>
+        </>
       )}
       {/* On /map the BottomNav still shows but map is fixed-position beneath it */}
       <InstallPrompt />

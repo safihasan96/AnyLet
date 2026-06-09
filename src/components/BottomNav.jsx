@@ -68,7 +68,7 @@ export default function BottomNav() {
     };
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 max-w-[450px] mx-auto bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 px-6 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-between items-center z-50 min-h-[5rem]">
+        <nav className="fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 px-6 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-between items-center z-50 min-h-[5rem]">
             <NavItem
                 to="/"
                 icon={(active) => <Compass size={24} strokeWidth={active ? 2.5 : 2} />}

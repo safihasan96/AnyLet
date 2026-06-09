@@ -124,9 +124,7 @@ export default function Requests() {
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-900 pb-24">
             {/* Header */}
             <header className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 sticky top-0 z-10 border-b border-slate-100 dark:border-slate-700">
-                <button onClick={() => navigate(-1)} className="text-slate-700 dark:text-slate-300 p-2">
-                    <ArrowLeft size={24} />
-                </button>
+                <div className="w-10" />
                 <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Rental Requests</h1>
                 <button className="text-slate-700 dark:text-slate-300 p-2">
                     <Search size={24} />
