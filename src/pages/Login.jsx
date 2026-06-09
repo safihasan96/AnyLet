@@ -38,7 +38,6 @@ export default function Login() {
 
     function getRedirect(role, onboardingStep) {
         if (role === 'admin') return '/admin';
-        if (!onboardingStep || onboardingStep !== 'completed') return `/onboarding?next=${encodeURIComponent(nextRoute)}`;
         return nextRoute;
     }
 

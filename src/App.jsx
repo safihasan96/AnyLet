@@ -118,9 +118,9 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="/post-ad" element={
-                <OnboardingGuard requireOnboarded>
+                <ProtectedRoute>
                   <PageWrapper><AddProperty /></PageWrapper>
-                </OnboardingGuard>
+                </ProtectedRoute>
               } />
 
               <Route path="/profile" element={
