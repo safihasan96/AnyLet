@@ -67,11 +67,13 @@ export default function Login() {
         }
     }
 
-    async function handleGoogleSignIn() {
+    async function handleGoogleSignIn(e) {
+        if (e) e.preventDefault();
         setError('');
-        setGoogleLoading(true);
+        // Do not set loading state here; state updates can cause browsers to lose the user-click context and block the popup.
         try {
             const result = await signInWithGoogle();
+            setGoogleLoading(true); // Show loading while fetching from Firestore
             const snap = await getDoc(doc(db, 'users', result.user.uid));
             const data = snap.exists() ? snap.data() : {};
             navigate(getRedirect(data.role, data.onboardingStep), { replace: true });

@@ -111,11 +111,13 @@ export default function Signup() {
         }
     }
 
-    async function handleGoogleSignup() {
+    async function handleGoogleSignup(e) {
+        if (e) e.preventDefault();
         setError('');
-        setGoogleLoading(true);
+        // Do not set loading state here; state updates can cause browsers to lose the user-click context and block the popup.
         try {
             await signInWithGoogle();
+            setGoogleLoading(true);
             // signInWithGoogle creates the user doc — redirect to onboarding
             navigate('/onboarding');
         } catch (err) {
