@@ -25,14 +25,23 @@ export default function AddProperty() {
     const toast = useToast();
 
     useEffect(() => {
-        if (currentUser && !currentUser.emailVerified) {
+        // Wait until auth and profile are fully loaded
+        if (!currentUser || !userProfile) return;
+
+        if (!currentUser.emailVerified) {
             toast.warning("Please verify your email address to post a property.");
             navigate('/');
-        } else if (userProfile) {
-            const hasPhone = userProfile?.personalDetails?.phoneNumber || userProfile?.phoneNumber;
-            if (!hasPhone) {
-                setShowPhoneModal(true);
-            }
+            return;
+        }
+
+        const hasPhone = userProfile?.personalDetails?.phoneNumber?.trim() ||
+                         userProfile?.phoneNumber?.trim();
+
+        if (!hasPhone) {
+            setShowPhoneModal(true);
+        } else {
+            // Dismiss modal in case profile updated while on this page
+            setShowPhoneModal(false);
         }
     }, [currentUser, userProfile, navigate, toast]);
 
