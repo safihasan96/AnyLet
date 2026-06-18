@@ -1,6 +1,8 @@
+'use client';
+import { useNavigate, Link } from 'react-router-dom';
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -18,6 +20,7 @@ import PaymentModal from '../components/PaymentModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
+import logger from '../utils/logger';
 
 export default function AddProperty() {
     const { currentUser, userProfile } = useAuth();
@@ -35,17 +38,32 @@ export default function AddProperty() {
         }
 
         const hasPhone = userProfile?.personalDetails?.phoneNumber?.trim() ||
-                         userProfile?.phoneNumber?.trim();
+                         userProfile?.phoneNumber?.trim() ||
+                         userProfile?.phone?.trim();
 
         if (!hasPhone) {
             setShowPhoneModal(true);
         } else {
-            // Dismiss modal in case profile updated while on this page
             setShowPhoneModal(false);
         }
-    }, [currentUser, userProfile, navigate, toast]);
+    }, [currentUser?.uid, userProfile, navigate, toast]);
 
     const [showPhoneModal, setShowPhoneModal] = useState(false);
+    const [wantOnsiteVerify, setWantOnsiteVerify] = useState(false);
+
+    // Check if user has an active paid subscription
+    const subscriptionPlan = userProfile?.subscriptionPlan;
+    const subscriptionExpiry = userProfile?.subscriptionExpiry;
+    const hasActiveSubscription = !!(
+        subscriptionPlan &&
+        subscriptionExpiry &&
+        new Date(subscriptionExpiry?.toDate ? subscriptionExpiry.toDate() : subscriptionExpiry) > new Date()
+    );
+
+    // Pricing constants
+    const LISTING_FEE = hasActiveSubscription ? 0 : 49;  // Free for subscribers
+    const ONSITE_FEE = 299;
+    const totalAmount = LISTING_FEE + (wantOnsiteVerify ? ONSITE_FEE : 0);
 
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
@@ -71,7 +89,23 @@ export default function AddProperty() {
         utilities: [],
         features: [],
         lat: null,
-        lng: null
+        lng: null,
+        // BD-specific fields
+        gasSupply: 'Cylinder',
+        electricityBilling: 'Excluded',
+        waterSource: 'WASA',
+        facing: '',
+        floorNumber: '',
+        parkingType: 'None',
+        petPolicy: 'Not Allowed',
+        bachelorPolicy: 'Not Allowed',
+        familyPolicy: 'Family Only',
+        distances: {
+            mosque: '',
+            school: '',
+            market: ''
+        },
+        agentCommission: ''
     });
 
     const [showSuccess, setShowSuccess] = useState(false);
@@ -134,6 +168,17 @@ export default function AddProperty() {
         }
     };
 
+    const handleDistanceChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            distances: {
+                ...prev.distances,
+                [name]: value
+            }
+        }));
+    };
+
     const toggleItem = (listName, id) => {
         setFormData(prev => {
             const list = prev[listName];
@@ -171,7 +216,7 @@ export default function AddProperty() {
                 const fileData = await res.json();
                 
                 if (!res.ok) {
-                    console.error("Cloudinary Error:", fileData);
+                    logger.error("Cloudinary Error:", fileData);
                     toast.error(`Upload failed!\nError: ${fileData.error?.message || "Unknown error"}`);
                     throw new Error(fileData.error?.message || 'Upload failed');
                 }
@@ -193,7 +238,7 @@ export default function AddProperty() {
                 });
             }
         } catch (error) {
-            console.error('Error during upload process:', error);
+            logger.error('Error during upload process:', error);
             toast.error("Connection error while uploading to Cloudinary.");
         } finally {
             setLoading(false);
@@ -227,11 +272,13 @@ export default function AddProperty() {
                 securityDeposit: formData.securityDeposit ? Number(formData.securityDeposit) : 0,
                 utilitiesCost: Number(formData.utilitiesCost) || 0,
                 ownerId: currentUser.uid,
-                isApproved: false, // Payment pending admin verification
+                isApproved: false,
                 listingPaymentId: paymentDocId,
+                // If user requested onsite verification, mark it as pending
                 isOnsiteVerified: false,
-                verificationPaymentId: null,
-                verificationStatus: 'none',
+                verificationPaymentId: wantOnsiteVerify ? paymentDocId : null,
+                verificationStatus: wantOnsiteVerify ? 'pending' : 'none',
+                onsiteVerificationRequested: wantOnsiteVerify,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
                 status: 'Available',
@@ -241,11 +288,15 @@ export default function AddProperty() {
             await addDoc(collection(db, 'properties'), propertyData);
 
             // Notify the owner that listing was submitted
+            const notifMsg = wantOnsiteVerify
+                ? `Your property "${formData.title}" has been submitted with an on-site verification request. Our team will contact you soon.`
+                : `Your property "${formData.title}" has been submitted for review. It will go live once our team verifies it — usually under 30 minutes.`;
+
             await createNotification(
                 currentUser.uid,
                 'system',
                 'Listing Submitted',
-                `Your property "${formData.title}" has been submitted for review. It will go live once our team verifies it — usually under 30 minutes.`,
+                notifMsg,
                 '/my-listings'
             );
 
@@ -253,7 +304,7 @@ export default function AddProperty() {
             setShowSuccess(true);
             setTimeout(() => navigate('/'), 4000);
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             toast.error('Failed to publish property. Please try again.');
         } finally {
             setLoading(false);
@@ -351,6 +402,9 @@ export default function AddProperty() {
                 </AnimatePresence>,
                 document.body
             )}
+            
+
+
             <header className="flex items-center p-4 justify-between sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
                 <button onClick={prevStep} className="text-slate-700 dark:text-slate-300 p-2">
                     <ArrowLeft size={24} />
@@ -442,13 +496,38 @@ export default function AddProperty() {
                             </div>
                         </Section>
 
-                        <Section title="Specifications" icon={<Info size={20} />}>
+                        <Section title="Specifications & Utilities" icon={<Info size={20} />}>
                             <div className="grid grid-cols-3 gap-4">
                                 <Input label="Beds" name="beds" type="number" value={formData.beds} onChange={handleChange} />
                                 <Input label="Baths" name="baths" type="number" value={formData.baths} onChange={handleChange} />
                                 <Input label="SqFt (Optional)" name="area" type="number" value={formData.area} onChange={handleChange} placeholder="N/A" />
                             </div>
-                            <Input label="Security Deposit (Optional)" name="securityDeposit" type="number" value={formData.securityDeposit} onChange={handleChange} placeholder="৳0" />
+                            
+                            {/* BD Specific Core Fields */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <Select label="Gas Supply" name="gasSupply" value={formData.gasSupply} onChange={handleChange}>
+                                    <option value="Cylinder">Cylinder</option>
+                                    <option value="Titas Line">Titas / Piped Gas</option>
+                                    <option value="None">None</option>
+                                </Select>
+                                <Select label="Electricity Billing" name="electricityBilling" value={formData.electricityBilling} onChange={handleChange}>
+                                    <option value="Excluded">Excluded (Sub-meter)</option>
+                                    <option value="Prepaid Meter">Prepaid Meter</option>
+                                    <option value="Included">Included in Rent</option>
+                                </Select>
+                                <Select label="Facing" name="facing" value={formData.facing} onChange={handleChange}>
+                                    <option value="">Select Facing</option>
+                                    <option value="South">South Facing</option>
+                                    <option value="North">North Facing</option>
+                                    <option value="East">East Facing</option>
+                                    <option value="West">West Facing</option>
+                                </Select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input label="Security Deposit (Optional)" name="securityDeposit" type="number" value={formData.securityDeposit} onChange={handleChange} placeholder="৳0" />
+                                {/* <Input label="Agent Commission (if applicable)" name="agentCommission" value={formData.agentCommission} onChange={handleChange} placeholder="e.g. 1 Month Rent or ৳10000" /> */}
+                            </div>
                             <Textarea label="Description" name="description" value={formData.description} onChange={handleChange} placeholder="Tell tenants about your space..." />
                         </Section>
 
@@ -457,7 +536,7 @@ export default function AddProperty() {
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     {formData.images.map((url, index) => (
                                         <div key={index} className="relative aspect-square rounded-2xl overflow-hidden group border border-slate-100 dark:border-slate-800 shadow-sm">
-                                            <img src={url} alt={`Property ${index + 1}`} className="w-full h-full object-cover" />
+                                            <img loading="lazy" src={url} alt={`Property ${index + 1}`} className="w-full h-full object-cover" />
                                             <button 
                                                 onClick={() => removeImage(index)}
                                                 className="absolute top-2 right-2 p-1.5 bg-rose-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-rose-500/20"
@@ -561,6 +640,67 @@ export default function AddProperty() {
                             </div>
                         </Section>
 
+                        <Section title="BD Specific Policies & Amenities" icon={<Building2 size={20} />}>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Select label="Gas Supply" name="gasSupply" value={formData.gasSupply} onChange={handleChange}>
+                                    <option value="Line Gas">Line Gas</option>
+                                    <option value="Prepaid Gas">Prepaid Gas</option>
+                                    <option value="Cylinder">Cylinder</option>
+                                </Select>
+                                <Select label="Electricity Bill" name="electricityBilling" value={formData.electricityBilling} onChange={handleChange}>
+                                    <option value="Excluded">Excluded (Standard)</option>
+                                    <option value="Included">Included in Rent</option>
+                                    <option value="Sub-meter">Sub-meter</option>
+                                </Select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Select label="Water Source" name="waterSource" value={formData.waterSource} onChange={handleChange}>
+                                    <option value="WASA">WASA</option>
+                                    <option value="Deep Tube-well">Deep Tube-well</option>
+                                    <option value="Tank">Tank Delivery</option>
+                                </Select>
+                                <Select label="Facing Direction" name="facing" value={formData.facing} onChange={handleChange}>
+                                    <option value="">Select Direction</option>
+                                    <option value="South">South Facing</option>
+                                    <option value="North">North Facing</option>
+                                    <option value="East">East Facing</option>
+                                    <option value="West">West Facing</option>
+                                </Select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Input label="Floor Number" name="floorNumber" value={formData.floorNumber} onChange={handleChange} placeholder="e.g. 5th Floor" />
+                                <Select label="Parking Type" name="parkingType" value={formData.parkingType} onChange={handleChange}>
+                                    <option value="None">None</option>
+                                    <option value="Covered">Covered Garage</option>
+                                    <option value="Open">Open Parking</option>
+                                </Select>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-4">
+                                <Select label="Pet Policy" name="petPolicy" value={formData.petPolicy} onChange={handleChange}>
+                                    <option value="Not Allowed">Not Allowed</option>
+                                    <option value="Allowed">Allowed</option>
+                                </Select>
+                                <Select label="Bachelor Policy" name="bachelorPolicy" value={formData.bachelorPolicy} onChange={handleChange}>
+                                    <option value="Not Allowed">Not Allowed</option>
+                                    <option value="Allowed">Allowed</option>
+                                </Select>
+                                <Select label="Family Policy" name="familyPolicy" value={formData.familyPolicy} onChange={handleChange}>
+                                    <option value="Family Only">Family Only</option>
+                                    <option value="Any">Any</option>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest block mb-2">Nearby Distances (in km/meters)</label>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <Input label="Mosque" name="mosque" value={formData.distances.mosque} onChange={handleDistanceChange} placeholder="e.g. 0.5km" />
+                                    <Input label="School" name="school" value={formData.distances.school} onChange={handleDistanceChange} placeholder="e.g. 1km" />
+                                    <Input label="Market" name="market" value={formData.distances.market} onChange={handleDistanceChange} placeholder="e.g. 200m" />
+                                </div>
+                            </div>
+                        </Section>
+
                         <button
                             type="button"
                             onClick={nextStep}
@@ -576,7 +716,7 @@ export default function AddProperty() {
                     <div className="space-y-6 fade-in">
                         <div className="space-y-4">
                             <div className="relative h-64 rounded-3xl overflow-hidden shadow-xl">
-                                <img src={formData.imageUrl} className="w-full h-full object-cover" alt="Preview" />
+                                <img loading="lazy" src={formData.imageUrl} className="w-full h-full object-cover" alt="Preview" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                                 <div className="absolute bottom-6 left-6 right-6">
                                     <span className="bg-primary px-3 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-widest mb-2 inline-block shadow-lg">
@@ -594,7 +734,7 @@ export default function AddProperty() {
                                             className={`size-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${formData.imageUrl === url ? 'border-primary scale-105' : 'border-transparent opacity-60'}`}
                                             onClick={() => setFormData(prev => ({ ...prev, imageUrl: url, image_url: url }))}
                                         >
-                                            <img src={url} className="w-full h-full object-cover" alt="Thumb" />
+                                            <img loading="lazy" src={url} className="w-full h-full object-cover" alt="Thumb" />
                                         </div>
                                     ))}
                                 </div>
@@ -617,6 +757,42 @@ export default function AddProperty() {
                             </div>
                         </Section>
 
+                        {/* Active Subscription Banner */}
+                        {hasActiveSubscription && (
+                            <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 mb-3">
+                                <CheckCircle size={20} className="text-emerald-600 shrink-0" />
+                                <div>
+                                    <p className="font-black text-emerald-700 dark:text-emerald-400 text-sm">{subscriptionPlan} Plan Active</p>
+                                    <p className="text-xs font-medium text-emerald-600/80">Listing fee included in your subscription — post for free!</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* On-Site Verification Add-On */}
+                        <div
+                            onClick={() => setWantOnsiteVerify(v => !v)}
+                            className={`flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all mb-3 ${
+                                wantOnsiteVerify
+                                    ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                                    : 'border-slate-100 dark:border-slate-700 hover:border-primary/40'
+                            }`}
+                        >
+                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                                wantOnsiteVerify ? 'bg-primary border-primary' : 'border-slate-300 dark:border-slate-600'
+                            }`}>
+                                {wantOnsiteVerify && <CheckCircle size={14} className="text-white" strokeWidth={3} />}
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center justify-between">
+                                    <p className="font-black text-slate-900 dark:text-white text-sm">Add On-Site Verification</p>
+                                    <span className="text-xs font-black text-primary dark:text-indigo-400">+ ৳{ONSITE_FEE}</span>
+                                </div>
+                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                    Our team visits your property, verifies it, and adds a <span className="font-black text-emerald-600">Verified ✅</span> badge — boosting trust with tenants.
+                                </p>
+                            </div>
+                        </div>
+
                         <button
                             type="button"
                             disabled={loading}
@@ -624,11 +800,14 @@ export default function AddProperty() {
                             className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70"
                         >
                             <CreditCard size={20} />
-                            Publish Ad — ৳0 (Free)
+                            {totalAmount === 0 ? 'Publish Ad — Free with Subscription' : `Publish Ad — ৳${totalAmount}`}
                         </button>
 
                         <p className="text-center text-[10px] font-bold text-slate-400 mt-2">
-                            Limited time discount applied · Free listing
+                            {hasActiveSubscription
+                                ? `${subscriptionPlan} subscription · Listing: Free${wantOnsiteVerify ? ` · On-Site Verify: ৳${ONSITE_FEE}` : ''}`
+                                : `Listing Fee: ৳${LISTING_FEE}${wantOnsiteVerify ? ` · On-Site Verify: ৳${ONSITE_FEE}` : ' · or get a subscription plan to post free'}`
+                            }
                         </p>
 
                         <button
@@ -643,9 +822,13 @@ export default function AddProperty() {
 
             <ConfirmationModal
                 isOpen={publishConfirmOpen}
-                title="Confirm Free Listing"
-                message={`You are about to publish "${formData.title}" using our limited time free listing discount. Your listing will go live after our team verifies it.`}
-                confirmText="Claim & Publish"
+                title="Confirm Your Listing"
+                message={
+                    hasActiveSubscription
+                        ? `You are about to publish "${formData.title}" under your ${subscriptionPlan} plan. ${wantOnsiteVerify ? `On-site verification (৳${ONSITE_FEE}) will also be charged.` : 'Listing is free with your subscription!'}`
+                        : `You are about to publish "${formData.title}" for ৳${totalAmount}. Your listing will go live once our team verifies your payment — usually under 30 minutes.`
+                }
+                confirmText={totalAmount === 0 ? 'Publish for Free' : 'Proceed to Payment'}
                 confirmColor="#1a227f"
                 variant="info"
                 icon={CreditCard}
@@ -660,12 +843,15 @@ export default function AddProperty() {
                 isOpen={paymentModalOpen}
                 onClose={() => setPaymentModalOpen(false)}
                 type="listing_fee"
-                amount={0}
+                amount={totalAmount}
                 title="Listing Fee"
                 subtitle={`Publish: ${formData.title}`}
                 breakdownItems={[
-                    { label: 'Property Listing Fee', amount: 49 },
-                    { label: 'Limited Time Discount', amount: -49 },
+                    ...(hasActiveSubscription
+                        ? [{ label: `Listing Fee (${subscriptionPlan} Plan)`, amount: 0 }]
+                        : [{ label: 'Property Listing Fee', amount: LISTING_FEE }]
+                    ),
+                    ...(wantOnsiteVerify ? [{ label: 'On-Site Verification', amount: ONSITE_FEE }] : []),
                 ]}
                 propertyName={formData.title}
                 onPaymentSubmitted={handlePaymentSubmitted}

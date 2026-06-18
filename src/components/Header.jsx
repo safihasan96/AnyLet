@@ -19,6 +19,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import { subscribeToUnreadCount } from '../utils/messageService';
+import logger from '../utils/logger';
 
 export default function Header() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -39,14 +41,8 @@ export default function Header() {
         return;
     }
 
-    const qReq = query(
-        collection(db, 'viewing_requests'),
-        where('ownerId', '==', currentUser.uid),
-        where('isRead', '==', false)
-    );
-
-    const unsubReq = onSnapshot(qReq, (snapshot) => {
-        setUnreadCount(snapshot.size);
+    const unsubReq = subscribeToUnreadCount(currentUser.uid, (total) => {
+        setUnreadCount(total);
     });
 
     const qNotif = query(
@@ -97,7 +93,7 @@ export default function Header() {
       setIsDropdownOpen(false);
       navigate('/login');
     } catch (error) {
-      console.error("Failed to log out", error);
+      logger.error("Failed to log out", error);
     }
   };
 
@@ -176,7 +172,7 @@ export default function Header() {
                   >
                     <div className="p-2 space-y-1">
                       <DropdownItem to="/my-listings" onClick={() => setIsDropdownOpen(false)} icon={<List size={18} />} label="My Ads" />
-                      <DropdownItem to="/requests" onClick={() => setIsDropdownOpen(false)} icon={<MessageSquare size={18} />} label="Messages" badgeCount={unreadCount} />
+                      <DropdownItem to="/messages" onClick={() => setIsDropdownOpen(false)} icon={<MessageSquare size={18} />} label="Messages" badgeCount={unreadCount} />
                       <DropdownItem to="/notifications" onClick={() => setIsDropdownOpen(false)} icon={<Bell size={18} />} label="Notifications" badgeCount={unreadNotificationCount} />
                       <DropdownItem to="/profile" onClick={() => setIsDropdownOpen(false)} icon={<User size={18} />} label="My Profile" />
                       <DropdownItem to="/favorites" onClick={() => setIsDropdownOpen(false)} icon={<Heart size={18} />} label="Saved Items" />

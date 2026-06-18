@@ -1,4 +1,5 @@
 import emailjs from '@emailjs/browser';
+import logger from './logger';
 
 // --- CONFIGURATION ---
 // IMPORTANT: To make this work, replace these placeholders with real keys
@@ -28,7 +29,7 @@ export async function sendListingExpiryEmail(email, fullName, propertyTitle) {
     // Note: This will fail if the keys above are not configured or if the template doesn't match.
     // Since we don't want to crash the app if keys aren't set, we catch and log properly.
     if (EMAILJS_SERVICE_ID === 'service_xxxxxx') {
-        console.warn('EmailJS keys are not configured. The expiry email would have been sent with these details:', templateParams);
+        logger.warn('EmailJS keys are not configured. The expiry email would have been sent with these details:', templateParams);
         return { success: true, simulated: true };
     }
 
@@ -38,10 +39,10 @@ export async function sendListingExpiryEmail(email, fullName, propertyTitle) {
       templateParams,
       EMAILJS_PUBLIC_KEY
     );
-    console.log('Expiry email sent successfully:', response);
+    logger.info('Expiry email sent successfully:', response);
     return { success: true, response };
   } catch (error) {
-    console.error('Error sending listing expiry email:', error);
+    logger.error('Error sending listing expiry email:', error);
     // Don't throw the error, just return false so the UI doesn't crash, 
     // but the pseudo-cron might retry next time if we don't set the flag.
     return { success: false, error };

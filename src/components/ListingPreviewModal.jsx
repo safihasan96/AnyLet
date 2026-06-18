@@ -5,6 +5,7 @@ import { X, Building2, MapPin, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Modal3D from './Modal3D';
 import PropertyLoader from './PropertyLoader';
+import logger from '../utils/logger';
 
 export default function ListingPreviewModal({ isOpen, request, onClose }) {
     const [property, setProperty] = useState(null);
@@ -22,7 +23,7 @@ export default function ListingPreviewModal({ isOpen, request, onClose }) {
                     setProperty({ id: docSnap.id, ...docSnap.data() });
                 }
             } catch (error) {
-                console.error("Error fetching property:", error);
+                logger.error("Error fetching property:", error);
             } finally {
                 setLoading(false);
             }

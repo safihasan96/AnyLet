@@ -2,8 +2,19 @@ import { useState, useEffect } from 'react';
 import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import PropertyCard from './PropertyCard';
-import { StaggerGrid, CardPopItem } from '../utils/animations';
 import useInfiniteScroll from '../hooks/useInfiniteScroll';
+import { motion, AnimatePresence } from 'framer-motion';
+import logger from '../utils/logger';
+
+const gridVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.1,
+        },
+    },
+};
 
 export default function FeaturedListings({ category = 'All', division = '' }) {
     const [listings, setListings] = useState([]);
@@ -50,7 +61,7 @@ export default function FeaturedListings({ category = 'All', division = '' }) {
             setListings(listingsData);
             setLoading(false);
         }, (error) => {
-            console.error("Error fetching featured listings:", error);
+            logger.error("Error fetching featured listings:", error);
             setLoading(false);
         });
 
@@ -95,13 +106,18 @@ export default function FeaturedListings({ category = 'All', division = '' }) {
                     Found {listings.length} {listings.length === 1 ? 'listing' : 'listings'} matching your criteria
                 </p>
             </div>
-            <StaggerGrid className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {listings.slice(0, displayCount).map((listing) => (
-                    <CardPopItem key={listing.id} className="h-full">
-                        <PropertyCard property={listing} />
-                    </CardPopItem>
-                ))}
-            </StaggerGrid>
+            <motion.div
+                variants={gridVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            >
+                <AnimatePresence mode="popLayout">
+                    {listings.slice(0, displayCount).map((listing) => (
+                        <PropertyCard key={listing.id} property={listing} />
+                    ))}
+                </AnimatePresence>
+            </motion.div>
             {listings.length > displayCount && (
                 <div ref={sentinelRef} className="h-12 flex items-center justify-center mt-8">
                     <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>

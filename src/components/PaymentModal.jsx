@@ -6,11 +6,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { createPortal } from 'react-dom';
 import {
+import logger from '../utils/logger';
     X, ArrowLeft, ArrowRight, CreditCard, Loader2, CheckCircle2,
     Clock, Shield, Copy, Smartphone, ChevronRight, AlertTriangle, HelpCircle
 } from 'lucide-react';
 
-const MERCHANT_NUMBER = '01XXXXXXXXX'; // Replace with real bKash/Nagad number
+const MERCHANT_NUMBER = '01580632832'; // Replace with real bKash/Nagad number
 
 const PAYMENT_METHODS = [
     {
@@ -32,6 +33,16 @@ const PAYMENT_METHODS = [
         textColor: 'text-[#F6921E]',
         borderColor: 'border-[#F6921E]/30',
         logo: '🇳',
+    },
+    {
+        id: 'rocket',
+        name: 'Rocket',
+        color: '#8C3494',
+        bg: 'bg-[#8C3494]',
+        bgLight: 'bg-[#8C3494]/10',
+        textColor: 'text-[#8C3494]',
+        borderColor: 'border-[#8C3494]/30',
+        logo: '🚀',
     },
 ];
 
@@ -147,7 +158,7 @@ export default function PaymentModal({
             setDir(1);
             setStep(3);
         } catch (err) {
-            console.error('Payment submission error:', err);
+            logger.error('Payment submission error:', err);
             toast.error('Failed to submit payment. Please try again.');
         } finally {
             setLoading(false);
@@ -439,7 +450,7 @@ export default function PaymentModal({
                                             <input
                                                 type="text"
                                                 value={txnId}
-                                                onChange={(e) => setTxnId(e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 20))}
+                                                onChange={(e) => setTxnId(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 20))}
                                                 placeholder="e.g. 9A7F3K2B1X"
                                                 className={`w-full bg-slate-50 dark:bg-slate-800 border-2 border-transparent ${theme.ring} rounded-2xl py-5 px-5 text-center text-xl font-black text-slate-900 dark:text-white tracking-[0.15em] uppercase placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:tracking-normal placeholder:text-base placeholder:normal-case outline-none transition-all`}
                                                 autoFocus

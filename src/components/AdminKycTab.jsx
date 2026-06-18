@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { ShieldCheck, XCircle, Clock, CheckCircle, FileCheck, ExternalLink, User } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
+import logger from '../utils/logger';
 
 const STATUS_MAP = {
     PENDING_VERIFICATION: { label: 'Pending Review', color: 'amber', icon: Clock },
@@ -29,7 +30,7 @@ export default function AdminKycTab({ openModal }) {
             setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
             setLoading(false);
         }, err => {
-            console.error(err);
+            logger.error(err);
             setLoading(false);
         });
         return unsub;
@@ -52,7 +53,7 @@ export default function AdminKycTab({ openModal }) {
             );
             toast.success(`${user.fullName || user.email} approved`);
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             toast.error('Failed to approve');
         }
     }
@@ -78,7 +79,7 @@ export default function AdminKycTab({ openModal }) {
                     );
                     toast.success('Rejection sent');
                 } catch (err) {
-                    console.error(err);
+                    logger.error(err);
                     toast.error('Failed to reject');
                 }
             }

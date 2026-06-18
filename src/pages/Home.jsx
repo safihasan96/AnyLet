@@ -12,6 +12,35 @@ import { bdLocations } from '../data/locations';
 import { motion } from 'framer-motion';
 import { PopInSection } from '../utils/animations';
 
+const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            staggerChildren: 0.15,
+            delayChildren: 0.2,
+        },
+    },
+};
+
+const textVariants = {
+    hidden: { opacity: 0, y: 40 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        transition: { type: 'spring', stiffness: 80, damping: 20 },
+    },
+};
+
+const searchBarVariants = {
+    hidden: { opacity: 0, scale: 0.9 },
+    visible: {
+        opacity: 1,
+        scale: 1,
+        transition: { type: 'spring', stiffness: 100, damping: 15 },
+    },
+};
+
 export default function Home() {
     const { currentUser } = useAuth();
     const { t } = useLanguage();
@@ -34,7 +63,7 @@ export default function Home() {
     }, [currentUser]);
 
     return (
-        <div className="pb-24 bg-background-light dark:bg-background-dark min-h-screen">
+        <div className="pb-24 bg-background-light dark:bg-background-dark min-h-screen relative overflow-hidden">
             <Helmet>
                 <title>Any-Let | The Smartest Way to Rent in Bangladesh</title>
                 <meta name="description" content="Discover verified properties for rent in Dhaka, Chittagong, and across Bangladesh. Connect with trusted landlords securely on Any-Let." />
@@ -74,19 +103,22 @@ export default function Home() {
 
             <main className="max-w-7xl mx-auto">
                 <div className="px-4 py-6 md:py-12">
-                    <div className="flex flex-col gap-6 md:gap-10">
+                    <motion.div 
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="flex flex-col gap-6 md:gap-10"
+                    >
                         <motion.h1 
-                            initial={{ x: -20, opacity: 0 }}
-                            animate={{ x: 0, opacity: 1 }}
-                            className="text-3xl md:text-6xl font-black tracking-tight leading-tight text-slate-900 dark:text-white max-w-2xl"
+                            variants={textVariants}
+                            className="text-3xl md:text-6xl font-black tracking-tight leading-tight text-slate-900 dark:text-white max-w-2xl will-change-transform transform-gpu"
                         >
                             {t('hero_title')} <span className="text-primary dark:text-indigo-400 italic">{t('hero_perfect')}</span> {t('hero_space')} <span className="underline decoration-primary decoration-4 underline-offset-8">{t('hero_seconds')}</span>.
                         </motion.h1>
 
                         <motion.div
-                            initial={{ y: 20, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ delay: 0.2 }}
+                            variants={searchBarVariants}
+                            className="will-change-transform transform-gpu"
                         >
                             <div className="flex flex-col w-full max-w-4xl">
                                 <div className="flex w-full items-stretch rounded-3xl h-16 md:h-20 bg-white dark:bg-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-700 overflow-hidden group">
@@ -127,8 +159,9 @@ export default function Home() {
                                 </div>
                             </div>
                         </motion.div>
-                    </div>
+                    </motion.div>
                 </div>
+
 
                 {/* Get the App Banner Removed */}
 
@@ -226,6 +259,9 @@ export default function Home() {
     );
 }
 
+import { useRef } from 'react';
+import { useMotionValue, useTransform, useSpring } from 'framer-motion';
+
 function CategoryItem({ icon, label, active = false, onClick }) {
     return (
         <motion.button
@@ -235,13 +271,15 @@ function CategoryItem({ icon, label, active = false, onClick }) {
             whileHover={{ scale: 1.1, y: -3 }}
             transition={{ type: 'spring', stiffness: 500, damping: 20 }}
         >
-            <div className={`size-16 rounded-2xl shadow-lg flex items-center justify-center transition-all ${active
+            <div 
+                style={{ translateZ: 15 }}
+                className={`size-16 rounded-2xl shadow-lg flex items-center justify-center transition-all ${active
                 ? 'bg-primary text-white shadow-primary/30 scale-105'
                 : 'bg-white dark:bg-slate-800 text-primary dark:text-indigo-400 border border-slate-100 dark:border-slate-700 shadow-slate-200/50 dark:shadow-none'
                 }`}>
                 {icon}
             </div>
-            <p className={`text-[11px] font-black uppercase tracking-wider ${active ? 'text-primary dark:text-indigo-400' : 'text-slate-500'}`}>{label}</p>
+            <p style={{ translateZ: 5 }} className={`text-[11px] font-black uppercase tracking-wider ${active ? 'text-primary dark:text-indigo-400' : 'text-slate-500'}`}>{label}</p>
         </motion.button>
     );
 }

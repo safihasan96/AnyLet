@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { ArrowLeft, Moon, Sun, LogOut, ChevronRight, Bell, Globe } from 'lucide-react';
+import logger from '../utils/logger';
 
 export default function Settings() {
     const navigate = useNavigate();
@@ -19,7 +20,7 @@ export default function Settings() {
             await signOut(auth);
             navigate('/login');
         } catch (err) {
-            console.error(err);
+            logger.error(err);
         }
     };
 

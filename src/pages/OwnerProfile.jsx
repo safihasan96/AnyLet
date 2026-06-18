@@ -14,6 +14,7 @@ import WriteReviewModal from '../components/WriteReviewModal';
 import { Helmet } from 'react-helmet-async';
 import { useToast } from '../contexts/ToastContext';
 import { toggleHelpfulVote, submitLandlordReply } from '../utils/reviewService';
+import logger from '../utils/logger';
 
 const CATEGORIES = [
     { key: 'communication', label: 'Communication', emoji: '💬' },
@@ -88,7 +89,7 @@ export default function OwnerProfile() {
                     if (eligible) setEligibleMoveIn({ firestoreId: eligible.id, ...eligible.data() });
                 }
             } catch (err) {
-                console.error(err);
+                logger.error(err);
             } finally {
                 setLoading(false);
             }
@@ -136,7 +137,7 @@ export default function OwnerProfile() {
                 return r;
             }));
         } catch (error) {
-            console.error(error);
+            logger.error(error);
             toast.error("Failed to register vote");
         }
     };
@@ -162,7 +163,7 @@ export default function OwnerProfile() {
              }));
              toast.success("Reply posted!");
         } catch (error) {
-             console.error(error);
+             logger.error(error);
              toast.error("Failed to post reply");
         }
     };

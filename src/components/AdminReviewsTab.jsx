@@ -3,6 +3,7 @@ import { collection, query, orderBy, onSnapshot, updateDoc, deleteDoc, doc } fro
 import { db } from '../firebase';
 import { Star, ShieldCheck, Trash2, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import logger from '../utils/logger';
 
 export default function AdminReviewsTab({ openModal }) {
     const [propertyReviews, setPropertyReviews] = useState([]);
@@ -25,7 +26,7 @@ export default function AdminReviewsTab({ openModal }) {
             await updateDoc(doc(db, collectionName, id), { isApproved: !currentStatus });
             toast.success(`Review ${!currentStatus ? 'approved' : 'hidden'} successfully`);
         } catch (error) {
-            console.error(error);
+            logger.error(error);
             toast.error("Failed to update status");
         }
     };
@@ -41,7 +42,7 @@ export default function AdminReviewsTab({ openModal }) {
                     await deleteDoc(doc(db, collectionName, id));
                     toast.success("Review deleted");
                 } catch (error) {
-                    console.error(error);
+                    logger.error(error);
                     toast.error("Failed to delete review");
                 }
             }

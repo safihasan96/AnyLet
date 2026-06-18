@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 import { createPortal } from 'react-dom';
 import { X, Home, CheckCircle2, Star, ArrowRight, Loader2, Building2 } from 'lucide-react';
 import { createNotification } from '../utils/notificationService';
+import logger from '../utils/logger';
 
 const stepVariants = {
     enter: (dir) => ({ opacity: 0, x: dir > 0 ? 60 : -60 }),
@@ -69,7 +70,7 @@ export default function MoveInModal({ isOpen, onClose, request, onMoveInSuccess 
             setStep(1);
             if (onMoveInSuccess) onMoveInSuccess();
         } catch (err) {
-            console.error('Move-in error:', err);
+            logger.error('Move-in error:', err);
             toast.error('Something went wrong. Please try again.');
         } finally {
             setLoading(false);

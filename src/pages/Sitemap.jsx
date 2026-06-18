@@ -20,7 +20,7 @@ export default function Sitemap() {
             ]
         },
         {
-            title: "For Owners & Agents",
+            title: "For Owners",
             links: [
                 { name: "Post an Ad", path: "/post-ad" },
                 { name: "Pricing Plans", path: "/pricing" }

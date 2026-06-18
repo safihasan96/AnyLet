@@ -1,10 +1,13 @@
+'use client';
 import { useState, useEffect } from 'react';
 import {
-    collection, onSnapshot, updateDoc, deleteDoc, doc
+    collection, onSnapshot, updateDoc, deleteDoc, doc, query, limit
 } from 'firebase/firestore';
 import { Search, UserMinus, UserCheck, Trash2, Shield, User } from 'lucide-react';
 import { db } from '../firebase';
+import QUERY_LIMITS from '../config/queryLimits';
 import ConfirmationModal from '../components/ConfirmationModal';
+import logger from '../utils/logger';
 
 export default function AdminUsers() {
     const [users, setUsers] = useState([]);
@@ -23,12 +26,12 @@ export default function AdminUsers() {
 
     useEffect(() => {
         setLoading(true);
-        const unsub = onSnapshot(collection(db, 'users'), (snap) => {
+        const unsub = onSnapshot(query(collection(db, 'users'), limit(QUERY_LIMITS.ADMIN_USERS)), (snap) => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             setUsers(list);
             setLoading(false);
         }, (err) => {
-            console.error('Error listening to users:', err);
+            logger.error('Error listening to users:', err);
             setLoading(false);
         });
         return () => unsub();
@@ -51,7 +54,7 @@ export default function AdminUsers() {
                     setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
                     setTimeout(closeModal, 1500);
                 } catch (e) {
-                    console.error(e);
+                    logger.error(e);
                     setModal(p => ({ ...p, isLoading: false, isOpen: false }));
                 }
             }
@@ -71,7 +74,7 @@ export default function AdminUsers() {
                     setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
                     setTimeout(closeModal, 1500);
                 } catch (e) {
-                    console.error(e);
+                    logger.error(e);
                     setModal(p => ({ ...p, isLoading: false, isOpen: false }));
                 }
             }
@@ -85,7 +88,7 @@ export default function AdminUsers() {
                 isAdmin: newRole === 'admin',
             });
         } catch (e) {
-            console.error('Failed to update role:', e);
+            logger.error('Failed to update role:', e);
         }
     };
 

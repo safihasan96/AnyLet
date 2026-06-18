@@ -1,8 +1,17 @@
 import { CheckCircle2, Star, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import PaymentModal from '../components/PaymentModal';
 
 export default function Pricing() {
     const navigate = useNavigate();
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState(null);
+
+    const handlePlanSelect = (planName, amount) => {
+        setSelectedPlan({ name: planName, amount });
+        setPaymentModalOpen(true);
+    };
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10">
             <div className="max-w-6xl mx-auto px-6">
@@ -19,7 +28,7 @@ export default function Pricing() {
                     <p className="text-lg text-slate-500 font-medium max-w-xl mx-auto">Choose the perfect plan to maximize your property's visibility or manage multiple portfolios.</p>
                 </header>
 
-                <div className="grid md:grid-cols-3 gap-8">
+                <div className="grid md:grid-cols-2 max-w-4xl mx-auto gap-8">
                     {/* Free Plan */}
                     <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-slate-100 dark:border-slate-800 flex flex-col">
                         <div className="mb-6">
@@ -62,10 +71,11 @@ export default function Pricing() {
                                 </li>
                             ))}
                         </ul>
-                        <button className="w-full py-4 rounded-2xl bg-white text-primary dark:text-indigo-400 font-black hover:scale-[1.02] active:scale-95 transition-transform shadow-xl">Upgrade with bKash</button>
+                        <button onClick={() => handlePlanSelect('Premium', 999)} className="w-full py-4 rounded-2xl bg-white text-primary dark:text-indigo-400 font-black hover:scale-[1.02] active:scale-95 transition-transform shadow-xl">Upgrade with bKash</button>
                     </div>
 
                     {/* Agent Plan */}
+                    {/* 
                     <div className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-slate-100 dark:border-slate-800 flex flex-col">
                         <div className="mb-6">
                             <span className="text-xs font-black uppercase tracking-widest text-slate-400">Agency / Corporate</span>
@@ -86,10 +96,26 @@ export default function Pricing() {
                                 </li>
                             ))}
                         </ul>
-                        <button className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black hover:scale-[1.02] active:scale-95 transition-all">Contact Sales</button>
-                    </div>
+                        <button onClick={() => handlePlanSelect('Agency', 4999)} className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black hover:scale-[1.02] active:scale-95 transition-all">Upgrade Now</button>
+                    </div> 
+                    */}
                 </div>
             </div>
+
+            {selectedPlan && (
+                <PaymentModal
+                    isOpen={paymentModalOpen}
+                    onClose={() => setPaymentModalOpen(false)}
+                    type="subscription"
+                    amount={selectedPlan.amount}
+                    title="Subscription Upgrade"
+                    subtitle={`Upgrade to ${selectedPlan.name} Plan`}
+                    breakdownItems={[
+                        { label: `${selectedPlan.name} Subscription (1 Month)`, amount: selectedPlan.amount },
+                    ]}
+                    metadata={{ plan: selectedPlan.name }}
+                />
+            )}
         </div>
     );
 }

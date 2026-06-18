@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import logger from '../utils/logger';
 
 export default class ErrorBoundary extends Component {
     constructor(props) {
@@ -11,7 +12,7 @@ export default class ErrorBoundary extends Component {
     }
 
     componentDidCatch(error, info) {
-        console.error('🔴 App crashed:', error, info);
+        logger.error('🔴 App crashed:', error, info);
         this.setState({ info });
     }
 

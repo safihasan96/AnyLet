@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getPropertyCoords } from '../data/locationCoords';
 
@@ -63,13 +63,20 @@ function makePinIcon(isHighlighted = false) {
     });
 }
 
-export default function PropertyMap({ properties = [], defaultLayer = 'street', showLayerControl = true }) {
+export default function PropertyMap({ properties = [], defaultLayer = 'street', showLayerControl = true, centerProperty = null }) {
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const markersRef = useRef([]);
     const tileLayerRef = useRef(null);
     const navigate = useNavigate();
     const [activeLayer, setActiveLayer] = useState(defaultLayer);
+
+    // Merge centerProperty into the list if it's not already there
+    const mergedProperties = useMemo(() => {
+        if (!centerProperty) return properties;
+        const alreadyIncluded = properties.some(p => p.id === centerProperty.id);
+        return alreadyIncluded ? properties : [centerProperty, ...properties];
+    }, [properties, centerProperty]);
 
     // Initialize map once
     useEffect(() => {
@@ -119,11 +126,12 @@ export default function PropertyMap({ properties = [], defaultLayer = 'street', 
         markersRef.current.forEach(m => map.removeLayer(m));
         markersRef.current = [];
 
-        if (properties.length === 0) return;
+        if (mergedProperties.length === 0) return;
 
         const bounds = [];
+        const isCenterProp = (p) => centerProperty && p.id === centerProperty.id;
 
-        properties.forEach(property => {
+        mergedProperties.forEach(property => {
             const coords = property.lat && property.lng
                 ? { lat: Number(property.lat), lng: Number(property.lng) }
                 : getPropertyCoords(property);
@@ -131,7 +139,7 @@ export default function PropertyMap({ properties = [], defaultLayer = 'street', 
             if (!coords) return;
             bounds.push([coords.lat, coords.lng]);
 
-            const marker = L.marker([coords.lat, coords.lng], { icon: makePinIcon(false) });
+            const marker = L.marker([coords.lat, coords.lng], { icon: makePinIcon(isCenterProp(property)) });
 
             // Build the popup HTML — price-focused, clean card
             const imageUrl = property.images?.[0] || property.imageUrl || property.image_url || '';
@@ -178,10 +186,28 @@ export default function PropertyMap({ properties = [], defaultLayer = 'street', 
 
         if (bounds.length > 0) {
             try {
-                map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
+                if (centerProperty) {
+                    // If we have a focal property, fly directly to it instead of fitting all bounds
+                    const focusCoords = centerProperty.lat && centerProperty.lng
+                        ? { lat: Number(centerProperty.lat), lng: Number(centerProperty.lng) }
+                        : getPropertyCoords(centerProperty);
+                    if (focusCoords) {
+                        map.flyTo([focusCoords.lat, focusCoords.lng], 16, { animate: true, duration: 1.2 });
+                        // Auto-open the center property's popup
+                        setTimeout(() => {
+                            const targetMarker = markersRef.current.find(m => {
+                                const ll = m.getLatLng();
+                                return Math.abs(ll.lat - focusCoords.lat) < 0.0001 && Math.abs(ll.lng - focusCoords.lng) < 0.0001;
+                            });
+                            if (targetMarker) targetMarker.openPopup();
+                        }, 1300);
+                    }
+                } else {
+                    map.fitBounds(bounds, { padding: [60, 60], maxZoom: 14 });
+                }
             } catch (_) {}
         }
-    }, [properties, navigate]);
+    }, [mergedProperties, navigate, centerProperty]);
 
     return (
         <div className="relative w-full h-full">

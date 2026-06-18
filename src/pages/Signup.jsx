@@ -12,6 +12,7 @@ import {
     ShieldCheck, RefreshCw, ArrowLeft, Gift, Loader2
 } from 'lucide-react';
 import { generateReferralCode, clearStoredReferralCode } from '../utils/referral';
+import logger from '../utils/logger';
 
 // Inline Google logo SVG
 function GoogleLogo() {
@@ -126,7 +127,7 @@ export default function Signup() {
             } else if (err.code === 'auth/popup-blocked') {
                 setError('Google Sign-In failed: Popup blocked by your browser. Please disable popup blockers or use a standard browser like Chrome or Safari.');
             } else if (err.code !== 'auth/popup-closed-by-user') {
-                console.error("Google Auth Error:", err);
+                logger.error("Google Auth Error:", err);
                 setError(`Google sign-up failed: ${err.message}`);
             }
         } finally {

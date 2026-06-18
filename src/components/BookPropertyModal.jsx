@@ -9,6 +9,7 @@ import ConfirmationModal from './ConfirmationModal';
 import { createNotification } from '../utils/notificationService';
 import { createPortal } from 'react-dom';
 import {
+import logger from '../utils/logger';
     X, Shield, Lock, ArrowRight, CheckCircle2, Home,
     CreditCard, Users, Banknote
 } from 'lucide-react';
@@ -81,7 +82,7 @@ export default function BookPropertyModal({ isOpen, onClose, property }) {
 
             toast.success('Booking submitted! The owner will be notified.');
         } catch (err) {
-            console.error('Escrow creation error:', err);
+            logger.error('Escrow creation error:', err);
             toast.error('Failed to create booking. Please contact support.');
         }
     };

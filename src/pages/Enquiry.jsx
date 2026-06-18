@@ -1,15 +1,19 @@
-import { useState, useEffect } from 'react';
+'use client';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import {
     collection, addDoc, query, where, onSnapshot,
-    serverTimestamp, orderBy
+    serverTimestamp, orderBy, limit
 } from 'firebase/firestore';
 import {
     ArrowLeft, Send, MessageSquare, Clock,
     CheckCircle, AlertCircle, Plus, ChevronRight, X
 } from 'lucide-react';
+import QUERY_LIMITS from '../config/queryLimits';
+import logger from '../utils/logger';
 
 export default function Enquiry() {
     const { currentUser } = useAuth();
@@ -32,7 +36,8 @@ export default function Enquiry() {
             const q = query(
                 collection(db, 'enquiries'),
                 where('userId', '==', currentUser.uid),
-                orderBy('createdAt', 'desc')
+                orderBy('createdAt', 'desc'),
+                limit(QUERY_LIMITS.ENQUIRIES)
             );
 
             const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -44,7 +49,7 @@ export default function Enquiry() {
                 setLoading(false);
                 setError(null);
             }, (err) => {
-                console.error('Firestore Snapshot Error:', err);
+                logger.error('Firestore Snapshot Error:', err);
                 // If it's an index error, it usually contains a link
                 setError('Unable to load history. If this is a new setup, a database index might be required. Check console for details.');
                 setLoading(false);
@@ -52,11 +57,11 @@ export default function Enquiry() {
 
             return () => unsubscribe();
         } catch (err) {
-            console.error('Query Setup Error:', err);
+            logger.error('Query Setup Error:', err);
             setError('Failed to initialize ticket history.');
             setLoading(false);
         }
-    }, [currentUser]);
+    }, [currentUser?.uid]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -78,7 +83,7 @@ export default function Enquiry() {
             setShowForm(false);
             setSelectedEnquiry(null);
         } catch (err) {
-            console.error('Error submitting enquiry:', err);
+            logger.error('Error submitting enquiry:', err);
             setError('Failed to submit. Please try again.');
         } finally {
             setSubmitting(false);

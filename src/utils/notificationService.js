@@ -1,5 +1,6 @@
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import logger from './logger';
 
 /**
  * Creates a notification in the Firestore `notifications` collection.
@@ -13,7 +14,7 @@ import { db } from '../firebase';
  */
 export const createNotification = async (userId, type, title, message, link, metadata = {}) => {
     if (!userId) {
-        console.error("createNotification: userId is required");
+        logger.error("createNotification: userId is required");
         return;
     }
 
@@ -29,6 +30,6 @@ export const createNotification = async (userId, type, title, message, link, met
             metadata
         });
     } catch (error) {
-        console.error("Error creating notification:", error);
+        logger.error("Error creating notification:", error);
     }
 };

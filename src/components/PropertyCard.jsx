@@ -2,7 +2,31 @@ import { Link } from 'react-router-dom';
 import { MapPin, Bed, DoorOpen, Building2, Star, Heart, Zap, CheckCircle2, Clock, Lock, ShieldCheck } from 'lucide-react';
 import useSavedProperties from '../hooks/useSavedProperties';
 import { motion } from 'framer-motion';
-import { popIn } from '../utils/animations';
+
+// ── Variants (all decoupled from JSX per framer-motion-expert skill) ──────────
+
+const cardVariants = {
+    hidden: { opacity: 0, scale: 0.9 },
+    visible: { 
+        opacity: 1, 
+        scale: 1, 
+        transition: { type: 'spring', stiffness: 80, damping: 20 } 
+    },
+    exit: { 
+        opacity: 0, 
+        scale: 0.9, 
+        transition: { duration: 0.2 } 
+    },
+};
+
+const heartVariants = {
+    unsaved: { scale: 1, rotate: 0 },
+    saved: { 
+        scale: [1, 1.5, 0.85, 1.15, 1],
+        rotate: [0, -15, 10, -5, 0],
+        transition: { duration: 0.5, times: [0, 0.2, 0.5, 0.7, 1] },
+    },
+};
 
 export default function PropertyCard({ property }) {
     const { id, title, rent, area, beds, baths, sqft, image, type, isVerified, utilitiesCost } = property;
@@ -13,11 +37,7 @@ export default function PropertyCard({ property }) {
     const displayRent = rent || property.price || 0;
     const displayImage = property?.images?.[0] || image || property.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80';
     
-    const locationParts = [
-        property.addressDetails,
-        property.upazila,
-        property.district
-    ].filter(Boolean);
+    const locationParts = [property.addressDetails, property.upazila, property.district].filter(Boolean);
     const displayLocation = locationParts.length > 0 ? locationParts.join(', ') : 'Dhaka, Bangladesh';
 
     const formatTimeAgo = (timestamp) => {
@@ -26,7 +46,6 @@ export default function PropertyCard({ property }) {
             const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
             const now = new Date();
             const diffInSeconds = Math.floor((now - date) / 1000);
-            
             if (diffInSeconds < 60) return `${Math.max(0, diffInSeconds)}s`;
             if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}min`;
             if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
@@ -34,41 +53,62 @@ export default function PropertyCard({ property }) {
             if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)}w`;
             if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)}mo`;
             return `${Math.floor(diffInSeconds / 31536000)}y`;
-        } catch (e) {
-            return '';
-        }
+        } catch (e) { return ''; }
     };
 
     return (
         <motion.div
-            variants={popIn}
-            whileHover={{ y: -4, transition: { type: 'spring', stiffness: 350, damping: 26 } }}
-            whileTap={{ scale: 0.98, transition: { duration: 0.12 } }}
-            style={{ willChange: 'transform' }}
-            className="h-full"
+            layout
+            variants={cardVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            whileHover={{ y: -5, scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            className="h-full will-change-transform"
         >
-            <Link to={`/property/${id}`} className="h-full group flex flex-col bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 transition-shadow hover:shadow-xl hover:shadow-primary/8">
+            <Link
+                to={`/property/${id}`}
+                className="h-full group flex flex-col bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-2xl hover:shadow-primary/10 transition-shadow"
+            >
+                {/* ── Image ──────────────────────────────── */}
                 <div className="relative h-56 w-full overflow-hidden">
-                    <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={displayImage} alt={title} />
+                    <img
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        src={displayImage}
+                        alt={title}
+                    />
+
+                    {/* Heart button */}
                     <div className="absolute top-4 right-4">
                         <motion.button
+                            animate={isSaved ? 'saved' : 'unsaved'}
+                            variants={heartVariants}
+                            whileHover={{ scale: 1.15 }}
+                            whileTap={{ scale: 0.8 }}
                             className={`size-10 rounded-xl bg-white/90 backdrop-blur flex items-center justify-center shadow-sm ${isSaved ? 'text-rose-500' : 'text-slate-400 hover:text-rose-500'}`}
                             onClick={(e) => toggleSaveProperty(id, e)}
-                            whileTap={{ scale: 0.82 }}
-                            whileHover={{ scale: 1.1 }}
-                            transition={{ type: 'spring', stiffness: 500, damping: 22 }}
                         >
                             <Heart size={20} fill={isSaved ? "currentColor" : "none"} strokeWidth={isSaved ? 0 : 2} />
                         </motion.button>
                     </div>
-                    <div className="absolute bottom-4 left-4 bg-primary text-white px-4 py-2 rounded-xl font-black text-sm shadow-lg shadow-primary/20">
+
+                    {/* Price */}
+                    <motion.div
+                        className="absolute bottom-4 left-4 bg-primary text-white px-4 py-2 rounded-xl font-black text-sm shadow-lg shadow-primary/20"
+                        style={{ translateZ: 6 }}
+                        whileHover={{ scale: 1.05 }}
+                        transition={{ type: 'spring', stiffness: 400 }}
+                    >
                         ৳ {displayRent.toLocaleString()}<span className="text-[10px] opacity-80 ml-1 font-bold">/MO</span>
-                    </div>
+                    </motion.div>
+
+                    {/* Badges */}
                     <div className="absolute top-4 left-4 flex flex-col gap-2 items-start">
                         {isVerified && (
                             <div className="bg-white/90 backdrop-blur text-emerald-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm border border-emerald-100">
-                                <ShieldCheck size={12} className="fill-emerald-600" />
-                                Verified Landlord
+                                <ShieldCheck size={12} className="fill-emerald-600" /> Verified Landlord
                             </div>
                         )}
                         {property.reviewCount > 0 && (
@@ -91,6 +131,8 @@ export default function PropertyCard({ property }) {
                         )}
                     </div>
                 </div>
+
+                {/* ── Card content ───────────────────────────────────────────── */}
                 <div className="p-5 flex flex-col flex-1">
                     <div className="flex justify-between items-start gap-3 mb-2">
                         <h4 className="font-black text-xl text-slate-900 dark:text-white leading-tight line-clamp-2 flex-1" title={title}>{title}</h4>

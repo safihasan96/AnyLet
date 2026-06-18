@@ -14,9 +14,9 @@ import Profile from './pages/Profile';
 import AddProperty from './pages/AddProperty';
 import Favorites from './pages/Favorites';
 import Notifications from './pages/Notifications';
-
+import Inbox from './pages/Inbox';
 import Enquiry from './pages/Enquiry';
-import Requests from './pages/Requests';
+import ConversationDetail from './pages/ConversationDetail';
 import Admin from './pages/AdminPanel';
 import OwnerProfile from './pages/OwnerProfile';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -32,10 +32,10 @@ import AboutUs from './pages/AboutUs';
 import Contact from './pages/Contact';
 import Pricing from './pages/Pricing';
 import Sitemap from './pages/Sitemap';
-import PrivacyPolicy from './pages/PrivacyPolicy';
+import PrivacyPage from './pages/PrivacyPage';
 import Terms from './pages/Terms';
-import Agents from './pages/Agents';
-import AgentProfile from './pages/AgentProfile';
+// import Agents from './pages/Agents';
+// import AgentProfile from './pages/AgentProfile';
 import Blog from './pages/Blog';
 import BlogPost from './pages/BlogPost';
 import Settings from './pages/Settings';
@@ -98,20 +98,15 @@ function App() {
               <Route path="/contact" element={<PageWrapper><Contact /></PageWrapper>} />
               <Route path="/pricing" element={<PageWrapper><Pricing /></PageWrapper>} />
               <Route path="/sitemap" element={<PageWrapper><Sitemap /></PageWrapper>} />
-              <Route path="/privacy-policy" element={<PageWrapper><PrivacyPolicy /></PageWrapper>} />
+              <Route path="/privacy-policy" element={<PageWrapper><PrivacyPage /></PageWrapper>} />
               <Route path="/terms" element={<PageWrapper><Terms /></PageWrapper>} />
-              <Route path="/agents" element={<PageWrapper><Agents /></PageWrapper>} />
-              <Route path="/agent/:id" element={<PageWrapper><AgentProfile /></PageWrapper>} />
+              {/* <Route path="/agents" element={<PageWrapper><Agents /></PageWrapper>} /> */}
+              {/* <Route path="/agent/:id" element={<PageWrapper><AgentProfile /></PageWrapper>} /> */}
               <Route path="/blog" element={<PageWrapper><Blog /></PageWrapper>} />
               <Route path="/blog/:id" element={<PageWrapper><BlogPost /></PageWrapper>} />
               <Route path="/map" element={<MapPage />} />
 
               {/* Protected Routes */}
-              <Route path="/requests" element={
-                <ProtectedRoute>
-                  <PageWrapper><Requests /></PageWrapper>
-                </ProtectedRoute>
-              } />
               <Route path="/onboarding" element={
                 <ProtectedRoute>
                   <PageWrapper><Onboarding /></PageWrapper>
@@ -167,6 +162,21 @@ function App() {
               <Route path="/my-bookings" element={
                 <ProtectedRoute>
                   <PageWrapper><MyBookings /></PageWrapper>
+                </ProtectedRoute>
+              } />
+              <Route path="/messages" element={
+                <ProtectedRoute>
+                  <PageWrapper><Inbox /></PageWrapper>
+                </ProtectedRoute>
+              } />
+              <Route path="/messages/request/:requestId" element={
+                <ProtectedRoute>
+                  <PageWrapper><ConversationDetail /></PageWrapper>
+                </ProtectedRoute>
+              } />
+              <Route path="/messages/:conversationId" element={
+                <ProtectedRoute>
+                  <PageWrapper><ConversationDetail /></PageWrapper>
                 </ProtectedRoute>
               } />
               <Route path="/enquiry" element={

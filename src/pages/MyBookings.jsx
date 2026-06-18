@@ -9,6 +9,7 @@ import PaymentStatusModal from '../components/PaymentStatusModal';
 import { useToast } from '../contexts/ToastContext';
 import { Helmet } from 'react-helmet-async';
 import { createNotification } from '../utils/notificationService';
+import logger from '../utils/logger';
 
 const STATUS_MAP = {
     held: { label: 'Deposit Held', color: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 border-blue-100 dark:border-blue-500/20', icon: Lock },
@@ -66,7 +67,7 @@ export default function MyBookings() {
             toast.success('Move-in confirmed! The deposit will be released once the owner also confirms.');
             setConfirmModal({ isOpen: false, bookingId: null });
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             toast.error('Failed to confirm. Please try again.');
         } finally {
             setConfirming(false);

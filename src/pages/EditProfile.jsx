@@ -5,6 +5,7 @@ import { auth, db } from '../firebase';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
 import { ArrowLeft, Camera, MapPin, MessageCircle } from 'lucide-react';
+import logger from '../utils/logger';
 
 export default function EditProfile() {
     const { currentUser, refreshUser } = useAuth();
@@ -45,7 +46,7 @@ export default function EditProfile() {
                     });
                 }
             } catch (err) {
-                console.error(err);
+                logger.error('Fetch user profile', err);
             } finally {
                 setLoading(false);
             }
@@ -106,7 +107,7 @@ export default function EditProfile() {
             // Optional: navigate back after a short delay
             // setTimeout(() => navigate('/profile'), 1500);
         } catch (err) {
-            console.error("Profile update error:", err);
+            logger.error('Profile update error', err);
             setMessage({ type: 'error', text: `Failed to update profile: ${err.message || err}` });
         } finally {
             setSaving(false);
@@ -128,9 +129,9 @@ export default function EditProfile() {
             const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmkbsddqk';
             const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'cn6piwep';
             
-            console.log('Attempting profile photo upload...', { 
-                cloudName, 
-                preset: uploadPreset ? `${uploadPreset.substring(0, 3)}***` : 'MISSING' 
+            logger.debug('Attempting profile photo upload', {
+                cloudName,
+                preset: uploadPreset ? `${uploadPreset.substring(0, 3)}***` : 'MISSING'
             });
 
             const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
@@ -143,11 +144,11 @@ export default function EditProfile() {
                 setFormData(prev => ({ ...prev, photoURL: fileData.secure_url }));
                 setMessage({ type: 'success', text: 'Photo uploaded! Don\'t forget to save changes.' });
             } else {
-                console.error("Cloudinary Error:", fileData);
+                logger.error('Cloudinary upload error', fileData);
                 setMessage({ type: 'error', text: `Upload failed: ${fileData.error?.message || "Unknown error"} (Cloud: ${cloudName}, Preset: ${uploadPreset ? uploadPreset.substring(0,3) + '...' : 'None'})` });
             }
         } catch (err) {
-            console.error("Cloudinary Connection Error:", err);
+            logger.error('Cloudinary connection error', err);
             setMessage({ type: 'error', text: 'Connection error during upload.' });
         } finally {
             setSaving(false);

@@ -1,6 +1,7 @@
 import { collection, addDoc, updateDoc, doc, serverTimestamp, getDoc, runTransaction, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase';
 import { createNotification } from './notificationService';
+import logger from './logger';
 
 export const submitPropertyReview = async (propertyId, reviewData) => {
     try {
@@ -53,7 +54,7 @@ export const submitPropertyReview = async (propertyId, reviewData) => {
 
         return true;
     } catch (error) {
-        console.error("Error submitting property review:", error);
+        logger.error("Error submitting property review:", error);
         throw error;
     }
 };
@@ -84,7 +85,7 @@ export const submitOwnerReview = async (ownerId, reviewData) => {
 
          return newReviewRef.id;
      } catch (error) {
-         console.error("Error submitting owner review:", error);
+         logger.error("Error submitting owner review:", error);
          throw error;
      }
 };
@@ -132,7 +133,7 @@ export const toggleHelpfulVote = async (collectionName, reviewId, userId) => {
         
         return true;
     } catch (error) {
-        console.error("Error toggling helpful vote:", error);
+        logger.error("Error toggling helpful vote:", error);
         throw error;
     }
 };
@@ -169,7 +170,7 @@ export const submitLandlordReply = async (collectionName, reviewId, replyText, o
 
          return true;
      } catch (error) {
-         console.error("Error submitting landlord reply:", error);
+         logger.error("Error submitting landlord reply:", error);
          throw error;
      }
 };

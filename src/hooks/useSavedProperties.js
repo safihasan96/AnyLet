@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc, arrayUnion, arrayRemove, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import logger from '../utils/logger';
 
 export default function useSavedProperties() {
     const { currentUser } = useAuth();
@@ -26,7 +27,7 @@ export default function useSavedProperties() {
             }
             setLoading(false);
         }, (error) => {
-            console.error("Error fetching saved properties:", error);
+            logger.error("Error fetching saved properties:", error);
             setLoading(false);
         });
 
@@ -59,7 +60,7 @@ export default function useSavedProperties() {
                 savedProperties: isSaved ? arrayRemove(propertyId) : arrayUnion(propertyId)
             }, { merge: true });
         } catch (error) {
-            console.error("Error toggling saved property:", error);
+            logger.error("Error toggling saved property:", error);
             // Revert optimistic update on failure
             setSavedProperties(prev =>
                 isSaved ? [...prev, propertyId] : prev.filter(id => id !== propertyId)

@@ -6,6 +6,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion } from 'framer-motion';
+import { subscribeToUnreadCount } from '../utils/messageService';
 
 export default function BottomNav() {
     const { currentUser } = useAuth();
@@ -21,17 +22,11 @@ export default function BottomNav() {
             return;
         }
 
-        const q = query(
-            collection(db, 'viewing_requests'),
-            where('ownerId', '==', currentUser.uid),
-            where('isRead', '==', false)
-        );
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            setUnreadCount(snapshot.size);
+        const unsub = subscribeToUnreadCount(currentUser.uid, (total) => {
+            setUnreadCount(total);
         });
 
-        return () => unsubscribe();
+        return () => unsub();
     }, [currentUser]);
 
     const NavItem = ({ to, icon, label, badge = false }) => {
@@ -102,7 +97,7 @@ export default function BottomNav() {
             </div>
 
             <NavItem
-                to="/requests"
+                to="/messages"
                 icon={(active) => <MessageSquare size={24} strokeWidth={active ? 2.5 : 2} />}
                 label={t('messages')}
                 badge={true}

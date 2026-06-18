@@ -1,11 +1,14 @@
+'use client';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useMemo, Suspense, lazy } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
+
+import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
 import { db } from '../firebase';
+import QUERY_LIMITS from '../config/queryLimits';
 import { Map as MapIcon, Search, SlidersHorizontal, X, ChevronDown, RotateCcw, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { bdLocations } from '../data/locations';
-import { Helmet } from 'react-helmet-async';
+import logger from '../utils/logger';
 
 const PropertyMap = lazy(() => import('../components/PropertyMap'));
 
@@ -14,6 +17,8 @@ const BILLING_CYCLES = ['Day', 'Week', 'Month'];
 
 export default function MapPage() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const centerProperty = location.state?.centerProperty || null;
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
@@ -34,10 +39,17 @@ export default function MapPage() {
         const fetch = async () => {
             try {
                 setLoading(true);
-                const snap = await getDocs(collection(db, 'properties'));
+                // ✅ F-08: Bounded — map only shows available properties up to PROPERTIES_SEARCH
+                const q = query(
+                    collection(db, 'properties'),
+                    where('status', '==', 'Available'),
+                    orderBy('createdAt', 'desc'),
+                    limit(QUERY_LIMITS.MAP_PROPERTIES) // hard cap
+                );
+                const snap = await getDocs(q);
                 setProperties(snap.docs.map(d => ({ id: d.id, ...d.data() })));
             } catch (e) {
-                console.error(e);
+                logger.error(e);
             } finally {
                 setLoading(false);
             }
@@ -90,11 +102,6 @@ export default function MapPage() {
 
     return (
         <div className="fixed inset-0 bg-slate-900 flex flex-col" style={{ zIndex: 10, bottom: '5rem' }}>
-            <Helmet>
-                <title>Map Search | Any-Let</title>
-                <meta name="description" content="Browse rental properties on an interactive map across Bangladesh." />
-            </Helmet>
-
             {/* ── Top bar ── */}
             <div className="absolute top-0 left-0 right-0 z-[1100] px-4 pt-4 pb-3 flex items-center gap-3">
                 {/* Search pill */}
@@ -148,6 +155,7 @@ export default function MapPage() {
                             properties={filtered}
                             defaultLayer="street"
                             showLayerControl={true}
+                            centerProperty={centerProperty}
                         />
                     </Suspense>
                 )}

@@ -1,10 +1,13 @@
+'use client';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+
+import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, limit, Timestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Helmet } from 'react-helmet-async';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getOrCreateConversation } from '../utils/messageService';
+import QUERY_LIMITS from '../config/queryLimits';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -27,9 +30,51 @@ import {
   AlertTriangle,
   MessageCircle,
   Shield,
-  Lock
+  Lock,
+  Home,
+  Building2,
+  Car,
+  Map,
+  Users,
+  Flame,
+  Droplets,
+  ArrowRight,
+  UserX
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from 'framer-motion';
+
+// ── Variants (all decoupled from JSX) ──────────────────────────────────────
+const pageVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
+};
+
+const sectionVariants = {
+    hidden: { opacity: 0, y: 28 },
+    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 80, damping: 18 } },
+};
+
+const chipVariants = {
+    hidden: { opacity: 0, scale: 0.75 },
+    visible: (i) => ({
+        opacity: 1,
+        scale: 1,
+        transition: { type: 'spring', stiffness: 200, damping: 18, delay: i * 0.05 },
+    }),
+};
+
+const ctaVariants = {
+    idle: { boxShadow: '0 4px 24px rgba(99,102,241,0.25)' },
+    pulse: {
+        boxShadow: ['0 4px 24px rgba(99,102,241,0.25)', '0 4px 40px rgba(99,102,241,0.6)', '0 4px 24px rgba(99,102,241,0.25)'],
+        transition: { duration: 2, repeat: Infinity, repeatType: 'loop', ease: 'easeInOut' },
+    },
+};
+
+const bottomBarVariants = {
+    hidden: { y: 80, opacity: 0 },
+    visible: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 120, damping: 22, delay: 0.4 } },
+};
 import ViewingRequestModal from '../components/ViewingRequestModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import PropertyLoader from '../components/PropertyLoader';
@@ -73,13 +118,67 @@ export default function PropertyDetails() {
                             setOwner({ id: ownerDoc.id, ...ownerDoc.data() });
                         }
                     }
+
+                    // Fetch rental history count
+                    try {
+                        // ✅ F-08: bounded
+                        const moveInsQ = query(
+                            collection(db, 'moveIns'), 
+                            where('propertyId', '==', id), 
+                            where('status', '==', 'active'),
+                            limit(QUERY_LIMITS.HARD_CAP)
+                        );
+                        const moveInsSnap = await getDocs(moveInsQ);
+                        propData.rentHistoryCount = moveInsSnap.size;
+                    } catch (e) {
+                        propData.rentHistoryCount = 0;
+                    }
+                    
+                    // Check if current user already requested this property recently
+                    if (currentUser) {
+                        try {
+                            // ✅ F-08: bounded — only fetch the last 50 requests for this tenant
+                            const reqQ = query(
+                                collection(db, 'viewing_requests'),
+                                where('tenantId', '==', currentUser.uid),
+                                limit(50)
+                            );
+                            const reqSnap = await getDocs(reqQ);
+                            const fortyEightHoursAgoMs = Date.now() - 48 * 60 * 60 * 1000;
+                            
+                            const hasRecentRequest = reqSnap.docs.some(d => {
+                                const data = d.data();
+                                if (data.propertyId !== id) return false;
+                                
+                                let createdMs = 0;
+                                if (data.createdAt) {
+                                    if (typeof data.createdAt.toMillis === 'function') {
+                                        createdMs = data.createdAt.toMillis();
+                                    } else if (data.createdAt instanceof Date) {
+                                        createdMs = data.createdAt.getTime();
+                                    } else if (typeof data.createdAt.seconds === 'number') {
+                                        createdMs = data.createdAt.seconds * 1000;
+                                    }
+                                }
+                                
+                                if (createdMs === 0) return false;
+                                return createdMs >= fortyEightHoursAgoMs;
+                            });
+                            
+                            if (hasRecentRequest) {
+                                setRequestSent(true);
+                            }
+                        } catch (e) {
+                            // Silently ignore — non-critical check
+                        }
+                    }
                 }
             } finally {
                 setLoading(false);
             }
         };
         fetchProperty();
-    }, [id]);
+    }, [id, currentUser]);
 
     const handleSendRequest = async (formData) => {
         if (!currentUser) return navigate('/login');
@@ -87,38 +186,112 @@ export default function PropertyDetails() {
             toast.warning("Please verify your email address to send viewing requests.");
             return;
         }
+        
+        const targetOwnerId = property.ownerId || property.userId;
+        if (targetOwnerId === currentUser.uid) {
+            toast.error('You cannot request your own property.');
+            return;
+        }
+
         try {
             setRequestSending(true);
-            await addDoc(collection(db, 'viewing_requests'), {
+
+            // ── 48h per-listing cooldown check ────────────────────────────
+            // ✅ F-08: bounded — only fetch last 50 requests; tenants rarely exceed this
+            const dupQ = query(
+                collection(db, 'viewing_requests'),
+                where('tenantId', '==', currentUser.uid),
+                limit(50)
+            );
+            const dupSnap = await getDocs(dupQ);
+            const fortyEightHoursAgoMs = Date.now() - 48 * 60 * 60 * 1000;
+            
+            const duplicate = dupSnap.docs.find(d => {
+                const data = d.data();
+                if (data.propertyId !== id) return false;
+                
+                let createdMs = 0;
+                if (data.createdAt) {
+                    if (typeof data.createdAt.toMillis === 'function') {
+                        createdMs = data.createdAt.toMillis();
+                    } else if (data.createdAt instanceof Date) {
+                        createdMs = data.createdAt.getTime();
+                    } else if (typeof data.createdAt.seconds === 'number') {
+                        createdMs = data.createdAt.seconds * 1000;
+                    }
+                }
+                
+                if (createdMs === 0) return false;
+                return createdMs >= fortyEightHoursAgoMs;
+            });
+
+            if (duplicate) {
+                toast.error('You already sent a request for this property. Please wait 48 hours before trying again.');
+                return;
+            }
+            // ─────────────────────────────────────────────────────────────
+
+            const reqRef = await addDoc(collection(db, 'viewing_requests'), {
                 propertyId: id,
                 propertyName: property.title,
                 propertyImage: property.images?.[0] || null,
-                ownerId: property.ownerId || property.userId,
+                propertyPrice: property.rent || property.price || null,
+                ownerId: targetOwnerId,
                 tenantId: currentUser.uid,
-                tenantName: formData.name,
+                tenantName: currentUser.displayName ?? formData.name,
                 status: 'pending',
                 isRead: false,
+                conversationId: null,
                 createdAt: serverTimestamp(),
-                tenantDetails: formData
+                tenantDetails: {
+                  name:               formData.name,
+                  email:              formData.email,
+                  phone:              formData.phone,
+                  profession:         formData.profession,
+                  numberOfOccupants:  Number(formData.numberOfOccupants || 1),
+                  preferredDate:      formData.preferredDate || '',
+                  message:            formData.message || '',
+                }
             });
 
+            // Fetch owner info to create conversation properly
+            const ownerDoc = await getDoc(doc(db, 'users', targetOwnerId));
+            const ownerData = ownerDoc.exists() ? ownerDoc.data() : {};
+
+            const convId = await getOrCreateConversation({
+                ownerId: targetOwnerId,
+                tenantId: currentUser.uid,
+                propertyId: id,
+                propertyTitle: property.title,
+                propertyImage: property.images?.[0] || null,
+                propertyPrice: property.rent || property.price || null,
+                requestId: reqRef.id,
+                ownerInfo: { name: ownerData.displayName ?? 'Owner', photo: ownerData.photoURL ?? null, phone: ownerData.phone ?? null },
+                tenantInfo: { name: currentUser.displayName ?? formData.name, photo: currentUser.photoURL ?? null, phone: formData.phone ?? null },
+                initialOwnerUnread: 1, // Make sure owner sees badge
+            });
+
+            // Link conversation to request
+            await updateDoc(reqRef, { conversationId: convId });
+
             // Notify Owner
-            const targetOwnerId = property.ownerId || property.userId;
             if (targetOwnerId) {
                 await createNotification(
                     targetOwnerId,
                     'request_received',
                     'New Viewing Request',
-                    `${formData.name} is interested in renting ${property.title}.`,
-                    '/requests',
+                    `${formData.name} wants to view ${property.title}`,
+                    `/messages/${convId}`, // Directly to conversation
                     { propertyId: id }
                 );
             }
 
             setRequestSent(true);
             setIsModalOpen(false);
+            toast.success('Request sent successfully! Check your Messages to start chatting.');
         } catch (error) {
-            console.error(error);
+            logger.error(error);
+            toast.error('Failed to send request. Please try again.');
         } finally {
             setRequestSending(false);
         }
@@ -143,39 +316,20 @@ export default function PropertyDetails() {
 
     const isOwner = currentUser && (currentUser.uid === property.ownerId || currentUser.uid === property.userId);
 
-    // Build WhatsApp deep-link if the owner has saved a whatsappNumber
     const waUrl = (() => {
-        const raw = owner?.whatsappNumber;
+        const raw = owner?.whatsappNumber || owner?.phone || property?.ownerPhone;
         if (!raw) return null;
         // Normalise: strip non-digits, convert leading 0 → 880 (Bangladesh)
         const digits = raw.replace(/\D/g, '');
         const intl = digits.startsWith('880') ? digits : `880${digits.replace(/^0/, '')}`;
         const msg = encodeURIComponent(
-            `Hi, I found your listing on Any-Let for ${property.title}. I am interested in renting. Could you please share more details?`
+            `হ্যালো, আমি Any-Let এ আপনার "${property.title}" প্রপার্টি দেখেছি (https://anylet.com/property/${id})। আমি এটি সম্পর্কে আরও বিস্তারিত জানতে আগ্রহী।`
         );
         return `https://wa.me/${intl}?text=${msg}`;
     })();
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-32 lg:pb-12">
-            <Helmet>
-                <title>{property?.title ? `${property.title} | Any-Let` : 'Property Details | Any-Let'}</title>
-                <meta name="description" content={property?.description?.substring(0, 160) || 'Find the best rental properties in Bangladesh with Any-Let.'} />
-                <script type="application/ld+json">
-                    {JSON.stringify({
-                        "@context": "https://schema.org",
-                        "@type": "Product",
-                        "name": property?.title || 'Property',
-                        "image": images[0] ? [images[0]] : [],
-                        "description": property?.description || 'Property for rent',
-                        "offers": {
-                            "@type": "Offer",
-                            "price": property?.price?.toString().replace(/\D/g, '') || "0",
-                            "priceCurrency": "BDT"
-                        }
-                    })}
-                </script>
-            </Helmet>
             <div className="max-w-7xl mx-auto px-0 md:px-6 py-4 md:py-8">
                 {/* Navigation Row with Back and Share */}
                 <div className="flex items-center justify-between px-4 md:px-0 mb-4 md:mb-6">
@@ -198,19 +352,36 @@ export default function PropertyDetails() {
                         <div className="relative md:rounded-[40px] overflow-hidden bg-slate-200 dark:bg-slate-900 group shadow-2xl shadow-slate-200/50 dark:shadow-none mb-6 md:mb-10">
                             {images.length > 0 ? (
                                 <>
-                                    <motion.img 
+                                    <motion.div
                                         key={activeImage}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        src={images[activeImage]} 
-                                        className="w-full aspect-[4/3] object-cover" 
-                                    />
+                                        className="w-full aspect-[4/3] relative overflow-hidden cursor-grab active:cursor-grabbing"
+                                        drag="x"
+                                        dragConstraints={{ left: 0, right: 0 }}
+                                        dragElastic={0.2}
+                                        onDragEnd={(e, info) => {
+                                            if (info.offset.x < -60 && activeImage < images.length - 1) setActiveImage(i => i + 1);
+                                            if (info.offset.x > 60 && activeImage > 0) setActiveImage(i => i - 1);
+                                        }}
+                                    >
+                                        <motion.img
+                                            key={activeImage}
+                                            initial={{ opacity: 0, scale: 1.04 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            transition={{ duration: 0.35 }}
+                                            src={images[activeImage]}
+                                            className="w-full h-full object-cover pointer-events-none select-none"
+                                            draggable={false}
+                                        />
+                                    </motion.div>
                                     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 px-4 py-3 bg-black/20 backdrop-blur-md rounded-full border border-white/20">
                                         {images.map((_, idx) => (
-                                            <button 
-                                                key={idx} 
+                                            <motion.button
+                                                key={idx}
+                                                layoutId={`dot-${idx}`}
                                                 onClick={() => setActiveImage(idx)}
-                                                className={`size-2.5 rounded-full transition-all ${activeImage === idx ? 'bg-primary w-6' : 'bg-white/60 hover:bg-white'}`}
+                                                animate={{ width: activeImage === idx ? 24 : 10, background: activeImage === idx ? 'var(--color-primary, #6366f1)' : 'rgba(255,255,255,0.6)' }}
+                                                transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                                                className="h-2.5 rounded-full"
                                             />
                                         ))}
                                     </div>
@@ -221,7 +392,7 @@ export default function PropertyDetails() {
                         </div>
 
                         {/* Title, Stats & Price */}
-                        <div className="mb-8 md:mb-10 px-4 md:px-0 flex flex-col md:flex-row md:justify-between md:items-center gap-6">
+                        <motion.div variants={sectionVariants} className="mb-8 md:mb-10 px-4 md:px-0 flex flex-col md:flex-row md:justify-between md:items-center gap-6">
                             <div className="flex-1">
                                 {property.status && property.status !== 'Available' && (
                                     <div className={`inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 rounded-lg font-black text-xs uppercase tracking-widest border shadow-sm ${
@@ -240,8 +411,17 @@ export default function PropertyDetails() {
                                 </h1>
                                 <div className="flex flex-wrap items-center gap-3 md:gap-6 text-sm md:text-base text-slate-500 font-bold">
                                     <span className="flex items-center gap-1.5 break-all md:break-normal"><MapPin size={18} className="text-primary dark:text-indigo-400 shrink-0" /> {property.addressDetails ? `${property.addressDetails}, ` : ''}{property.upazila}, {property.district}</span>
+                                    
+                                    <button 
+                                        onClick={() => navigate('/map', { state: { centerProperty: property } })}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-black transition-colors border border-indigo-200 dark:border-indigo-500/30 shadow-sm"
+                                    >
+                                        <Map size={14} /> See on Map
+                                    </button>
+
                                     {property.area && <span className="flex items-center gap-1.5"><Maximize size={18} className="shrink-0" /> {property.area} {t('sqft')}</span>}
-                                    {property.isVerified && <span className="flex items-center gap-1.5 text-emerald-600"><ShieldCheck size={18} className="text-emerald-600 shrink-0" /> Verified Landlord</span>}
+                                    {property.isPropertyVerified && <span className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1 rounded-lg text-xs font-black"><ShieldCheck size={14} className="text-emerald-600 shrink-0" /> AnyLet Verified</span>}
+                                    {property.isVerified && <span className="flex items-center gap-1.5 text-indigo-600 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 rounded-lg text-xs font-black"><ShieldCheck size={14} className="text-indigo-600 shrink-0" /> Verified Landlord</span>}
                                     {property.isOnsiteVerified && (
                                         <span className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-lg text-xs font-black">
                                             <Shield size={14} className="fill-blue-100 dark:fill-blue-500/20" /> Onsite Verified
@@ -271,7 +451,7 @@ export default function PropertyDetails() {
                                     {property.utilitiesCost ? `+ ৳${property.utilitiesCost?.toLocaleString()} monthly utilities` : 'Utilities included'}
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
 
                         {/* Booking Banner (Escrow) */}
                         {!isOwner && property.securityDeposit > 0 && property.status === 'Available' && (
@@ -305,13 +485,59 @@ export default function PropertyDetails() {
                             </div>
                         )}
 
+                        {/* Rental History Trust Banner */}
+                        {property.rentHistoryCount > 0 && (
+                            <div className="mb-6 md:mb-10 px-4 md:px-0">
+                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border border-emerald-100 dark:border-emerald-800/50 rounded-3xl p-5 flex items-center gap-4 shadow-sm">
+                                    <div className="size-12 rounded-full bg-emerald-100 dark:bg-emerald-800/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                        <ShieldCheck size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-black text-emerald-800 dark:text-emerald-300">Trusted Property</h3>
+                                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-500/80 mt-0.5">
+                                            This property has been securely rented <span className="font-black text-emerald-700 dark:text-emerald-400">{property.rentHistoryCount} times</span> via AnyLet since {property.createdAt?.toDate ? property.createdAt.toDate().getFullYear() : '2023'}.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Description */}
-                        <section className="bg-white dark:bg-slate-900 p-6 md:p-10 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800 mb-6 md:mb-10">
+                        <motion.section variants={sectionVariants} className="bg-white dark:bg-slate-900 p-6 md:p-10 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800 mb-6 md:mb-10">
                             <h2 className="text-xl md:text-2xl font-black mb-4 md:mb-6">{t('description')}</h2>
                             <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-base md:text-lg font-medium whitespace-pre-wrap">
                                 {property.description || 'No description provided.'}
                             </p>
-                        </section>
+                        </motion.section>
+
+                        {/* BD Specific Specs */}
+                        <motion.section variants={sectionVariants} className="bg-white dark:bg-slate-900 p-6 md:p-10 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800 mb-6 md:mb-10">
+                            <h2 className="text-xl md:text-2xl font-black mb-6 flex items-center gap-3">
+                                <Building2 size={24} className="text-primary dark:text-indigo-400" /> Property Specifications
+                            </h2>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
+                                <SpecItem icon={<Flame />} label="Gas Supply" value={property.gasSupply || 'Cylinder'} />
+                                <SpecItem icon={<Zap />} label="Electricity" value={property.electricityBilling || 'Excluded'} />
+                                <SpecItem icon={<Droplets />} label="Water Source" value={property.waterSource || 'WASA'} />
+                                <SpecItem icon={<Map />} label="Facing" value={property.facing || 'Not Specified'} />
+                                <SpecItem icon={<ArrowRight className="-rotate-45" />} label="Floor" value={property.floorNumber || 'Not Specified'} />
+                                <SpecItem icon={<Car />} label="Parking" value={property.parkingType || 'None'} />
+                                <SpecItem icon={<Home />} label="Pet Policy" value={property.petPolicy || 'Not Allowed'} />
+                                <SpecItem icon={<UserX />} label="Bachelor Policy" value={property.bachelorPolicy || 'Not Allowed'} />
+                                <SpecItem icon={<Users />} label="Family Policy" value={property.familyPolicy || 'Any'} />
+                            </div>
+                            
+                            {property.distances && (property.distances.mosque || property.distances.school || property.distances.market) && (
+                                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800">
+                                    <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Nearby Amenities</h3>
+                                    <div className="flex flex-wrap gap-4">
+                                        {property.distances.mosque && <DistanceBadge label="Mosque" value={property.distances.mosque} />}
+                                        {property.distances.school && <DistanceBadge label="School" value={property.distances.school} />}
+                                        {property.distances.market && <DistanceBadge label="Market" value={property.distances.market} />}
+                                    </div>
+                                </div>
+                            )}
+                        </motion.section>
 
                         {/* Features & Amenities */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-10">
@@ -354,13 +580,18 @@ export default function PropertyDetails() {
                                     
                                     {property.status !== 'Let Agreed' && property.status !== 'Booked' ? (
                                         <>
-                                            <button 
+                                            <motion.button 
                                                 onClick={() => !requestSent && setIsModalOpen(true)}
                                                 disabled={requestSent || requestSending}
-                                                className={`w-full py-5 rounded-2xl font-black text-lg transition-all shadow-xl mb-4 ${requestSent ? 'bg-emerald-500 text-white' : 'bg-primary text-white hover:scale-[1.02] active:scale-95'}`}
+                                                variants={!requestSent ? ctaVariants : {}}
+                                                initial="idle"
+                                                animate={!requestSent ? 'pulse' : 'idle'}
+                                                whileHover={{ scale: 1.02 }}
+                                                whileTap={{ scale: 0.96 }}
+                                                className={`w-full py-5 rounded-2xl font-black text-lg transition-colors shadow-xl mb-4 ${requestSent ? 'bg-emerald-500 text-white' : 'bg-primary text-white'}`}
                                             >
-                                                {requestSending ? 'Sending...' : requestSent ? 'Request Sent' : t('request_viewing')}
-                                            </button>
+                                                {requestSending ? 'Sending...' : requestSent ? 'Request Sent ✓' : t('request_viewing')}
+                                            </motion.button>
                                             <button 
                                                 onClick={() => {
                                                     if (!currentUser) return navigate('/login');
@@ -425,8 +656,7 @@ export default function PropertyDetails() {
                             
                             {/* Report Ad Option */}
                             <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                                <Link 
-                                    to={`/report-property/${id}`} 
+                                <Link to={`/report-property/${id}`} 
                                     state={{ property }}
                                     className="flex items-center justify-center gap-2 text-slate-400 hover:text-rose-500 font-bold text-sm transition-colors py-2 group"
                                 >
@@ -454,8 +684,7 @@ export default function PropertyDetails() {
                                     </div>
                                 </div>
                             </div>
-                            <Link 
-                                to={`/property/${property.id}/reviews`}
+                            <Link to={`/property/${property.id}/reviews`}
                                 className="w-full md:w-auto px-8 py-4 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-black rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 shrink-0"
                             >
                                 Read all reviews <ChevronRight size={18} />
@@ -466,19 +695,26 @@ export default function PropertyDetails() {
 
                 {/* Dynamic Bottom Action Bar (Scroll flow) */}
                 {!isOwner && (
-                    <div className="mt-10 pt-8 border-t border-slate-200 dark:border-slate-800 px-4">
+                    <motion.div variants={bottomBarVariants} initial="hidden" animate="visible" className="mt-10 pt-8 border-t border-slate-200 dark:border-slate-800 px-4">
                         <h3 className="text-xl font-black mb-6 text-slate-900 dark:text-white text-center">{t('interested')}</h3>
                         
                         {property.status !== 'Let Agreed' && property.status !== 'Booked' ? (
                             <div className="flex flex-col sm:flex-row items-center gap-4">
-                                <button 
+                                <motion.button 
                                     onClick={() => !requestSent && setIsModalOpen(true)}
                                     disabled={requestSent || requestSending}
-                                    className={`w-full flex justify-center items-center h-14 rounded-2xl font-black text-lg transition-all shadow-xl ${requestSent ? 'bg-emerald-500 text-white' : 'bg-primary text-white active:scale-95'}`}
+                                    variants={!requestSent ? ctaVariants : {}}
+                                    initial="idle"
+                                    animate={!requestSent ? 'pulse' : 'idle'}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.96 }}
+                                    className={`w-full flex justify-center items-center h-14 rounded-2xl font-black text-lg transition-colors shadow-xl ${requestSent ? 'bg-emerald-500 text-white' : 'bg-primary text-white'}`}
                                 >
-                                    {requestSending ? 'Sending...' : requestSent ? 'Request Sent' : t('request_viewing')}
-                                </button>
-                                <button 
+                                    {requestSending ? 'Sending...' : requestSent ? 'Request Sent ✓' : t('request_viewing')}
+                                </motion.button>
+                                <motion.button 
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.96 }}
                                     onClick={() => {
                                         if (!currentUser) return navigate('/login');
                                         if (!currentUser.emailVerified) {
@@ -496,7 +732,7 @@ export default function PropertyDetails() {
                                     className="w-full h-14 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold hover:bg-slate-300 transition-colors flex items-center justify-center gap-3"
                                 >
                                     <Phone size={20} /> {t('call_owner')}
-                                </button>
+                                </motion.button>
                             </div>
                         ) : (
                             <div className={`${property.status === 'Booked' ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20 text-blue-600 dark:text-blue-400' : 'bg-rose-50 dark:bg-rose-500/10 border-rose-100 dark:border-rose-500/20 text-rose-600 dark:text-rose-400'} border p-4 rounded-2xl text-center font-bold text-sm mb-2`}>
@@ -517,15 +753,14 @@ export default function PropertyDetails() {
                             </div>
                         )}
                         <div className="mt-8 flex justify-center">
-                            <Link 
-                                to={`/report-property/${id}`} 
+                            <Link to={`/report-property/${id}`} 
                                 state={{ property }}
                                 className="flex items-center gap-2 text-slate-400 hover:text-rose-500 font-bold text-sm transition-colors py-4 px-8"
                             >
                                 <Flag size={16} /> Report this ad
                             </Link>
                         </div>
-                    </div>
+                    </motion.div>
                 )}
             </div>
 
@@ -562,6 +797,49 @@ export default function PropertyDetails() {
                 onClose={() => setBookModalOpen(false)}
                 property={property}
             />
+        </div>
+    );
+}
+
+import { useRef } from 'react';
+import logger from '../utils/logger';
+
+// ── Spec card variants (decoupled per framer-motion-expert skill rules) ──
+const specCardVariants = {
+    rest: { scale: 1, y: 0 },
+    hover: {
+        scale: 1.04,
+        y: -3,
+        transition: { type: 'spring', stiffness: 320, damping: 22 },
+    },
+};
+
+function SpecItem({ icon, label, value }) {
+    return (
+        <motion.div
+            variants={specCardVariants}
+            initial="rest"
+            whileHover="hover"
+            className="flex items-start gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 will-change-transform"
+        >
+            <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 shrink-0">
+                {icon}
+            </div>
+            <div>
+                <p className="text-[10px] uppercase font-black tracking-widest text-slate-400">{label}</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">{value}</p>
+            </div>
+        </motion.div>
+    );
+}
+
+
+function DistanceBadge({ label, value }) {
+    return (
+        <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-xl flex items-center gap-2">
+            <MapPin size={14} className="text-primary dark:text-indigo-400" />
+            <span className="text-xs font-black text-slate-500 uppercase tracking-wider">{label}:</span>
+            <span className="text-sm font-bold text-slate-900 dark:text-white">{value}</span>
         </div>
     );
 }

@@ -14,6 +14,7 @@ import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../firebase';
 import { generateReferralCode } from '../utils/referral';
 import LoadingScreen from '../components/LoadingScreen';
+import logger from '../utils/logger';
 
 const AuthContext = createContext();
 
@@ -227,7 +228,7 @@ export function AuthProvider({ children }) {
                         setUserRole(null);
                     }
                 } catch (error) {
-                    console.error('AuthContext error:', error);
+                    logger.error('AuthContext error:', error);
                     setUserData(null);
                     setUserRole('user');
                 }

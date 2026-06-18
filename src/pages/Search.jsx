@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { 
   Search as SearchIcon, 
@@ -19,11 +19,34 @@ import {
   DoorOpen,
   Clock
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useSpring, useMotionValue } from 'framer-motion';
+
+// ── Variants (all decoupled from JSX) ──────────────────────────────────────
+const sidebarVariants = {
+    hidden: { opacity: 0, x: -32 },
+    visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 80, damping: 18, delay: 0.1 } },
+};
+
+const historyChipVariants = {
+    hidden: { opacity: 0, scale: 0.75 },
+    visible: (i) => ({
+        opacity: 1,
+        scale: 1,
+        transition: { type: 'spring', stiffness: 200, damping: 18, delay: i * 0.05 },
+    }),
+    exit: { opacity: 0, scale: 0.75, transition: { duration: 0.15 } },
+};
+
+const resultCountVariants = {
+    initial: { opacity: 0, y: -6 },
+    animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 20 } },
+};
 import HorizontalPropertyCard from '../components/HorizontalPropertyCard';
 import { bdLocations } from '../data/locations';
 import { Helmet } from 'react-helmet-async';
 import useInfiniteScroll from '../hooks/useInfiniteScroll';
+import logger from '../utils/logger';
+import { staggerContainer, staggerItem, modalBackdrop, modalSheet } from '../utils/motionVariants';
 
 // Constants
 const BILLING_CYCLES = ["Day", "Week", "Month"];
@@ -123,11 +146,12 @@ export default function Search() {
         const fetchProperties = async () => {
             try {
                 setLoading(true);
-                const querySnapshot = await getDocs(collection(db, "properties"));
+                // Apply a limit to avoid unbounded queries fetching the entire database
+                const querySnapshot = await getDocs(query(collection(db, "properties"), limit(200)));
                 const allListings = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 setProperties(allListings);
             } catch (error) {
-                console.error("Error fetching properties:", error);
+                logger.error("Error fetching properties:", error);
             } finally {
                 setLoading(false);
             }
@@ -190,7 +214,12 @@ export default function Search() {
             <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-8 px-6 py-8">
                 
                 {/* Desktop Sidebar */}
-                <div className="hidden md:block w-80 shrink-0">
+                <motion.div
+                    variants={sidebarVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="hidden md:block w-80 shrink-0"
+                >
                     <aside className="sticky top-28 self-start h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pb-10">
                         <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
                             <div className="flex items-center justify-between mb-8">
@@ -206,7 +235,7 @@ export default function Search() {
                             />
                         </div>
                     </aside>
-                </div>
+                </motion.div>
 
                 {/* Main Results */}
                 <main className="flex-1 flex flex-col gap-6">
@@ -269,34 +298,48 @@ export default function Search() {
                                         </button>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                        {searchHistory.map((item) => (
-                                            <div
-                                                key={item}
-                                                className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-3.5 pr-2 py-2 group"
-                                            >
-                                                <button
-                                                    className="text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-primary dark:text-indigo-400 transition-colors"
-                                                    onClick={() => { setSearchTerm(item); commitSearch(item); }}
+                                        <AnimatePresence>
+                                            {searchHistory.map((item, i) => (
+                                                <motion.div
+                                                    key={item}
+                                                    custom={i}
+                                                    variants={historyChipVariants}
+                                                    initial="hidden"
+                                                    animate="visible"
+                                                    exit="exit"
+                                                    className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-3.5 pr-2 py-2 group"
                                                 >
-                                                    {item}
-                                                </button>
-                                                <button
-                                                    onClick={() => removeHistoryItem(item)}
-                                                    className="size-4 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-400 hover:bg-rose-100 hover:text-rose-500 dark:hover:bg-rose-900/40 dark:hover:text-rose-400 flex items-center justify-center transition-colors shrink-0"
-                                                >
-                                                    <X size={9} strokeWidth={3} />
-                                                </button>
-                                            </div>
-                                        ))}
+                                                    <button
+                                                        className="text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-primary dark:text-indigo-400 transition-colors"
+                                                        onClick={() => { setSearchTerm(item); commitSearch(item); }}
+                                                    >
+                                                        {item}
+                                                    </button>
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }}
+                                                        onClick={() => removeHistoryItem(item)}
+                                                        className="size-4 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-400 hover:bg-rose-100 hover:text-rose-500 dark:hover:bg-rose-900/40 dark:hover:text-rose-400 flex items-center justify-center transition-colors shrink-0"
+                                                    >
+                                                        <X size={9} strokeWidth={3} />
+                                                    </motion.button>
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
                                     </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
                         <div className="flex items-center justify-between px-2">
-                            <h2 className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                            <motion.h2
+                                key={filteredProperties.length}
+                                variants={resultCountVariants}
+                                initial="initial"
+                                animate="animate"
+                                className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em]"
+                            >
                                 Found {filteredProperties.length} Properties
-                            </h2>
+                            </motion.h2>
                         </div>
                     </div>
 
@@ -308,13 +351,13 @@ export default function Search() {
                         <motion.div layout className="flex flex-col gap-6 pb-24 md:pb-10">
                             <AnimatePresence mode="popLayout">
                                 {filteredProperties.length > 0 ? (
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        {filteredProperties.slice(0, displayCount).map((p, idx) => (
-                                            <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ delay: (idx % 12) * 0.05 }} className="h-full">
+                                    <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {filteredProperties.slice(0, displayCount).map((p) => (
+                                            <motion.div key={p.id} variants={staggerItem} exit="exit" className="h-full">
                                                 <HorizontalPropertyCard property={p} />
                                             </motion.div>
                                         ))}
-                                    </div>
+                                    </motion.div>
                                 ) : (
                                     <div className="col-span-full py-20 text-center flex flex-col items-center gap-6">
                                         <div className="size-24 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-slate-300"><SearchIcon size={48} /></div>
@@ -341,8 +384,8 @@ export default function Search() {
             <AnimatePresence>
                 {showFilters && (
                     <div className="md:hidden fixed inset-0 z-[100] flex flex-col justify-end">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowFilters(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-                        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="bg-white dark:bg-slate-950 w-full h-[90vh] rounded-t-[40px] flex flex-col shadow-2xl relative z-10 overflow-hidden">
+                        <motion.div variants={modalBackdrop} initial="hidden" animate="visible" exit="exit" onClick={() => setShowFilters(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+                        <motion.div variants={modalSheet} initial="hidden" animate="visible" exit="exit" className="bg-white dark:bg-slate-950 w-full h-[90vh] rounded-t-[40px] flex flex-col shadow-2xl relative z-10 overflow-hidden">
                             <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto my-4 shrink-0" />
                             <header className="flex items-center justify-between px-8 pb-4 shrink-0">
                                 <h2 className="text-2xl font-black text-slate-900 dark:text-white">Filters</h2>
@@ -444,9 +487,33 @@ function Select({ label, value, onChange, options, disabled }) {
 
 function ToggleButton({ label, active, onClick }) {
     return (
-        <button onClick={onClick} className={`py-3 px-5 rounded-2xl font-black text-xs border-2 transition-all ${active ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'}`}>
+        <motion.button
+            onClick={onClick}
+            whileHover={{ scale: 1.05, y: -1 }}
+            whileTap={{ scale: 0.93 }}
+            animate={active ? { scale: [1, 1.08, 1], transition: { duration: 0.25 } } : {}}
+            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+            className={`py-3 px-5 rounded-2xl font-black text-xs border-2 transition-colors flex items-center gap-1.5 will-change-transform ${
+                active
+                    ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
+                    : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
+            }`}
+        >
+            <AnimatePresence mode="wait">
+                {active && (
+                    <motion.span
+                        key="check"
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 500, damping: 18 } }}
+                        exit={{ scale: 0, opacity: 0, transition: { duration: 0.1 } }}
+                        className="inline-flex"
+                    >
+                        <Check size={11} strokeWidth={3.5} />
+                    </motion.span>
+                )}
+            </AnimatePresence>
             {label}
-        </button>
+        </motion.button>
     );
 }
 
@@ -455,9 +522,33 @@ function Counter({ label, value, onChange }) {
         <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl">
             <span className="font-bold text-sm text-slate-600 dark:text-slate-300">{label}</span>
             <div className="flex items-center gap-4">
-                <button onClick={() => onChange(value === 'Any' || Number(value) <= 1 ? 'Any' : (Number(value) - 1).toString())} className="size-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 shadow-sm"><Minus size={16} /></button>
-                <span className="w-8 text-center font-black text-slate-900 dark:text-white">{value}</span>
-                <button onClick={() => onChange(value === 'Any' ? '1' : (Number(value) + 1).toString())} className="size-8 rounded-lg bg-primary text-white flex items-center justify-center shadow-md"><Plus size={16} /></button>
+                <motion.button
+                    whileTap={{ scale: 0.75, rotate: -12 }}
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 18 }}
+                    onClick={() => onChange(value === 'Any' || Number(value) <= 1 ? 'Any' : (Number(value) - 1).toString())}
+                    className="size-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 shadow-sm will-change-transform"
+                >
+                    <Minus size={16} />
+                </motion.button>
+                <motion.span
+                    key={value}
+                    initial={{ opacity: 0, y: -8, scale: 0.7 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+                    className="w-8 text-center font-black text-slate-900 dark:text-white inline-block"
+                >
+                    {value}
+                </motion.span>
+                <motion.button
+                    whileTap={{ scale: 0.75, rotate: 12 }}
+                    whileHover={{ scale: 1.1 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 18 }}
+                    onClick={() => onChange(value === 'Any' ? '1' : (Number(value) + 1).toString())}
+                    className="size-8 rounded-lg bg-primary text-white flex items-center justify-center shadow-md will-change-transform"
+                >
+                    <Plus size={16} />
+                </motion.button>
             </div>
         </div>
     );

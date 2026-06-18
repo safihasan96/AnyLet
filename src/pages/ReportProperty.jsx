@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { ArrowLeft, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { motion } from 'framer-motion';
+import logger from '../utils/logger';
 
 const REPORT_REASONS = [
     "Misleading or incorrect information",
@@ -39,7 +40,7 @@ export default function ReportProperty() {
                         setProperty({ id: docSnap.id, ...docSnap.data() });
                     }
                 } catch (error) {
-                    console.error("Error fetching property:", error);
+                    logger.error("Error fetching property:", error);
                 } finally {
                     setLoading(false);
                 }
@@ -70,7 +71,7 @@ export default function ReportProperty() {
             });
             setSubmitted(true);
         } catch (error) {
-            console.error("Error submitting report:", error);
+            logger.error("Error submitting report:", error);
             toast.error("Something went wrong. Please try again.");
         } finally {
             setSubmitting(false);

@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
+import logger from '../utils/logger';
   User, Lock, CreditCard, Settings2, LogOut,
   Building2, Heart, Briefcase,
   Gift, Users,
@@ -99,7 +100,7 @@ export default function Profile() {
           saved: savedCount,
         });
       } catch (err) {
-        console.error(err);
+        logger.error(err);
       } finally {
         setLoading(false);
       }
@@ -145,11 +146,11 @@ export default function Profile() {
 
         setAvatarUrl(url);
       } else {
-        console.error("Cloudinary upload failed:", fileData.error?.message);
+        logger.error("Cloudinary upload failed:", fileData.error?.message);
         alert(`Upload failed: ${fileData.error?.message || "Unknown error"}`);
       }
     } catch (err) {
-      console.error("Avatar change error:", err);
+      logger.error("Avatar change error:", err);
       alert(`Error saving avatar: ${err.message || err}`);
     } finally {
       setUploadingAvatar(false);
@@ -157,7 +158,7 @@ export default function Profile() {
   };
 
   const handleLogout = async () => {
-    try { await logout(); navigate('/login'); } catch (e) { console.error(e); }
+    try { await logout(); navigate('/login'); } catch (e) { logger.error(e); }
   };
 
   if (loading) {
@@ -620,7 +621,7 @@ export default function Profile() {
                           setKycPreview(null);
                           toast.success('Document submitted! We will review it within 24-48 hours.');
                         } catch (err) {
-                          console.error(err);
+                          logger.error(err);
                           toast.error(`Upload failed: ${err.message}`);
                         } finally {
                           setKycUploading(false);

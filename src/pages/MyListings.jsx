@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { collection, query, onSnapshot, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, MoreHorizontal, MapPin, ChevronRight, Home as HomeIcon, Trash2, RefreshCcw, Info, RefreshCw, Shield, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, MoreHorizontal, MapPin, ChevronRight, Home as HomeIcon, Trash2, RefreshCcw, Info, RefreshCw, Shield, CheckCircle2, Search, SlidersHorizontal, Eye, Edit, Activity, DoorOpen } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
 import PaymentModal from '../components/PaymentModal';
 import { sendListingExpiryEmail } from '../utils/emailService';
 import { useToast } from '../contexts/ToastContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import logger from '../utils/logger';
 
 export default function MyListings() {
     const { currentUser: user } = useAuth();
@@ -17,7 +18,12 @@ export default function MyListings() {
 
     const [listings, setListings] = useState([]);
     const [loading, setLoading] = useState(true);
-    
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeFilter, setActiveFilter] = useState('All'); // All, Active, Pending
+
+    // Bottom sheet state
+    const [bottomSheet, setBottomSheet] = useState({ isOpen: false, property: null });
+
     // Modal states
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, title: '' });
     const [isDeleting, setIsDeleting] = useState(false);
@@ -81,7 +87,7 @@ export default function MyListings() {
                         await sendListingExpiryEmail(user.email, user.displayName || 'Landlord', item.title);
                         await updateDoc(doc(db, 'properties', item.id), { expiryEmailSent: true });
                     } catch (err) {
-                        console.error('Failed to handle expiry for property', item.id, err);
+                        logger.error('Failed to handle expiry for property', item.id, err);
                     }
                 }
             }
@@ -97,7 +103,7 @@ export default function MyListings() {
             setDeleteModal({ isOpen: false, id: null, title: '' });
             toast.success(`Listing deleted`);
         } catch (error) {
-            console.error("Error deleting property:", error);
+            logger.error("Error deleting property:", error);
             toast.error("Failed to delete property. Please try again.");
         } finally {
             setIsDeleting(false);
@@ -116,7 +122,7 @@ export default function MyListings() {
             setStatusModal({ isOpen: false, id: null, title: '', newStatus: '' });
             toast.success(`Status updated to ${statusModal.newStatus}`);
         } catch (error) {
-            console.error('Error updating status:', error);
+            logger.error('Error updating status:', error);
             toast.error('Failed to update status.');
         } finally {
             setIsUpdatingStatus(false);
@@ -134,7 +140,7 @@ export default function MyListings() {
             setBumpModal({ isOpen: false, id: null, title: '' });
             toast.success('Listing bumped successfully!');
         } catch (error) {
-            console.error('Error refreshing listing:', error);
+            logger.error('Error refreshing listing:', error);
             toast.error('Failed to refresh listing.');
         } finally {
             setIsBumping(false);
@@ -151,75 +157,231 @@ export default function MyListings() {
             toast.success('Verification requested! Our agent will contact you soon.');
             setVerifyModal({ isOpen: false, id: null, title: '' });
         } catch (error) {
-            console.error('Error requesting verification:', error);
+            logger.error('Error requesting verification:', error);
             toast.error('Failed to request verification.');
         }
     };
 
+    // Filter and search logic
+    const filteredListings = listings.filter(item => {
+        const matchesSearch = (item.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              (item.area || item.upazila || item.district || '').toLowerCase().includes(searchQuery.toLowerCase());
+        
+        if (!matchesSearch) return false;
+        if (activeFilter === 'All') return true;
+        if (activeFilter === 'Active') return item.isApproved && item.status === 'Available';
+        if (activeFilter === 'Pending') return !item.isApproved || item.status !== 'Available';
+        return true;
+    });
+
+    const metrics = {
+        total: listings.length,
+        active: listings.filter(l => l.isApproved && l.status === 'Available').length,
+        pending: listings.filter(l => !l.isApproved || l.status !== 'Available').length
+    };
+
+    const handleActionClick = (property) => {
+        setBottomSheet({ isOpen: true, property });
+    };
+
     return (
-        <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-28">
-            <header className="flex items-center px-6 pt-10 pb-6 sticky top-0 bg-[#f8fafc]/95 dark:bg-slate-950/95 backdrop-blur-md z-20 border-b border-slate-100 dark:border-slate-800/50">
-                <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-                    <ArrowLeft size={24} strokeWidth={2.5} />
-                </button>
-                <h1 className="flex-1 text-center text-[20px] font-[900] text-slate-900 dark:text-white tracking-tight">My Listings</h1>
-                <button className="p-2 -mr-2 text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-                    <MoreHorizontal size={24} strokeWidth={2.5} />
-                </button>
+        <div className="flex flex-col min-h-screen pb-28" style={{ background: '#f8f9ff', color: '#0b1c30' }}>
+            {/* Header */}
+            <header className="sticky top-0 z-20 flex flex-col px-5 pt-6 pb-4" style={{ background: '#f8f9ff', borderBottom: '1px solid #e5eeff' }}>
+                <div className="flex items-center justify-between mb-4">
+                    <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-[#e5eeff] transition-colors active:scale-90">
+                        <ArrowLeft size={24} style={{ color: '#14147c' }} strokeWidth={2.5} />
+                    </button>
+                    <button className="p-2 -mr-2 rounded-full hover:bg-[#e5eeff] transition-colors">
+                        <MoreHorizontal size={24} style={{ color: '#14147c' }} strokeWidth={2.5} />
+                    </button>
+                </div>
+                <div>
+                    <h1 className="text-[28px] font-bold tracking-tight" style={{ color: '#14147c', lineHeight: 1.2 }}>
+                        Manage<br />Listings
+                    </h1>
+                </div>
             </header>
 
-            <main className="flex-1 px-6 pt-6">
-                {loading ? (
-                    <div className="flex flex-col gap-5">
-                        {[1, 2, 3].map(n => <div key={n} className="animate-pulse h-[110px] w-full rounded-[24px] bg-[#e2e8f0] dark:bg-slate-800" />)}
+            <main className="flex-1 px-5 pt-4">
+                {/* Metrics */}
+                <div className="flex gap-3 overflow-x-auto pb-2 mb-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    <MetricCard title="Total Listings" count={metrics.total} color="#14147c" bg="#e5eeff" />
+                    <MetricCard title="Active" count={metrics.active} color="#0060ac" bg="#e1efff" />
+                    <MetricCard title="Pending" count={metrics.pending} color="#464652" bg="#fff" border="#c7c5d4" />
+                </div>
+
+                {/* Search Bar */}
+                <div className="flex gap-2 mb-6">
+                    <div className="relative flex-1">
+                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#777683' }} />
+                        <input
+                            type="text"
+                            placeholder="Search properties..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3.5 rounded-[16px] text-[15px] font-medium outline-none transition-shadow"
+                            style={{ background: '#ffffff', color: '#0b1c30', border: '1px solid #e5eeff', boxShadow: '0 2px 12px rgba(45,48,145,0.04)' }}
+                        />
                     </div>
-                ) : listings.length > 0 ? (
+                    <button className="flex items-center justify-center w-14 rounded-[16px] transition-colors active:scale-95" style={{ background: '#14147c', color: '#fff' }}>
+                        <SlidersHorizontal size={20} />
+                    </button>
+                </div>
+
+                {/* Filter Chips */}
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    {['All', 'Active', 'Pending'].map(filter => (
+                        <button
+                            key={filter}
+                            onClick={() => setActiveFilter(filter)}
+                            className="px-5 py-2 rounded-full text-[14px] font-semibold whitespace-nowrap transition-all"
+                            style={activeFilter === filter 
+                                ? { background: '#14147c', color: '#fff' }
+                                : { background: '#fff', color: '#464652', border: '1px solid #c7c5d4' }
+                            }
+                        >
+                            {filter}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Listings */}
+                {loading ? (
                     <div className="flex flex-col gap-4">
-                        {listings.map(property => (
+                        {[1, 2, 3].map(n => <div key={n} className="animate-pulse h-[140px] w-full rounded-[20px]" style={{ background: '#e5eeff' }} />)}
+                    </div>
+                ) : filteredListings.length > 0 ? (
+                    <div className="flex flex-col gap-4">
+                        {filteredListings.map((property, i) => (
+                            <motion.div
+                                key={property.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.05, duration: 0.3 }}
+                            >
                                 <ListingCard 
-                                    key={property.id} 
                                     property={property} 
-                                    onClick={() => navigate(`/property/${property.id}`)} 
-                                    onDelete={(e) => {
+                                    onClick={() => navigate(`/property/${property.id}`)}
+                                    onActionClick={(e) => {
                                         e.stopPropagation();
-                                        setDeleteModal({ isOpen: true, id: property.id, title: property.title });
-                                    }}
-                                    onStatusChange={(newStatus) => {
-                                        setStatusModal({ isOpen: true, id: property.id, title: property.title, newStatus });
-                                    }}
-                                    onRefresh={(e) => {
-                                        e.stopPropagation();
-                                        setBumpModal({ isOpen: true, id: property.id, title: property.title });
-                                    }}
-                                    onVerify={(e) => {
-                                        e.stopPropagation();
-                                        setVerifyModal({ isOpen: true, id: property.id, title: property.title });
+                                        handleActionClick(property);
                                     }}
                                 />
+                            </motion.div>
                         ))}
                     </div>
                 ) : (
                     <div className="py-20 flex flex-col items-center justify-center text-center px-4">
-                        <div className="size-20 bg-[#e0e7ff] dark:bg-slate-800 rounded-full flex items-center justify-center text-[#3730a3] dark:text-indigo-400 mb-6 relative">
-                            <HomeIcon size={32} strokeWidth={2.5} />
-                            <div className="absolute -top-1 -right-1 size-6 bg-[#3730a3] text-white rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-[#f8fafc] dark:border-slate-950">
-                                0
-                            </div>
+                        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ background: '#e5eeff' }}>
+                            <HomeIcon size={32} style={{ color: '#14147c' }} strokeWidth={2.5} />
                         </div>
-                        <h3 className="text-[19px] font-[900] text-slate-900 dark:text-white mb-2">No Properties Listed</h3>
-                        <p className="text-[#64748b] text-[15px] font-medium leading-relaxed mb-8 max-w-[280px]">
-                            You haven't added any properties yet. Post your first ad to get started.
+                        <h3 className="text-[19px] font-bold mb-2">No Properties Found</h3>
+                        <p className="text-[15px] font-medium leading-relaxed mb-8 max-w-[280px]" style={{ color: '#777683' }}>
+                            {searchQuery || activeFilter !== 'All' 
+                                ? "Try adjusting your search or filters." 
+                                : "You haven't added any properties yet. Post your first ad to get started."}
                         </p>
-                        <button
-                            onClick={() => navigate('/post-ad')}
-                            className="bg-[#3730a3] text-white font-[800] text-[15px] py-4 px-8 rounded-full shadow-lg shadow-[#3730a3]/20 transition-transform active:scale-95"
-                        >
-                            Post New Ad
-                        </button>
+                        {!searchQuery && activeFilter === 'All' && (
+                            <button
+                                onClick={() => navigate('/post-ad')}
+                                className="font-bold text-[15px] py-4 px-8 rounded-full shadow-lg transition-transform active:scale-95"
+                                style={{ background: '#14147c', color: '#fff', boxShadow: '0 8px 24px rgba(20,20,124,0.2)' }}
+                            >
+                                Post New Ad
+                            </button>
+                        )}
                     </div>
                 )}
             </main>
 
+            {/* Bottom Sheet Action Drawer */}
+            <AnimatePresence>
+                {bottomSheet.isOpen && bottomSheet.property && (
+                    <>
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setBottomSheet({ isOpen: false, property: null })}
+                            className="fixed inset-0 z-40"
+                            style={{ background: 'rgba(11,28,48,0.4)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+                        />
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[32px] p-6 pb-10"
+                            style={{ background: '#fff', boxShadow: '0 -10px 40px rgba(11,28,48,0.1)' }}
+                        >
+                            <div className="w-12 h-1.5 rounded-full mx-auto mb-6" style={{ background: '#e5eeff' }} />
+                            
+                            <h3 className="text-[18px] font-bold mb-6 truncate" style={{ color: '#0b1c30' }}>
+                                {bottomSheet.property.title}
+                            </h3>
+
+                            <div className="flex flex-col gap-2">
+                                <ActionItem 
+                                    icon={<Eye size={20} />} 
+                                    label="View Listing" 
+                                    onClick={() => {
+                                        navigate(`/property/${bottomSheet.property.id}`);
+                                        setBottomSheet({ isOpen: false, property: null });
+                                    }} 
+                                />
+                                <ActionItem 
+                                    icon={<Edit size={20} />} 
+                                    label="Edit Details" 
+                                    onClick={() => {
+                                        navigate(`/edit-property/${bottomSheet.property.id}`);
+                                        setBottomSheet({ isOpen: false, property: null });
+                                    }} 
+                                />
+                                <ActionItem 
+                                    icon={<Activity size={20} />} 
+                                    label="Change Status" 
+                                    onClick={() => {
+                                        const newStatus = bottomSheet.property.status === 'Available' ? 'Under Negotiation' : 'Available';
+                                        setStatusModal({ isOpen: true, id: bottomSheet.property.id, title: bottomSheet.property.title, newStatus });
+                                        setBottomSheet({ isOpen: false, property: null });
+                                    }} 
+                                />
+                                <ActionItem 
+                                    icon={<RefreshCcw size={20} />} 
+                                    label="Bump Listing (Refresh Date)" 
+                                    onClick={() => {
+                                        setBumpModal({ isOpen: true, id: bottomSheet.property.id, title: bottomSheet.property.title });
+                                        setBottomSheet({ isOpen: false, property: null });
+                                    }} 
+                                />
+                                {(!bottomSheet.property.verificationStatus || bottomSheet.property.verificationStatus === 'unverified') && (
+                                    <ActionItem 
+                                        icon={<Shield size={20} />} 
+                                        label="Request Verification" 
+                                        onClick={() => {
+                                            setVerifyModal({ isOpen: true, id: bottomSheet.property.id, title: bottomSheet.property.title });
+                                            setBottomSheet({ isOpen: false, property: null });
+                                        }} 
+                                    />
+                                )}
+                                <div className="h-[1px] w-full my-2" style={{ background: '#e5eeff' }} />
+                                <ActionItem 
+                                    icon={<Trash2 size={20} />} 
+                                    label="Delete Listing" 
+                                    danger 
+                                    onClick={() => {
+                                        setDeleteModal({ isOpen: true, id: bottomSheet.property.id, title: bottomSheet.property.title });
+                                        setBottomSheet({ isOpen: false, property: null });
+                                    }} 
+                                />
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* Modals */}
             <ConfirmationModal
                 isOpen={deleteModal.isOpen}
                 title="Delete Listing?"
@@ -238,7 +400,7 @@ export default function MyListings() {
                 title="Change Status?"
                 message={`Change the status of "${statusModal.title}" to ${statusModal.newStatus}?`}
                 confirmText="Update Status"
-                confirmColor="#3730a3"
+                confirmColor="#14147c"
                 icon={Info}
                 variant="info"
                 isLoading={isUpdatingStatus}
@@ -277,134 +439,122 @@ export default function MyListings() {
     );
 }
 
-function ListingCard({ property, onClick, onDelete, onStatusChange, onRefresh, onVerify }) {
-    const { title, rent, area, district, upazila, image, status, createdAt, updatedAt } = property;
+function MetricCard({ title, count, color, bg, border }) {
+    return (
+        <div 
+            className="flex-shrink-0 min-w-[120px] rounded-[20px] p-4 flex flex-col justify-between"
+            style={{ background: bg, border: border ? `1px solid ${border}` : 'none' }}
+        >
+            <span className="text-[13px] font-semibold mb-2" style={{ color: border ? '#777683' : color, opacity: 0.8 }}>
+                {title}
+            </span>
+            <span className="text-[28px] font-bold tracking-tight" style={{ color }}>
+                {count}
+            </span>
+        </div>
+    );
+}
+
+function ActionItem({ icon, label, danger, onClick }) {
+    return (
+        <button 
+            onClick={onClick}
+            className="flex items-center gap-4 w-full p-4 rounded-2xl active:bg-slate-50 transition-colors"
+            style={{ color: danger ? '#ef4444' : '#0b1c30' }}
+        >
+            <div className="flex items-center justify-center w-10 h-10 rounded-full" style={{ background: danger ? '#fef2f2' : '#f8f9ff', color: danger ? '#ef4444' : '#464652' }}>
+                {icon}
+            </div>
+            <span className="text-[16px] font-semibold">{label}</span>
+        </button>
+    );
+}
+
+function ListingCard({ property, onClick, onActionClick }) {
+    const { title, rent, area, district, upazila, image, status } = property;
+    const [copied, setCopied] = useState(false);
 
     const displayRent = rent || property.price || 0;
     const displayImage = image || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80';
     const displayLocation = upazila || area || district || 'City Area';
     const currentStatus = status || 'Available';
+    const isAvailable = currentStatus === 'Available' && property.isApproved;
+    const badgeText = !property.isApproved ? (property.isRejected ? 'Rejected' : 'Pending Approval') : (isAvailable ? 'Active' : currentStatus);
+    const isPendingOrRejected = !property.isApproved;
 
-    const formatDaysAgo = (timestamp) => {
-        if (!timestamp) return '';
-        try {
-            const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-            const diffInDays = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
-            return diffInDays === 0 ? 'Today' : `${diffInDays}d ago`;
-        } catch {
-            return '';
-        }
+    const shortId = property.id ? property.id.slice(0, 8).toUpperCase() : '';
+
+    const handleCopyId = (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(property.id).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
     };
 
-    const isAvailable = currentStatus === 'Available';
-    const isNegotiating = currentStatus === 'Under Negotiation';
-    const isLetAgreed = currentStatus === 'Let Agreed';
-    const isBooked = currentStatus === 'Booked';
-
-    const statusDotColor = isAvailable ? 'bg-emerald-500' : isNegotiating ? 'bg-amber-500' : isBooked ? 'bg-blue-500' : 'bg-rose-500';
-
     return (
-        <div className="w-full bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800/80 transition-all hover:shadow-xl hover:shadow-[#3730a3]/5 p-4 flex flex-col gap-4">
-            <div 
-                onClick={onClick} 
-                className="group flex gap-4 text-left cursor-pointer active:scale-[0.98] transition-transform"
-            >
-                <div className="size-[88px] shrink-0 overflow-hidden rounded-[20px] relative">
-                    <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={displayImage} alt={title || 'Listing'} />
+        <div 
+            onClick={onClick}
+            className="group w-full bg-white rounded-[24px] overflow-hidden p-3 flex gap-4 cursor-pointer active:scale-[0.98] transition-transform"
+            style={{ border: '1px solid #e5eeff', boxShadow: '0 4px 20px rgba(45,48,145,0.03)' }}
+        >
+            <div className="w-[100px] h-[100px] shrink-0 overflow-hidden rounded-[16px] relative">
+                <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={displayImage} alt={title || 'Listing'} />
+                <div className="absolute top-2 left-2 px-2 py-1 rounded-full text-[10px] font-bold shadow-sm" 
+                    style={{ 
+                        background: isPendingOrRejected ? 'rgba(245,158,11,0.9)' : (isAvailable ? 'rgba(255,255,255,0.9)' : 'rgba(11,28,48,0.8)'), 
+                        color: isPendingOrRejected ? '#fff' : (isAvailable ? '#0b1c30' : '#fff'),
+                        backdropFilter: 'blur(4px)'
+                    }}
+                >
+                    {badgeText}
+                </div>
+            </div>
+
+            <div className="flex-1 min-w-0 flex flex-col justify-center py-1 relative">
+                <button 
+                    onClick={onActionClick}
+                    className="absolute top-0 right-0 p-2 rounded-full hover:bg-[#f8f9ff] active:scale-90 transition-all z-10"
+                    style={{ color: '#464652' }}
+                >
+                    <MoreHorizontal size={20} />
+                </button>
+
+                <h4 className="font-bold text-[16px] leading-tight mb-1 truncate pr-8" style={{ color: '#0b1c30' }}>
+                    {title || 'Property Title'}
+                </h4>
+
+                <div className="flex items-center gap-1 mb-2 truncate" style={{ color: '#777683' }}>
+                    <MapPin size={13} className="shrink-0" />
+                    <span className="text-[13px] font-medium truncate">{displayLocation}</span>
                 </div>
 
-                <div className="flex-1 min-w-0 flex flex-col justify-center">
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className={`w-2 h-2 rounded-full ${statusDotColor} shrink-0`} />
-                        <h4 className="font-[800] text-[16px] text-slate-900 dark:text-white leading-tight truncate">
-                            {title || 'Property Title'}
-                        </h4>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-[#64748b] dark:text-slate-400 text-[13px] mb-2 truncate">
-                        <MapPin size={14} className="shrink-0" strokeWidth={2.5} />
-                        <span className="font-[600] truncate">{displayLocation}</span>
-                    </div>
-
+                <div className="flex items-center justify-between mt-auto">
                     <div className="flex items-baseline gap-1">
-                        <span className="font-[900] text-[17px] text-[#3730a3] dark:text-indigo-400">
+                        <span className="font-bold text-[18px]" style={{ color: '#14147c' }}>
                             ৳{displayRent.toLocaleString()}
                         </span>
-                        <span className="text-[12px] font-bold text-[#64748b] dark:text-slate-400">
+                        <span className="text-[12px] font-medium" style={{ color: '#777683' }}>
                             / month
                         </span>
                     </div>
-                </div>
 
-                <div className="flex flex-col items-end gap-1">
-                    <button 
-                        onClick={onDelete}
-                        className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all mb-auto"
+                    {/* Listing ID badge — owner-only */}
+                    <button
+                        onClick={handleCopyId}
+                        title={copied ? 'Copied!' : `Copy full ID: ${property.id}`}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all active:scale-90"
+                        style={{
+                            background: copied ? '#e6fff3' : '#f0f0ff',
+                            border: `1px solid ${copied ? '#6ee7b7' : '#c7c5d4'}`,
+                            color: copied ? '#059669' : '#464652',
+                        }}
                     >
-                        <Trash2 size={18} strokeWidth={2.5} />
+                        <span className="text-[10px] font-black tracking-widest uppercase font-mono">
+                            {copied ? '✓ Copied' : `#${shortId}`}
+                        </span>
                     </button>
                 </div>
-            </div>
-
-            <div className="flex justify-between items-center px-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <span>Listed: {formatDaysAgo(createdAt)}</span>
-                <span>Updated: {formatDaysAgo(updatedAt || createdAt)}</span>
-            </div>
-            
-            {/* Management Row */}
-            <div className="flex flex-col sm:flex-row gap-3 border-t border-slate-100 dark:border-slate-800 pt-3">
-                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex-1 overflow-x-auto">
-                    <button 
-                        onClick={() => !isAvailable && onStatusChange('Available')}
-                        className={`flex-1 min-w-fit whitespace-nowrap py-1.5 px-2 rounded-lg text-[11px] font-bold transition-colors ${isAvailable ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                    >
-                        Available
-                    </button>
-                    <button 
-                        onClick={() => !isNegotiating && onStatusChange('Under Negotiation')}
-                        className={`flex-1 min-w-fit whitespace-nowrap py-1.5 px-2 rounded-lg text-[11px] font-bold transition-colors ${isNegotiating ? 'bg-white dark:bg-slate-700 text-amber-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                    >
-                        Negotiating
-                    </button>
-                    <button 
-                        onClick={() => !isBooked && onStatusChange('Booked')}
-                        className={`flex-1 min-w-fit whitespace-nowrap py-1.5 px-2 rounded-lg text-[11px] font-bold transition-colors ${isBooked ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                    >
-                        Booked
-                    </button>
-                    <button 
-                        onClick={() => !isLetAgreed && onStatusChange('Let Agreed')}
-                        className={`flex-1 min-w-fit whitespace-nowrap py-1.5 px-2 rounded-lg text-[11px] font-bold transition-colors ${isLetAgreed ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                    >
-                        Let Agreed
-                    </button>
-                </div>
-                
-                <motion.button 
-                    whileTap={{ scale: 0.95 }}
-                    onClick={onRefresh}
-                    className="flex items-center justify-center gap-1.5 text-primary dark:text-indigo-400 bg-primary/10 hover:bg-primary/20 text-xs font-bold py-2 px-4 rounded-xl transition-colors shrink-0"
-                >
-                    <RefreshCcw size={14} /> Bump
-                </motion.button>
-                
-                {property.verificationStatus === 'verified' || property.isOnsiteVerified ? (
-                    <div className="flex items-center justify-center gap-1.5 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 text-xs font-bold py-2 px-4 rounded-xl shrink-0">
-                        <CheckCircle2 size={14} /> Verified
-                    </div>
-                ) : property.verificationStatus === 'pending' ? (
-                    <div className="flex items-center justify-center gap-1.5 text-amber-600 bg-amber-50 dark:bg-amber-500/10 text-xs font-bold py-2 px-4 rounded-xl shrink-0">
-                        <RefreshCw size={14} className="animate-spin" /> Pending
-                    </div>
-                ) : (
-                    <motion.button 
-                        whileTap={{ scale: 0.95 }}
-                        onClick={onVerify}
-                        className="flex items-center justify-center gap-1.5 text-white bg-gradient-to-r from-primary to-indigo-900 text-xs font-bold py-2 px-4 rounded-xl transition-all shadow-lg shadow-primary/20 shrink-0"
-                    >
-                        <Shield size={14} className="fill-indigo-300" /> Get Verified
-                    </motion.button>
-                )}
             </div>
         </div>
     );

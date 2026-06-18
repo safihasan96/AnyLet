@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Download, X } from 'lucide-react';
+import logger from '../utils/logger';
 
 const InstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -33,7 +34,7 @@ const InstallPrompt = () => {
     
     // Wait for the user to respond to the prompt
     const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
+    logger.info('PWA install prompt outcome', outcome);
     
     // We've used the prompt, and can't use it again, throw it away
     setDeferredPrompt(null);

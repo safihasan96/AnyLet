@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, documentId, getDocs } from 'firebase/firestore';
+import { collection, query, where, documentId, getDocs, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Heart, ArrowLeft, Building2 } from 'lucide-react';
 import PropertyCard from '../components/PropertyCard';
 import useSavedProperties from '../hooks/useSavedProperties';
+import logger from '../utils/logger';
+
+// ✅ F-08: max 10 per 'in' batch (Firestore limit) × up to 10 batches = 100 max favorites
+const FAVORITES_BATCH_SIZE = 10;
+const MAX_FAVORITES_BATCHES = 10;
 
 export default function Favorites() {
     const { currentUser } = useAuth();
@@ -25,22 +30,23 @@ export default function Favorites() {
             }
 
             try {
-                // Determine batches of 10 for 'in' query limitations
+                // Batch into groups of 10 (Firestore 'in' query limit)
+                const allIds = savedProperties.slice(0, FAVORITES_BATCH_SIZE * MAX_FAVORITES_BATCHES);
                 const batches = [];
-                for (let i = 0; i < savedProperties.length; i += 10) {
-                    batches.push(savedProperties.slice(i, i + 10));
+                for (let i = 0; i < allIds.length; i += FAVORITES_BATCH_SIZE) {
+                    batches.push(allIds.slice(i, i + FAVORITES_BATCH_SIZE));
                 }
 
                 let fetchedProperties = [];
 
                 for (const batch of batches) {
+                    // ✅ F-08: each batch is inherently limited to 10 by Firestore 'in' constraint
                     const q = query(
                         collection(db, "properties"),
-                        where(documentId(), 'in', batch)
+                        where(documentId(), 'in', batch),
+                        limit(FAVORITES_BATCH_SIZE)
                     );
-                    console.log("Executing query for batch:", batch);
                     const querySnapshot = await getDocs(q);
-                    console.log("Query snapshot size:", querySnapshot.size);
                     const props = querySnapshot.docs.map(doc => ({
                         id: doc.id,
                         ...doc.data()
@@ -48,10 +54,9 @@ export default function Favorites() {
                     fetchedProperties = [...fetchedProperties, ...props];
                 }
 
-                console.log("Total fetched favorites:", fetchedProperties.length);
                 setFavorites(fetchedProperties);
             } catch (error) {
-                console.error("Error fetching favorite properties:", error);
+                logger.error("Error fetching favorite properties:", error);
             } finally {
                 setLoading(false);
             }
@@ -72,11 +77,6 @@ export default function Favorites() {
             </header>
 
             <div className="p-5 flex-1 flex flex-col">
-                <div className="bg-slate-100 p-2 text-xs font-mono break-all text-slate-800">
-                    DEBUG: savedProperties array = {JSON.stringify(savedProperties)} <br />
-                    loading: {loading ? 'true' : 'false'},
-                    hookLoading: {hookLoading ? 'true' : 'false'}
-                </div>
                 {favorites.length > 0 ? (
                     <div className="grid grid-cols-1 gap-6">
                         {favorites.map(property => (

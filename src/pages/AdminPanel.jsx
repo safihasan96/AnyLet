@@ -1,5 +1,6 @@
+import { useNavigate, useLocation, NavLink, Link, Routes, Route } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
-import { useNavigate, NavLink, Routes, Route, useLocation } from 'react-router-dom';
+
 import {
     Users, Home, ClipboardList, Search, LayoutDashboard, Settings,
     LogOut, UserCheck, UserMinus, Trash2, TrendingUp, ShieldCheck,
@@ -7,15 +8,18 @@ import {
     Menu, CheckCircle, Clock, Building2, MessageSquare, Flag, AlertCircle,
     CreditCard, Banknote, HelpCircle, Star, FileCheck
 } from 'lucide-react';
-import { collection, onSnapshot, updateDoc, deleteDoc, doc, getDoc, getDocs, addDoc, serverTimestamp, setDoc, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, updateDoc, deleteDoc, doc, getDoc, getDocs, addDoc, serverTimestamp, setDoc, query, where, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import QUERY_LIMITS from '../config/queryLimits';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
 import AdminReviewsTab from '../components/AdminReviewsTab';
 import AdminKycTab from '../components/AdminKycTab';
+import AdminClaimsTab from '../components/AdminClaimsTab';
 import '../index.css';
+import logger from '../utils/logger';
 
 /* ─────────────────────────────────────────────────────────────────────────────
    NAV ITEMS
@@ -30,14 +34,130 @@ const NAV_ITEMS = [
     { path: '/admin/reviews', icon: Star, label: 'Reviews' },
     { path: '/admin/kyc', icon: FileCheck, label: 'KYC Verification' },
     { path: '/admin/reports', icon: Flag, label: 'Reports' },
+    { path: '/admin/claims', icon: Lock, label: 'Admin Access' },
     { path: '/admin/settings', icon: Settings, label: 'System Health' },
 ];
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ENQUIRY CARD  (self-contained sub-component for multi-message threads)
+───────────────────────────────────────────────────────────────────────────── */
+function EnquiryCard({ enquiry, onReply, onResolve, onDelete }) {
+    const formRef = React.useRef(null);
+
+    // Build conversation: merge legacy adminReply + new replies array
+    const thread = React.useMemo(() => {
+        const msgs = [];
+        // User's original message
+        msgs.push({ text: enquiry.description, sender: 'user', sentAt: enquiry.createdAt?.toDate?.()?.toISOString() || '' });
+        // Legacy single reply (only if no replies array yet)
+        if (enquiry.adminReply && (!enquiry.replies || enquiry.replies.length === 0)) {
+            msgs.push({ text: enquiry.adminReply, sender: 'admin', sentAt: enquiry.repliedAt?.toDate?.()?.toISOString() || '' });
+        }
+        // New multi-message replies
+        if (enquiry.replies?.length) {
+            enquiry.replies.forEach(r => msgs.push(r));
+        }
+        return msgs;
+    }, [enquiry]);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const reply = e.target.reply.value.trim();
+        if (reply) onReply(enquiry.id, reply, formRef);
+    };
+
+    return (
+        <div className="p-8 hover:bg-zinc-50/50 transition-all border-b border-zinc-50 last:border-0">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-5">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center font-black text-zinc-400 text-lg">
+                        {enquiry.userEmail?.[0]?.toUpperCase() || '?'}
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-black text-zinc-950">{enquiry.topic}</p>
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${enquiry.type === 'support' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                                {enquiry.type || 'Support'}
+                            </span>
+                            {enquiry.status === 'resolved' ? (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest bg-emerald-50 text-emerald-600">
+                                    ✓ Resolved
+                                </span>
+                            ) : (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest bg-red-50 text-red-500">
+                                    Pending
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-xs font-bold text-zinc-400 mt-0.5">{enquiry.userEmail}</p>
+                        <p className="text-[10px] font-medium text-zinc-300 mt-0.5">
+                            {enquiry.createdAt?.toDate().toLocaleString()}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    {enquiry.status !== 'resolved' && (
+                        <button
+                            onClick={() => onResolve(enquiry.id)}
+                            className="text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
+                        >
+                            ✓ Resolve
+                        </button>
+                    )}
+                    <button onClick={() => onDelete(enquiry.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
+                        <Trash2 size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Conversation thread */}
+            <div className="space-y-3 mb-5 ml-4 border-l-2 border-zinc-100 pl-5">
+                {thread.map((msg, idx) => (
+                    <div key={idx} className={`${msg.sender === 'admin' ? 'ml-4' : ''}`}>
+                        <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${msg.sender === 'admin' ? 'text-emerald-600' : 'text-zinc-400'}`}>
+                            {msg.sender === 'admin' ? '🔷 Admin' : '💬 User'}
+                            {msg.sentAt && (
+                                <span className="ml-2 font-medium lowercase tracking-normal">
+                                    · {new Date(msg.sentAt).toLocaleString()}
+                                </span>
+                            )}
+                        </p>
+                        <p className={`text-sm font-medium leading-relaxed p-4 rounded-xl ${msg.sender === 'admin' ? 'bg-emerald-50/60 text-emerald-900' : 'bg-zinc-50 text-zinc-600'}`}>
+                            {msg.text}
+                        </p>
+                    </div>
+                ))}
+            </div>
+
+            {/* Reply form — always visible unless resolved */}
+            {enquiry.status !== 'resolved' && (
+                <div className="ml-4 pl-5 border-l-2 border-dashed border-zinc-200">
+                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2">Send a Reply</p>
+                    <form ref={formRef} onSubmit={handleSubmit} className="flex gap-3">
+                        <input
+                            name="reply"
+                            placeholder="Type your reply here..."
+                            className="flex-1 bg-zinc-50 border border-zinc-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all"
+                        />
+                        <button
+                            type="submit"
+                            className="px-5 py-2.5 bg-zinc-950 text-white text-xs font-black rounded-xl hover:bg-emerald-600 transition-all whitespace-nowrap"
+                        >
+                            Send Reply
+                        </button>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
+}
 
 /* ─────────────────────────────────────────────────────────────────────────────
    COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
 export default function AdminPanel() {
-    const { currentUser, logout } = useAuth();
+    const { currentUser, isAdmin, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -55,12 +175,23 @@ export default function AdminPanel() {
     const [escrowDeposits, setEscrowDeposits] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [loadingStats, setLoadingStats] = useState(true);
-    const [stats, setStats] = useState({ totalUsers: 0, totalListings: 0, pendingRequests: 0 });
+    const [stats, setStats] = useState({ 
+        totalUsers: 0, 
+        totalListings: 0, 
+        pendingRequests: 0,
+        verifiedListings: 0,
+        verifiedLandlords: 0,
+        successfulMoveIns: 0,
+        monthlyRevenue: 0
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [listingSearch, setListingSearch] = useState('');
+    const [propertiesTab, setPropertiesTab] = useState('pending'); // 'all' | 'pending' | 'approved'
     const [selectedListing, setSelectedListing] = useState(null);
     const [listingOwner, setListingOwner] = useState(null);
     const [ownerLoading, setOwnerLoading] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [propertiesLimit, setPropertiesLimit] = useState(QUERY_LIMITS.ADMIN_PROPERTIES);
 
     const [modal, setModal] = useState({
         isOpen: false, title: '', message: '',
@@ -75,81 +206,115 @@ export default function AdminPanel() {
         setLoadingStats(true);
 
         // Users
-        const unsubUsers = onSnapshot(collection(db, 'users'), snap => {
+        const unsubUsers = onSnapshot(
+            query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_USERS)),
+            snap => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             setUsers(list);
-            setStats(p => ({ ...p, totalUsers: snap.size }));
+            setStats(p => ({ 
+                ...p, 
+                totalUsers: snap.size,
+                verifiedLandlords: list.filter(u => u.role === 'owner' && u.isVerified).length 
+            }));
             setLoadingUsers(false);
         });
 
-        // Listings — ALL listings, no isApproved filter (admin sees everything)
-        const unsubListings = onSnapshot(collection(db, 'properties'), snap => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setListings(list);
-            setStats(p => ({ ...p, totalListings: snap.size }));
-        }, err => console.error('FIRESTORE (properties):', err.message));
-
         // Leads / viewing requests
-        const unsubLeads = onSnapshot(collection(db, 'viewing_requests'), snap => {
+        const unsubLeads = onSnapshot(
+            query(collection(db, 'viewing_requests'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_REQUESTS)),
+            snap => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             setViewingReqs(list);
             setStats(p => ({ ...p, pendingRequests: list.filter(r => r.status === 'pending').length }));
             setLoadingStats(false);
         }, err => {
-            console.error('FIRESTORE (viewing_requests):', err.message);
+            logger.error('FIRESTORE (viewing_requests):', err.message);
             setLoadingStats(false);
         });
 
         // Enquiries
-        const unsubEnquiries = onSnapshot(collection(db, 'enquiries'), snap => {
+        const unsubEnquiries = onSnapshot(
+            query(collection(db, 'enquiries'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_ENQUIRIES)),
+            snap => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             setEnquiries(list);
-        }, err => console.error('FIRESTORE (enquiries):', err.message));
+        }, err => logger.error('FIRESTORE (enquiries):', err.message));
 
         // Reports
-        const unsubReports = onSnapshot(collection(db, 'reports'), snap => {
+        const unsubReports = onSnapshot(
+            query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_REPORTS)),
+            snap => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             setReports(list);
-        }, err => console.error('FIRESTORE (reports):', err.message));
+        }, err => logger.error('FIRESTORE (reports):', err.message));
 
         // Payments
-        const unsubPayments = onSnapshot(collection(db, 'payments'), snap => {
+        const unsubPayments = onSnapshot(
+            query(collection(db, 'payments'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_PAYMENTS)),
+            snap => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             list.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
             setPayments(list);
         });
 
         // Escrow Deposits
-        const unsubEscrow = onSnapshot(collection(db, 'escrowDeposits'), snap => {
+        const unsubEscrow = onSnapshot(
+            query(collection(db, 'escrowDeposits'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_ESCROW || 50)),
+            snap => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             list.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
             setEscrowDeposits(list);
         });
 
-        return () => { unsubUsers(); unsubListings(); unsubLeads(); unsubEnquiries(); unsubReports(); unsubPayments(); unsubEscrow(); };
+        return () => { unsubUsers(); unsubLeads(); unsubEnquiries(); unsubReports(); unsubPayments(); unsubEscrow(); };
     }, []);
+
+    useEffect(() => {
+        let rev = 0;
+        payments.forEach(p => {
+            if (p.status === 'completed') {
+                rev += Number(p.amount) || 0;
+            }
+        });
+        
+        let moveIns = 0;
+        escrowDeposits.forEach(e => {
+            if (e.status === 'released') {
+                moveIns++;
+                rev += (Number(e.amount) || 0) * 0.01; // 1% deduction
+            }
+        });
+
+        setStats(p => ({ ...p, monthlyRevenue: rev, successfulMoveIns: moveIns }));
+    }, [payments, escrowDeposits]);
+
+    // Separated properties listener to support 'Load More' pagination
+    useEffect(() => {
+        const unsubListings = onSnapshot(
+            query(collection(db, 'properties'), orderBy('createdAt', 'desc'), limit(propertiesLimit)),
+            snap => {
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setListings(list);
+                // Keep the stats updated but note snap.size is bounded by propertiesLimit
+                setStats(p => ({ 
+                    ...p, 
+                    totalListings: snap.size,
+                    verifiedListings: list.filter(l => l.isVerified || l.verificationStatus === 'verified').length 
+                }));
+            }, 
+            err => logger.error('FIRESTORE (properties):', err.message)
+        );
+        return () => unsubListings();
+    }, [propertiesLimit]);
 
     /* ── User actions ─────────────────────────────────────────────────────── */
     const handleLogout = async () => {
-        try { await logout(); navigate('/login'); } catch (e) { console.error(e); }
+        try { await logout(); router.push('/login'); } catch (e) { logger.error(e); }
     };
 
     const handleToggleAdmin = user => {
-        const isAdmin = user.role === 'admin';
-        showModal({
-            title: isAdmin ? 'Revoke Admin' : 'Promote to Admin',
-            message: isAdmin ? `Remove admin from ${user.email}?` : `Grant admin to ${user.email}?`,
-            confirmText: isAdmin ? 'Revoke' : 'Promote',
-            confirmColor: isAdmin ? '#ef4444' : '#10b981',
-            onConfirm: async () => {
-                setModal(p => ({ ...p, isLoading: true }));
-                try {
-                    await updateDoc(doc(db, 'users', user.id), { role: isAdmin ? 'client' : 'admin' });
-                    setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
-                    setTimeout(closeModal, 1500);
-                } catch (e) { console.error(e); setModal(p => ({ ...p, isLoading: false, isOpen: false })); }
-            }
-        });
+        // The toggle admin feature is now handled securely in the AdminClaimsTab
+        router.push('/admin/claims');
     };
 
     const handleToggleStatus = user => {
@@ -165,7 +330,7 @@ export default function AdminPanel() {
                     await updateDoc(doc(db, 'users', user.id), { accountStatus: active ? 'deactivated' : 'active' });
                     setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
                     setTimeout(closeModal, 1500);
-                } catch (e) { console.error(e); setModal(p => ({ ...p, isLoading: false, isOpen: false })); }
+                } catch (e) { logger.error(e); setModal(p => ({ ...p, isLoading: false, isOpen: false })); }
             }
         });
     };
@@ -180,7 +345,7 @@ export default function AdminPanel() {
                     await deleteDoc(doc(db, 'users', user.id));
                     setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
                     setTimeout(closeModal, 1500);
-                } catch (e) { console.error(e); setModal(p => ({ ...p, isLoading: false, isOpen: false })); }
+                } catch (e) { logger.error(e); setModal(p => ({ ...p, isLoading: false, isOpen: false })); }
             }
         });
     };
@@ -188,10 +353,10 @@ export default function AdminPanel() {
     /* ── Listing approval ─────────────────────────────────────────────────── */
     const handleApproveListing = async listing => {
         try {
-            await updateDoc(doc(db, 'properties', listing.id), { isApproved: true, isActive: true });
+            await updateDoc(doc(db, 'properties', listing.id), { isApproved: true, isActive: true, isRejected: false });
             // Update selectedListing in-place so the drawer reflects approval instantly
             if (selectedListing?.id === listing.id) {
-                setSelectedListing(prev => ({ ...prev, isApproved: true, isActive: true }));
+                setSelectedListing(prev => ({ ...prev, isApproved: true, isActive: true, isRejected: false }));
             }
 
             // Notify owner
@@ -206,7 +371,31 @@ export default function AdminPanel() {
                     { propertyId: listing.id }
                 );
             }
-        } catch (e) { console.error('Approve listing error:', e); }
+            toast.success('Listing approved successfully!');
+        } catch (e) { logger.error('Approve listing error:', e); }
+    };
+
+    const handleRejectListing = async listing => {
+        try {
+            await updateDoc(doc(db, 'properties', listing.id), { isApproved: false, isActive: false, isRejected: true });
+            if (selectedListing?.id === listing.id) {
+                setSelectedListing(prev => ({ ...prev, isApproved: false, isActive: false, isRejected: true }));
+            }
+
+            // Notify owner
+            const targetOwner = listing.ownerId || listing.userId;
+            if (targetOwner) {
+                await createNotification(
+                    targetOwner,
+                    'property_rejected',
+                    'Property Rejected ⚠️',
+                    `Your property "${listing.title}" has been rejected during review. Please update the details.`,
+                    '/my-listings',
+                    { propertyId: listing.id }
+                );
+            }
+            toast.success('Listing rejected successfully!');
+        } catch (e) { logger.error('Reject listing error:', e); }
     };
 
     /* ── Verification ─────────────────────────────────────────────────────── */
@@ -217,7 +406,7 @@ export default function AdminPanel() {
             if (selectedListing?.id === listing.id) {
                 setSelectedListing(prev => ({ ...prev, isVerified: newStatus }));
             }
-        } catch (e) { console.error('Toggle verification error:', e); }
+        } catch (e) { logger.error('Toggle verification error:', e); }
     };
 
     /* ── System Cleanup & Migration ── */
@@ -236,7 +425,7 @@ export default function AdminPanel() {
                     // 1. Listings Cleanup
                     const listingSources = ['listings', 'Listings'];
                     for (const source of listingSources) {
-                        const snap = await getDocs(collection(db, source));
+                        const snap = await getDocs(query(collection(db, source), limit(QUERY_LIMITS.HARD_CAP)));
                         for (const lDoc of snap.docs) {
                             const data = lDoc.data();
                             await addDoc(collection(db, 'properties'), {
@@ -254,7 +443,7 @@ export default function AdminPanel() {
                     // 2. Users Cleanup
                     const userSources = ['Users', 'Profiles', 'user_profiles'];
                     for (const source of userSources) {
-                        const snap = await getDocs(collection(db, source));
+                        const snap = await getDocs(query(collection(db, source), limit(QUERY_LIMITS.HARD_CAP)));
                         for (const uDoc of snap.docs) {
                             const data = uDoc.data();
                             await setDoc(doc(db, 'users', uDoc.id), {
@@ -275,7 +464,7 @@ export default function AdminPanel() {
                     }));
                     setTimeout(closeModal, 4000);
                 } catch (e) {
-                    console.error(e);
+                    logger.error(e);
                     setModal(p => ({ ...p, isLoading: false, message: 'Cleanup failed. Check console.' }));
                 }
             }
@@ -293,22 +482,46 @@ export default function AdminPanel() {
         try {
             const userSnap = await getDoc(doc(db, 'users', ownerId));
             if (userSnap.exists()) setListingOwner({ id: userSnap.id, ...userSnap.data() });
-        } catch (e) { console.error('Owner lookup error:', e); }
+        } catch (e) { logger.error('Owner lookup error:', e); }
         finally { setOwnerLoading(false); }
     };
 
     const closeDetail = () => { setSelectedListing(null); setListingOwner(null); };
 
     /* ── Enquiry actions ──────────────────────────────────────────────────── */
-    const handleReplyEnquiry = async (enquiryId, reply) => {
+    const handleReplyEnquiry = async (enquiryId, reply, formRef) => {
+        try {
+            const newMessage = {
+                text: reply,
+                sender: 'admin',
+                sentAt: new Date().toISOString(),
+            };
+            const enquiryRef = doc(db, 'enquiries', enquiryId);
+            const snap = await getDoc(enquiryRef);
+            const existing = snap.exists() ? (snap.data().replies || []) : [];
+            await updateDoc(enquiryRef, {
+                replies: [...existing, newMessage],
+                lastReplyAt: serverTimestamp(),
+                // keep legacy field in sync for backward compat
+                adminReply: reply,
+            });
+            if (formRef?.current) formRef.current.reset();
+            toast.success('Reply sent!');
+        } catch (e) {
+            logger.error('Reply enquiry error:', e);
+            toast.error('Failed to send reply.');
+        }
+    };
+
+    const handleResolveEnquiry = async (enquiryId) => {
         try {
             await updateDoc(doc(db, 'enquiries', enquiryId), {
-                adminReply: reply,
                 status: 'resolved',
-                repliedAt: serverTimestamp()
+                resolvedAt: serverTimestamp()
             });
+            toast.success('Enquiry marked as resolved!');
         } catch (e) {
-            console.error('Reply enquiry error:', e);
+            logger.error('Resolve enquiry error:', e);
         }
     };
 
@@ -325,7 +538,7 @@ export default function AdminPanel() {
                     setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
                     setTimeout(closeModal, 1500);
                 } catch (e) {
-                    console.error(e);
+                    logger.error(e);
                     setModal(p => ({ ...p, isLoading: false, isOpen: false }));
                 }
             }
@@ -337,7 +550,7 @@ export default function AdminPanel() {
         try {
             await deleteDoc(doc(db, 'reports', reportId));
         } catch (e) {
-            console.error('Dismiss report error:', e);
+            logger.error('Dismiss report error:', e);
         }
     };
 
@@ -374,7 +587,7 @@ export default function AdminPanel() {
                     setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
                     setTimeout(closeModal, 1500);
                 } catch (e) {
-                    console.error(e);
+                    logger.error(e);
                     setModal(p => ({ ...p, isLoading: false, isOpen: false }));
                     toast.error("Error deleting property. It might have been already deleted.");
                 }
@@ -387,6 +600,23 @@ export default function AdminPanel() {
         try {
             await updateDoc(doc(db, 'payments', payment.id), { status: 'completed' });
             
+            // If it's a subscription fee, update the user
+            if (payment.type === 'subscription' && payment.userId) {
+                const expiryDate = new Date();
+                expiryDate.setDate(expiryDate.getDate() + 30);
+                await updateDoc(doc(db, 'users', payment.userId), {
+                    subscriptionPlan: payment.metadata?.plan || 'Premium',
+                    subscriptionExpiry: expiryDate,
+                });
+                await createNotification(
+                    payment.userId,
+                    'system',
+                    'Subscription Activated! 🎉',
+                    `Your ${payment.metadata?.plan || 'Premium'} subscription is now active for 30 days.`,
+                    '/pricing'
+                );
+            }
+
             // If it's a listing fee, approve the property
             if (payment.type === 'listing_fee' && payment.propertyId) {
                 await updateDoc(doc(db, 'properties', payment.propertyId), { isApproved: true });
@@ -431,7 +661,7 @@ export default function AdminPanel() {
                 }
             }
             toast.success('Payment approved!');
-        } catch (e) { console.error('Approve payment error:', e); }
+        } catch (e) { logger.error('Approve payment error:', e); }
     };
 
     const handleRejectPayment = async (payment) => {
@@ -446,7 +676,7 @@ export default function AdminPanel() {
                 }
             }
             toast.success('Payment rejected.');
-        } catch (e) { console.error('Reject payment error:', e); }
+        } catch (e) { logger.error('Reject payment error:', e); }
     };
 
     const handleReleaseEscrow = async (escrowId) => {
@@ -490,7 +720,7 @@ export default function AdminPanel() {
                     setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
                     setTimeout(closeModal, 1500);
                 } catch (e) {
-                    console.error(e);
+                    logger.error(e);
                     setModal(p => ({ ...p, isLoading: false, isOpen: false }));
                     toast.error("Error releasing funds.");
                 }
@@ -503,11 +733,18 @@ export default function AdminPanel() {
         (u.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (u.email || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
-    const filteredListings = listings.filter(l =>
-        (l.title || '').toLowerCase().includes(listingSearch.toLowerCase()) ||
-        (l.location || l.address || l.upazila || l.district || '').toLowerCase().includes(listingSearch.toLowerCase())
-    );
-    const pendingListings = listings.filter(l => !l.isApproved).length;
+    const filteredListings = listings.filter(l => {
+        const matchesSearch = (l.title || '').toLowerCase().includes(listingSearch.toLowerCase()) ||
+            (l.location || l.address || l.upazila || l.district || '').toLowerCase().includes(listingSearch.toLowerCase()) ||
+            (l.id || '').toLowerCase().includes(listingSearch.toLowerCase());
+        if (!matchesSearch) return false;
+        
+        if (propertiesTab === 'pending') return !l.isApproved && !l.isRejected;
+        if (propertiesTab === 'approved') return l.isApproved;
+        if (propertiesTab === 'rejected') return l.isRejected;
+        return true;
+    });
+    const pendingListings = listings.filter(l => !l.isApproved && !l.isRejected).length;
 
     /* ═══════════════════════════════════════════════════════════════════════
        RENDER
@@ -676,11 +913,15 @@ export default function AdminPanel() {
                                 ) : (
                                     <div className="space-y-8">
                                         {/* Stat Cards */}
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                             {[
-                                                { label: 'Platform Users', value: stats.totalUsers, icon: Users, growth: '+14.5%' },
+                                                { label: 'Platform Users', value: stats.totalUsers, icon: Users, growth: 'Live' },
                                                 { label: 'Total Properties', value: stats.totalListings, icon: Building2, growth: `${pendingListings} pending` },
+                                                { label: 'Verified Listings', value: stats.verifiedListings, icon: ShieldCheck, growth: 'Moat' },
+                                                { label: 'Verified Landlords', value: stats.verifiedLandlords, icon: CheckCircle, growth: 'Moat' },
                                                 { label: 'Pipeline Queue', value: stats.pendingRequests, icon: ClipboardList, growth: 'Live' },
+                                                { label: 'Move-Ins (Escrow)', value: stats.successfulMoveIns, icon: Home, growth: 'Scale' },
+                                                { label: 'Est. Revenue', value: `৳${stats.monthlyRevenue.toLocaleString()}`, icon: Banknote, growth: 'Total' },
                                             ].map((s, i) => (
                                                 <div key={i} className="group bg-white p-8 rounded-3xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-500 border border-zinc-100">
                                                     <div className="flex justify-between items-start mb-6">
@@ -789,7 +1030,7 @@ export default function AdminPanel() {
                                             </thead>
                                             <tbody className="divide-y divide-zinc-50">
                                                 {filteredUsers.map(user => (
-                                                    <tr key={user.id} className="group hover:bg-zinc-50/50 transition-colors">
+                                                    <tr key={user.id} onClick={() => setSelectedUser(user)} className="group hover:bg-zinc-50/50 transition-colors cursor-pointer">
                                                         <td className="px-8 py-6">
                                                             <div className="flex items-center gap-5">
                                                                 <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center font-black text-zinc-300 text-lg uppercase group-hover:border-emerald-500 group-hover:text-emerald-500 border border-transparent transition-all">
@@ -811,17 +1052,17 @@ export default function AdminPanel() {
                                                         </td>
                                                         <td className="px-8 py-6">
                                                             <div className="flex justify-center gap-3">
-                                                                <button onClick={() => handleToggleAdmin(user)}
+                                                                <button onClick={(e) => { e.stopPropagation(); handleToggleAdmin(user); }}
                                                                     className={`p-3 rounded-xl transition-all border ${user.role === 'admin' ? 'bg-zinc-950 text-white border-zinc-950 hover:bg-emerald-500 hover:border-emerald-500' : 'bg-white text-zinc-400 border-zinc-100 hover:text-emerald-500 hover:border-emerald-200'}`}
                                                                     title="Toggle Admin">
                                                                     <ShieldCheck size={18} />
                                                                 </button>
-                                                                <button onClick={() => handleToggleStatus(user)}
+                                                                <button onClick={(e) => { e.stopPropagation(); handleToggleStatus(user); }}
                                                                     className={`p-3 rounded-xl transition-all border ${user.accountStatus === 'deactivated' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white' : 'bg-white text-zinc-400 border-zinc-100 hover:text-red-500 hover:border-red-100'}`}
                                                                     title="Toggle Status">
                                                                     {user.accountStatus === 'deactivated' ? <UserCheck size={18} /> : <UserMinus size={18} />}
                                                                 </button>
-                                                                <button onClick={() => handleDeleteUser(user)}
+                                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteUser(user); }}
                                                                     className="p-3 bg-white text-zinc-200 hover:text-red-500 hover:border-red-100 rounded-xl border border-zinc-100 transition-all"
                                                                     title="Delete">
                                                                     <Trash2 size={18} />
@@ -842,18 +1083,26 @@ export default function AdminPanel() {
                                     <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
                                         <div className="px-8 py-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-zinc-50">
                                             <div>
-                                                <h3 className="text-2xl font-black text-zinc-950">All Properties</h3>
+                                                <h3 className="text-2xl font-black text-zinc-950">Property Approvals</h3>
                                                 <p className="text-sm text-zinc-400 font-bold mt-1">
                                                     {listings.length} total · <span className="text-amber-500">{pendingListings} pending approval</span>
                                                 </p>
                                             </div>
-                                            <div className="relative w-full lg:w-96">
-                                                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-                                                <input
-                                                    type="text" placeholder="Search title or location..."
-                                                    value={listingSearch} onChange={e => setListingSearch(e.target.value)}
-                                                    className="w-full pl-12 pr-5 py-3 bg-zinc-50 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 placeholder:text-zinc-300"
-                                                />
+                                            <div className="flex flex-col sm:flex-row w-full lg:w-auto items-center gap-4">
+                                                <div className="bg-zinc-100 p-1 rounded-xl flex items-center w-full sm:w-auto">
+                                                    <button onClick={() => setPropertiesTab('pending')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all ${propertiesTab === 'pending' ? 'bg-white shadow-sm text-amber-500' : 'text-zinc-400 hover:text-zinc-600'}`}>Pending ({pendingListings})</button>
+                                                    <button onClick={() => setPropertiesTab('approved')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all ${propertiesTab === 'approved' ? 'bg-white shadow-sm text-emerald-500' : 'text-zinc-400 hover:text-zinc-600'}`}>Approved</button>
+                                                    <button onClick={() => setPropertiesTab('rejected')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all ${propertiesTab === 'rejected' ? 'bg-white shadow-sm text-rose-500' : 'text-zinc-400 hover:text-zinc-600'}`}>Rejected</button>
+                                                    <button onClick={() => setPropertiesTab('all')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all ${propertiesTab === 'all' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}>All</button>
+                                                </div>
+                                                <div className="relative w-full sm:w-64">
+                                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                                                    <input
+                                                        type="text" placeholder="Search..."
+                                                        value={listingSearch} onChange={e => setListingSearch(e.target.value)}
+                                                        className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 placeholder:text-zinc-300"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
 
@@ -882,16 +1131,21 @@ export default function AdminPanel() {
                                                             <td className="px-8 py-5">
                                                                 <div className="flex items-center gap-4">
                                                                     {listing.images?.[0] ? (
-                                                                        <img src={listing.images[0]} alt="listing" className="w-14 h-14 rounded-2xl object-cover flex-shrink-0 border border-zinc-100" />
+                                                                        <img loading="lazy" src={listing.images[0]} alt="listing" className="w-14 h-14 rounded-2xl object-cover flex-shrink-0 border border-zinc-100" />
                                                                     ) : (
                                                                         <div className="w-14 h-14 bg-zinc-100 rounded-2xl flex items-center justify-center flex-shrink-0">
                                                                             <Building2 size={20} className="text-zinc-300" />
                                                                         </div>
                                                                     )}
                                                                     <div>
-                                                                        <p className="font-black text-zinc-950 group-hover:text-emerald-600 transition-colors">
-                                                                            {listing.title || 'Untitled Listing'}
-                                                                        </p>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <p className="font-black text-zinc-950 group-hover:text-emerald-600 transition-colors">
+                                                                                {listing.title || 'Untitled Listing'}
+                                                                            </p>
+                                                                            <span className="text-[10px] font-mono font-black text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded uppercase">
+                                                                                #{listing.id ? listing.id.slice(0, 8) : 'N/A'}
+                                                                            </span>
+                                                                        </div>
                                                                         <p className="text-xs font-bold text-zinc-400 mt-0.5">
                                                                             {listing.upazila || listing.location || listing.address || 'No location set'}
                                                                         </p>
@@ -906,6 +1160,10 @@ export default function AdminPanel() {
                                                                     <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 uppercase tracking-widest">
                                                                         <CheckCircle size={11} /> Verified
                                                                     </span>
+                                                                ) : listing.isRejected ? (
+                                                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 uppercase tracking-widest">
+                                                                        <X size={11} /> Rejected
+                                                                    </span>
                                                                 ) : (
                                                                     <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full bg-amber-50 text-amber-600 uppercase tracking-widest">
                                                                         <Clock size={11} /> Pending
@@ -916,12 +1174,22 @@ export default function AdminPanel() {
                                                                 {listing.isApproved ? (
                                                                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Live ✓</span>
                                                                 ) : (
-                                                                    <button
-                                                                        onClick={e => { e.stopPropagation(); handleApproveListing(listing); }}
-                                                                        className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black rounded-xl transition-all shadow-sm shadow-emerald-500/20 hover:shadow-emerald-500/30 active:scale-95"
-                                                                    >
-                                                                        Approve
-                                                                    </button>
+                                                                    <div className="flex items-center justify-center gap-2">
+                                                                        <button
+                                                                            onClick={e => { e.stopPropagation(); handleApproveListing(listing); }}
+                                                                            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1"
+                                                                        >
+                                                                            Approve
+                                                                        </button>
+                                                                        {!listing.isRejected && (
+                                                                            <button
+                                                                                onClick={e => { e.stopPropagation(); handleRejectListing(listing); }}
+                                                                                className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-black rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1"
+                                                                            >
+                                                                                Reject
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
                                                                 )}
                                                             </td>
                                                         </tr>
@@ -929,6 +1197,16 @@ export default function AdminPanel() {
                                                 </tbody>
                                             </table>
                                         </div>
+                                        {listings.length >= propertiesLimit && (
+                                            <div className="p-6 border-t border-zinc-50 flex justify-center bg-zinc-50/30">
+                                                <button
+                                                    onClick={() => setPropertiesLimit(prev => prev + 50)}
+                                                    className="px-6 py-2.5 bg-white border border-zinc-200 text-zinc-600 font-black text-xs uppercase tracking-widest rounded-xl shadow-sm hover:bg-zinc-50 transition-all active:scale-95"
+                                                >
+                                                    Load More
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             } />
@@ -950,67 +1228,13 @@ export default function AdminPanel() {
                                                     No enquiries found.
                                                 </div>
                                             ) : enquiries.map(enquiry => (
-                                                <div key={enquiry.id} className="p-8 hover:bg-zinc-50/50 transition-all">
-                                                    <div className="flex justify-between items-start mb-4">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center font-black text-zinc-400 text-lg">
-                                                                {enquiry.userEmail?.[0].toUpperCase()}
-                                                            </div>
-                                                            <div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <p className="font-black text-zinc-950">{enquiry.topic}</p>
-                                                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${enquiry.type === 'support' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600 dark:text-blue-400'}`}>
-                                                                        {enquiry.type || 'Support'}
-                                                                    </span>
-                                                                </div>
-                                                                <p className="text-xs font-bold text-zinc-400 mt-0.5">{enquiry.userEmail}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${enquiry.status === 'resolved' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                                                                {enquiry.status || 'pending'}
-                                                            </span>
-                                                            <button onClick={() => handleDeleteEnquiry(enquiry.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div className="bg-zinc-50 rounded-2xl p-5 mb-4">
-                                                        <p className="text-sm text-zinc-600 font-medium leading-relaxed">{enquiry.description}</p>
-                                                        <p className="text-[10px] font-bold text-zinc-400 mt-4">
-                                                            Submitted: {enquiry.createdAt?.toDate().toLocaleString()}
-                                                        </p>
-                                                    </div>
-
-                                                    {enquiry.adminReply ? (
-                                                        <div className="ml-8 border-l-2 border-emerald-500 pl-6 py-2">
-                                                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                                                <CheckCircle size={10} /> Your Response
-                                                            </p>
-                                                            <p className="text-sm text-zinc-600 font-medium bg-emerald-50/30 p-4 rounded-xl">{enquiry.adminReply}</p>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="ml-8 mt-4">
-                                                            <form onSubmit={(e) => {
-                                                                e.preventDefault();
-                                                                const reply = e.target.reply.value;
-                                                                if (reply.trim()) {
-                                                                    handleReplyEnquiry(enquiry.id, reply);
-                                                                    e.target.reset();
-                                                                }
-                                                            }} className="flex gap-3">
-                                                                <input
-                                                                    name="reply"
-                                                                    placeholder="Type your response here..."
-                                                                    className="flex-1 bg-zinc-50 border border-zinc-100 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
-                                                                />
-                                                                <button type="submit" className="px-4 py-2 bg-zinc-950 text-white text-xs font-black rounded-xl hover:bg-emerald-600 transition-all">
-                                                                    Reply & Resolve
-                                                                </button>
-                                                            </form>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                <EnquiryCard
+                                                    key={enquiry.id}
+                                                    enquiry={enquiry}
+                                                    onReply={handleReplyEnquiry}
+                                                    onResolve={handleResolveEnquiry}
+                                                    onDelete={handleDeleteEnquiry}
+                                                />
                                             ))}
                                         </div>
                                     </div>
@@ -1031,25 +1255,43 @@ export default function AdminPanel() {
                                             <table className="w-full text-left">
                                                 <thead>
                                                     <tr className="text-zinc-400 text-[10px] font-black uppercase tracking-widest border-b border-zinc-50">
-                                                        <th className="px-8 py-5">Transaction Details</th>
-                                                        <th className="px-8 py-5">Amount</th>
+                                                        <th className="px-8 py-5">Payment Type & Package</th>
+                                                        <th className="px-8 py-5">Amount & Method</th>
+                                                        <th className="px-8 py-5">Transaction ID</th>
                                                         <th className="px-8 py-5 text-center">Status</th>
                                                         <th className="px-8 py-5 text-center">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-zinc-50">
                                                     {payments.length === 0 ? (
-                                                        <tr><td colSpan="4" className="text-center py-8 text-zinc-400">No payments found.</td></tr>
+                                                        <tr><td colSpan="5" className="text-center py-8 text-zinc-400">No payments found.</td></tr>
                                                     ) : payments.map(payment => (
                                                         <tr key={payment.id} className="group hover:bg-zinc-50/50 transition-colors">
                                                             <td className="px-8 py-6">
                                                                 <p className="font-black text-zinc-950 tracking-tight">{(payment.type || '').replace('_', ' ').toUpperCase()}</p>
-                                                                <p className="text-xs font-bold text-zinc-400 mt-0.5">TrxID: {payment.transactionId}</p>
-                                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-1">Prop: {payment.propertyName || 'N/A'}</p>
+                                                                {payment.type === 'subscription' && payment.metadata?.plan ? (
+                                                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mt-1">Package: {payment.metadata.plan}</p>
+                                                                ) : (
+                                                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-1">Prop: {payment.propertyName || 'N/A'}</p>
+                                                                )}
                                                             </td>
                                                             <td className="px-8 py-6">
                                                                 <span className="font-black text-emerald-600">৳{payment.amount?.toLocaleString()}</span>
-                                                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">{payment.method}</p>
+                                                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">{payment.paymentMethod || payment.method || 'Unknown'}</p>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                <p className="text-sm font-bold text-zinc-950 tracking-wider font-mono">{payment.transactionId}</p>
+                                                                {payment.metadata?.userEmail && <p className="text-[10px] text-zinc-400 font-bold mt-1">{payment.metadata.userEmail}</p>}
+                                                                {payment.verifiedBy === 'sms-watcher' && (
+                                                                    <div className="mt-2 p-1.5 bg-emerald-50 rounded-md border border-emerald-100 inline-block">
+                                                                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-1">
+                                                                            <CheckCircle size={10} /> Auto-Verified ({payment.smsProvider || 'SMS'})
+                                                                        </span>
+                                                                        <span className="text-[10px] font-bold text-emerald-600/70 mt-0.5 block">
+                                                                            Sender: {payment.smsSenderNumber || 'Unknown'}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
                                                             </td>
                                                             <td className="px-8 py-6 text-center">
                                                                 <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${payment.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : payment.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
@@ -1227,7 +1469,7 @@ export default function AdminPanel() {
 
                                                         <div className="flex flex-row lg:flex-col gap-3 w-full lg:w-48">
                                                             <button 
-                                                                onClick={() => navigate(`/property/${report.propertyId}`)}
+                                                                onClick={() => router.push(`/property/${report.propertyId}`)}
                                                                 className="flex-1 py-3 px-4 bg-zinc-950 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
                                                             >
                                                                 <Search size={14} /> View Ad
@@ -1263,12 +1505,14 @@ export default function AdminPanel() {
                                         <p className="text-xl font-black text-zinc-950 mb-2 uppercase tracking-wide">Module Operational</p>
                                         <p className="text-sm font-bold text-zinc-400 max-w-sm">This module is live and monitoring connections within the cluster.</p>
                                     </div>
-                                    <NavLink to="/admin"
+                                    <Link to="/admin"
                                         className="px-8 py-3 bg-zinc-950 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 transition-all duration-300">
                                         Return to Command Center
-                                    </NavLink>
+                                    </Link>
                                 </div>
                             } />
+
+                            <Route path="claims" element={<AdminClaimsTab />} />
 
                         </Routes>
                     </div>
@@ -1311,7 +1555,7 @@ export default function AdminPanel() {
                         <div className="flex-1 overflow-y-auto">
                             {/* Image */}
                             {selectedListing.images?.[0] ? (
-                                <img
+                                <img loading="lazy"
                                     src={selectedListing.images[0]}
                                     alt="listing"
                                     className="w-full h-56 object-cover"
@@ -1419,12 +1663,22 @@ export default function AdminPanel() {
                             </button>
 
                             {!selectedListing.isApproved && (
-                                <button
-                                    onClick={() => handleApproveListing(selectedListing)}
-                                    className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl transition-all text-sm shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
-                                >
-                                    ✓ Approve This Listing
-                                </button>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => handleApproveListing(selectedListing)}
+                                        className="flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl transition-all text-sm shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
+                                    >
+                                        ✓ Approve
+                                    </button>
+                                    {!selectedListing.isRejected && (
+                                        <button
+                                            onClick={() => handleRejectListing(selectedListing)}
+                                            className="flex-1 py-3.5 bg-rose-500 hover:bg-rose-600 text-white font-black rounded-2xl transition-all text-sm shadow-lg shadow-rose-500/20 active:scale-[0.98]"
+                                        >
+                                            ✕ Reject
+                                        </button>
+                                    )}
+                                </div>
                             )}
                         </div>
                     </aside>
@@ -1442,6 +1696,105 @@ export default function AdminPanel() {
                 onConfirm={modal.onConfirm}
                 onCancel={closeModal}
             />
+
+            {/* ─── User Detail Modal ─────────────────────────────────────────── */}
+            {selectedUser && (
+                <>
+                    {/* Backdrop */}
+                    <div
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                        onClick={() => setSelectedUser(null)}
+                    >
+                        {/* Modal Card */}
+                        <div
+                            className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-lg overflow-hidden shadow-2xl border border-zinc-100 dark:border-slate-800"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Header */}
+                            <div className="px-8 py-6 border-b border-zinc-100 dark:border-slate-800 flex items-center justify-between">
+                                <div>
+                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">User Profile Card</p>
+                                    <h3 className="text-xl font-black text-zinc-950 dark:text-white leading-tight">Identity Details</h3>
+                                </div>
+                                <button
+                                    onClick={() => setSelectedUser(null)}
+                                    className="w-9 h-9 rounded-xl bg-zinc-50 dark:bg-slate-800 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            {/* Body */}
+                            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+                                {/* Profile Head */}
+                                <div className="flex items-center gap-5 bg-zinc-50 dark:bg-slate-800/50 p-6 rounded-3xl">
+                                    {selectedUser.photoURL ? (
+                                        <img src={selectedUser.photoURL} alt="Profile" className="w-16 h-16 rounded-2xl object-cover" />
+                                    ) : (
+                                        <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center font-black text-white text-2xl uppercase">
+                                            {selectedUser.fullName?.[0] || selectedUser.email?.[0] || '?'}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <h4 className="text-lg font-black text-zinc-950 dark:text-white">{selectedUser.fullName || 'Anonymous User'}</h4>
+                                        <p className="text-sm font-bold text-zinc-500 dark:text-zinc-400">{selectedUser.email}</p>
+                                        <span className="inline-block mt-2 text-[9px] font-black px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full uppercase tracking-widest">
+                                            {selectedUser.role || 'client'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Main details */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-zinc-50 dark:bg-slate-800/30 p-4 rounded-2xl">
+                                        <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Account Status</p>
+                                        <p className="text-sm font-bold text-zinc-950 dark:text-white mt-1 capitalize">{selectedUser.accountStatus || 'Active'}</p>
+                                    </div>
+                                    <div className="bg-zinc-50 dark:bg-slate-800/30 p-4 rounded-2xl">
+                                        <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Contact Phone</p>
+                                        <p className="text-sm font-bold text-zinc-950 dark:text-white mt-1">{selectedUser.phone || selectedUser.contact || 'Not provided'}</p>
+                                    </div>
+                                    <div className="bg-zinc-50 dark:bg-slate-800/30 p-4 rounded-2xl">
+                                        <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Subscription Plan</p>
+                                        <p className="text-sm font-bold text-zinc-950 dark:text-white mt-1">{selectedUser.subscriptionPlan || 'Free'}</p>
+                                    </div>
+                                    <div className="bg-zinc-50 dark:bg-slate-800/30 p-4 rounded-2xl">
+                                        <p className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">KYC Status</p>
+                                        <p className="text-sm font-bold text-zinc-950 dark:text-white mt-1">
+                                            {selectedUser.verification?.isKycApproved ? '✅ Verified' : selectedUser.onboardingStatus === 'PENDING_VERIFICATION' ? '⏳ Under Review' : '❌ Unverified'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Documents / ID Verification */}
+                                {selectedUser.verification?.idDocumentUrl && (
+                                    <div className="border-t border-zinc-100 dark:border-slate-800 pt-6">
+                                        <p className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-3">Government Issued ID</p>
+                                        <a
+                                            href={selectedUser.verification.idDocumentUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block overflow-hidden rounded-2xl border border-zinc-200 dark:border-slate-800 hover:opacity-90 transition-opacity"
+                                        >
+                                            <img src={selectedUser.verification.idDocumentUrl} alt="Government ID" className="w-full h-40 object-cover bg-zinc-50" />
+                                        </a>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-8 py-5 border-t border-zinc-100 dark:border-slate-800 bg-zinc-50 dark:bg-slate-800/50 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setSelectedUser(null)}
+                                    className="px-6 py-2.5 bg-zinc-950 hover:bg-zinc-800 text-white font-black rounded-xl text-sm transition-all"
+                                >
+                                    Close Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}/m;
         </div>
     );
 }

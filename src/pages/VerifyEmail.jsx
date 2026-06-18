@@ -6,6 +6,7 @@ import { auth } from '../firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert, Mail, CheckCircle2, ArrowRight, RefreshCw, LogOut, ArrowLeft } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import logger from '../utils/logger';
 
 export default function VerifyEmail() {
     const { currentUser, logout, refreshUser } = useAuth();
@@ -33,7 +34,7 @@ export default function VerifyEmail() {
             setSent(true);
             setTimeout(() => setSent(false), 5000);
         } catch (error) {
-            console.error(error);
+            logger.error(error);
             toast.error("Too many requests. Please try again later.");
         } finally {
             setSending(false);
@@ -50,7 +51,7 @@ export default function VerifyEmail() {
                 toast.warning("Email not yet verified. Please check your inbox and click the link.");
             }
         } catch (error) {
-            console.error(error);
+            logger.error(error);
         } finally {
             setRefreshing(false);
         }

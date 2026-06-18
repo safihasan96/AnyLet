@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../firebase';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, signOut } from 'firebase/auth';
 import { ArrowLeft, RefreshCw, Key, Lock, Shield, EyeOff, Eye, Info, LockIcon } from 'lucide-react';
+import logger from '../utils/logger';
 
 export default function ChangePassword() {
     const { currentUser } = useAuth();
@@ -47,7 +48,7 @@ export default function ChangePassword() {
             navigate('/login');
 
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
                 setError('Incorrect current password');
             } else {

@@ -1,6 +1,7 @@
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import emailjs from '@emailjs/browser';
+import logger from './logger';
 
 // --- CONFIGURATION ---
 // Replace these with your actual EmailJS credentials
@@ -35,7 +36,7 @@ export async function sendOTPEmail(email, fullName, otpCode) {
     );
     return response;
   } catch (error) {
-    console.error('Error sending OTP email:', error);
+    logger.error('Error sending OTP email:', error);
     throw error;
   }
 }
@@ -52,7 +53,7 @@ export async function storeOTP(email, otpCode) {
       expiresAt: Date.now() + 10 * 60 * 1000, // Expires in 10 minutes
     });
   } catch (error) {
-    console.error('Error storing OTP in Firestore:', error);
+    logger.error('Error storing OTP in Firestore:', error);
     throw error;
   }
 }
@@ -82,7 +83,7 @@ export async function verifyOTP(email, providedCode) {
       return { success: false, message: 'Incorrect verification code. Please try again.' };
     }
   } catch (error) {
-    console.error('Error verifying OTP in Firestore:', error);
+    logger.error('Error verifying OTP in Firestore:', error);
     throw error;
   }
 }

@@ -11,6 +11,7 @@ import { toggleHelpfulVote, submitLandlordReply } from '../utils/reviewService';
 import PropertyLoader from '../components/PropertyLoader';
 import { Helmet } from 'react-helmet-async';
 import { useToast } from '../contexts/ToastContext';
+import logger from '../utils/logger';
 
 const CATEGORIES = [
     { key: 'location', label: 'Location', emoji: '📍' },
@@ -75,7 +76,7 @@ export default function PropertyReviews() {
                 });
                 setReviews(data);
             } catch (err) {
-                console.error(err);
+                logger.error(err);
             } finally {
                 setLoading(false);
             }
@@ -117,7 +118,7 @@ export default function PropertyReviews() {
                 return r;
             }));
         } catch (error) {
-            console.error(error);
+            logger.error(error);
             toast.error("Failed to register vote");
         }
     };
@@ -143,7 +144,7 @@ export default function PropertyReviews() {
              }));
              toast.success("Reply posted!");
         } catch (error) {
-             console.error(error);
+             logger.error(error);
              toast.error("Failed to post reply");
         }
     };

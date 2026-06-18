@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { auth } from '../firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { Mail, ArrowLeft, RefreshCw, CheckCircle2, Home as HomeIcon } from 'lucide-react';
+import logger from '../utils/logger';
 
 export default function ForgotPassword() {
     const [email, setEmail]   = useState('');
@@ -19,7 +20,7 @@ export default function ForgotPassword() {
             await sendPasswordResetEmail(auth, email);
             setSent(true);
         } catch (err) {
-            console.error(err);
+            logger.error(err);
             if (err.code === 'auth/user-not-found') {
                 setError('No account found with this email address.');
             } else if (err.code === 'auth/invalid-email') {

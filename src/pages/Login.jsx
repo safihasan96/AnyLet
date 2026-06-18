@@ -5,6 +5,7 @@ import { auth, db } from '../firebase';
 import { signOut, sendEmailVerification, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { Mail, Lock, ArrowRight, Home as HomeIcon, RefreshCw, ArrowLeft, Loader2 } from 'lucide-react';
+import logger from '../utils/logger';
 
 // Google logo SVG inline (no external dependency)
 function GoogleLogo() {
@@ -80,7 +81,7 @@ export default function Login() {
             } else if (err.code === 'auth/popup-blocked') {
                 setError('Google Sign-In failed: Popup blocked by your browser. Please disable popup blockers or use a standard browser like Chrome or Safari.');
             } else if (err.code !== 'auth/popup-closed-by-user') {
-                console.error("Google Auth Error:", err);
+                logger.error("Google Auth Error:", err);
                 setError(`Google sign-in failed: ${err.message}`);
             }
         } finally {

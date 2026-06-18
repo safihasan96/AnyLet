@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { createNotification } from '../utils/notificationService';
 import { submitOwnerReview, submitPropertyReview } from '../utils/reviewService';
+import logger from '../utils/logger';
 
 const OWNER_CATEGORIES = [
     { key: 'communication', label: 'Communication', emoji: '💬' },
@@ -150,7 +151,7 @@ export default function WriteReviewModal({ isOpen, onClose, moveIn, ownerId, own
             setDir(1);
             setStep(3);
         } catch (err) {
-            console.error('Review submit error:', err);
+            logger.error('Review submit error:', err);
             toast.error('Failed to submit review. Please try again.');
         } finally {
             setLoading(false);

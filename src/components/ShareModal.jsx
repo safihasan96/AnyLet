@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Copy, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Modal3D from './Modal3D';
+import logger from '../utils/logger';
 
 export default function ShareModal({ isOpen, onClose, property }) {
     const [copied, setCopied] = useState(false);
@@ -19,7 +20,7 @@ export default function ShareModal({ isOpen, onClose, property }) {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch (err) {
-            console.error('Failed to copy text: ', err);
+            logger.error('Failed to copy text: ', err);
         }
     };
 

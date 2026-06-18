@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Bell, Clock, ChevronRight, MessageSquare, ShieldCheck, Star, CreditCard, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import logger from '../utils/logger';
 
 export default function Notifications() {
     const { currentUser } = useAuth();
@@ -42,7 +43,7 @@ export default function Notifications() {
             try {
                 await updateDoc(doc(db, 'notifications', notif.id), { isRead: true });
             } catch (err) {
-                console.error("Error marking notification as read:", err);
+                logger.error("Error marking notification as read:", err);
             }
         }
         if (notif.link) {
@@ -62,7 +63,7 @@ export default function Notifications() {
             });
             await batch.commit();
         } catch (err) {
-            console.error("Error marking all as read:", err);
+            logger.error("Error marking all as read:", err);
         }
     };
 
