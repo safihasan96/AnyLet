@@ -121,21 +121,29 @@ export default function EditProfile() {
 
         setSaving(true);
         setMessage({ type: '', text: '' });
-        
-        const data = new FormData();
-        data.append('file', file);
-        data.append('upload_preset', import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'cn6piwep');
-
         try {
-            const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmkbsddqk';
-            const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'cn6piwep';
+            const sigRes = await fetch('/api/cloudinary-sign', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
+                },
+                body: JSON.stringify({ isKyc: false })
+            });
+            const sigData = await sigRes.json();
             
-            logger.debug('Attempting profile photo upload', {
-                cloudName,
-                preset: uploadPreset ? `${uploadPreset.substring(0, 3)}***` : 'MISSING'
+            const data = new FormData();
+            data.append('file', file);
+            data.append('api_key', sigData.apiKey);
+            data.append('timestamp', sigData.timestamp);
+            data.append('signature', sigData.signature);
+            data.append('folder', sigData.folder);
+
+            logger.debug('Attempting profile photo signed upload', {
+                cloudName: sigData.cloudName
             });
 
-            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`, {
                 method: 'POST',
                 body: data
             });
@@ -146,7 +154,7 @@ export default function EditProfile() {
                 setMessage({ type: 'success', text: 'Photo uploaded! Don\'t forget to save changes.' });
             } else {
                 logger.error('Cloudinary upload error', fileData);
-                setMessage({ type: 'error', text: `Upload failed: ${fileData.error?.message || "Unknown error"} (Cloud: ${cloudName}, Preset: ${uploadPreset ? uploadPreset.substring(0,3) + '...' : 'None'})` });
+                setMessage({ type: 'error', text: `Upload failed: ${fileData.error?.message || "Unknown error"}` });
             }
         } catch (err) {
             logger.error('Cloudinary connection error', err);

@@ -201,21 +201,31 @@ export default function AddProperty() {
         }
 
         setLoading(true);
-        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmkbsddqk';
-        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'cn6piwep';
-        
         const uploadedUrls = [];
 
         try {
+            const sigRes = await fetch('/api/cloudinary-sign', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
+                },
+                body: JSON.stringify({ isKyc: false })
+            });
+            const sigData = await sigRes.json();
+
             for (const file of files) {
                 const data = new FormData();
                 data.append('file', file);
-                data.append('upload_preset', uploadPreset);
+                data.append('api_key', sigData.apiKey);
+                data.append('timestamp', sigData.timestamp);
+                data.append('signature', sigData.signature);
+                data.append('folder', sigData.folder);
 
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-                const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`, {
                     method: 'POST',
                     body: data,
                     signal: controller.signal
