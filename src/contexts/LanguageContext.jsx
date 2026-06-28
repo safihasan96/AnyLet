@@ -1,26 +1,21 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { translations } from '../data/translations';
+// LanguageContext.jsx
+// i18n stub — ready for react-i18next integration when multi-language support is needed.
+// Currently provides a no-op context to avoid breaking existing imports.
+// TODO: Replace with full react-i18next setup when i18n is prioritised.
 
-const LanguageContext = createContext();
+import { createContext, useContext, useState } from 'react';
+
+const LanguageContext = createContext({ language: 'en', setLanguage: () => {} });
 
 export function LanguageProvider({ children }) {
-    const [language, setLanguage] = useState(() => {
-        return localStorage.getItem('app-language') || 'en';
-    });
-
-    useEffect(() => {
-        localStorage.setItem('app-language', language);
-    }, [language]);
-
-    const t = (key) => {
-        return translations[language][key] || key;
-    };
-
+    const [language, setLanguage] = useState('en');
     return (
-        <LanguageContext.Provider value={{ language, setLanguage, t }}>
+        <LanguageContext.Provider value={{ language, setLanguage }}>
             {children}
         </LanguageContext.Provider>
     );
 }
 
-export const useLanguage = () => useContext(LanguageContext);
+export function useLanguage() {
+    return useContext(LanguageContext);
+}

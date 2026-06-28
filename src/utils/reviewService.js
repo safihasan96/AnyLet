@@ -1,4 +1,4 @@
-import { collection, addDoc, updateDoc, doc, serverTimestamp, getDoc, runTransaction, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { updateDoc, doc, serverTimestamp, getDoc, runTransaction, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase';
 import { createNotification } from './notificationService';
 import logger from './logger';
@@ -6,11 +6,17 @@ import logger from './logger';
 export const submitPropertyReview = async (propertyId, reviewData) => {
     try {
         const propertyRef = doc(db, 'properties', propertyId);
+        const reviewId = `${reviewData.reviewerId}_${propertyId}`;
+        const reviewRef = doc(db, 'propertyReviews', reviewId);
         
         await runTransaction(db, async (transaction) => {
             const propertyDoc = await transaction.get(propertyRef);
+            const existingReviewDoc = await transaction.get(reviewRef);
             if (!propertyDoc.exists()) {
                 throw new Error("Property does not exist!");
+            }
+            if (existingReviewDoc.exists()) {
+                throw new Error("You have already reviewed this property.");
             }
 
             const propertyData = propertyDoc.data();
@@ -27,9 +33,7 @@ export const submitPropertyReview = async (propertyId, reviewData) => {
                 reviewCount: newCount
             });
 
-            // Add the review document (must use regular addDoc outside transaction, or use a specific ID. We'll use a new doc ref in the transaction)
-            const newReviewRef = doc(collection(db, 'propertyReviews'));
-            transaction.set(newReviewRef, {
+            transaction.set(reviewRef, {
                 ...reviewData,
                 propertyId,
                 isApproved: true,
@@ -63,7 +67,15 @@ export const submitOwnerReview = async (ownerId, reviewData) => {
      try {
          // Owner reviews don't currently have denormalized stats on the user object, but we could add them if needed.
          // For now, we just add the review document.
-         const newReviewRef = await addDoc(collection(db, 'ownerReviews'), {
+         const reviewId = `${reviewData.reviewerId}_${ownerId}`;
+         const reviewRef = doc(db, 'ownerReviews', reviewId);
+
+         await runTransaction(db, async (transaction) => {
+            const existing = await transaction.get(reviewRef);
+            if (existing.exists()) {
+                throw new Error("You have already reviewed this owner.");
+            }
+            transaction.set(reviewRef, {
              ...reviewData,
              ownerId,
              isApproved: true,
@@ -71,6 +83,7 @@ export const submitOwnerReview = async (ownerId, reviewData) => {
              helpfulUsers: [],
              createdAt: serverTimestamp(),
              landlordReply: null
+            });
          });
 
          // Notify the owner
@@ -83,7 +96,7 @@ export const submitOwnerReview = async (ownerId, reviewData) => {
              { propertyId: reviewData.propertyId }
          );
 
-         return newReviewRef.id;
+         return reviewRef.id;
      } catch (error) {
          logger.error("Error submitting owner review:", error);
          throw error;

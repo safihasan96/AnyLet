@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { Heart, ArrowLeft, Building2 } from 'lucide-react';
 import PropertyCard from '../components/PropertyCard';
+import { PropertyCardSkeleton } from '../components/Skeleton';
 import useSavedProperties from '../hooks/useSavedProperties';
 import logger from '../utils/logger';
 
@@ -65,14 +66,22 @@ export default function Favorites() {
         fetchFavorites();
     }, [currentUser, hookLoading, savedProperties]);
 
-    if (loading || hookLoading) return <div className="p-20 text-center animate-pulse text-primary dark:text-indigo-400">Loading favorites...</div>;
+    if (loading || hookLoading) return (
+        <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark pb-32">
+            <header className="p-6 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center">
+                <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Saved Properties</h1>
+            </header>
+            <div className="p-5 flex-1 grid grid-cols-1 gap-6">
+                <PropertyCardSkeleton />
+                <PropertyCardSkeleton />
+                <PropertyCardSkeleton />
+            </div>
+        </div>
+    );
 
     return (
         <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark pb-32">
-            <header className="p-6 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
-                <button onClick={() => navigate(-1)} className="text-slate-700 dark:text-slate-300">
-                    <ArrowLeft size={24} />
-                </button>
+            <header className="p-6 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center">
                 <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Saved Properties</h1>
             </header>
 

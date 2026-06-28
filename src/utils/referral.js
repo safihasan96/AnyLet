@@ -21,26 +21,24 @@ export function generateReferralCode(email) {
         .replace(/-+/g, '-')          // collapse consecutive dashes
         .replace(/^-|-$/g, '');       // strip leading/trailing dashes
 
-    // Append a short deterministic hex suffix derived from the full email
-    // so two accounts with the same prefix ("john" vs "john") stay unique
-    const suffix = hashEmail(email);
+    // Append a short random hex suffix to ensure uniqueness and prevent guessing
+    const suffix = generateRandomHex(4);
     return `${localPart}-${suffix}`;
 }
 
 /**
- * Creates a simple 4-char hex string from an email string.
- * Pure JS — no external dependencies needed.
+ * Creates a random hex string of given length
  */
-function hashEmail(email) {
-    let hash = 0;
-    for (let i = 0; i < email.length; i++) {
-        const char = email.charCodeAt(i);
-        hash = (hash << 5) - hash + char;
-        hash |= 0; // 32-bit integer
+function generateRandomHex(length) {
+    const chars = '0123456789abcdef';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars[Math.floor(Math.random() * chars.length)];
     }
-    // Convert to unsigned hex and take last 4 chars
-    return (hash >>> 0).toString(16).slice(-4);
+    return result;
 }
+
+
 
 /**
  * Returns the full shareable referral URL for a user.

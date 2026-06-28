@@ -6,11 +6,12 @@ import { createPortal } from 'react-dom';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import DOMPurify from 'dompurify';
 import { bdLocations } from '../data/locations';
 import {
     ArrowLeft, ArrowRight, Building2, MapPin, Info, Image as ImageIcon,
     CheckCircle, Flame, Zap, Droplets, Wifi, Trash2, Battery,
-    ShieldCheck, Car, Wind, Lock, DoorOpen, ChevronsUp, Phone,
+    ShieldCheck, Car, Wind, Lock, DoorOpen, ChevronsUp, Phone, Camera,
     CloudSun, UtensilsCrossed, Thermometer, Package, Bike, Calendar, Users,
     CreditCard
 } from 'lucide-react';
@@ -79,6 +80,8 @@ export default function AddProperty() {
         area: '',
         beds: '1',
         baths: '1',
+        verandas: '0',
+        instantBooking: false,
         description: '',
         imageUrl: '',
         image_url: '',
@@ -209,10 +212,16 @@ export default function AddProperty() {
                 data.append('file', file);
                 data.append('upload_preset', uploadPreset);
 
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+
                 const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
                     method: 'POST',
-                    body: data
+                    body: data,
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
+                
                 const fileData = await res.json();
                 
                 if (!res.ok) {
@@ -239,7 +248,13 @@ export default function AddProperty() {
             }
         } catch (error) {
             logger.error('Error during upload process:', error);
-            toast.error("Connection error while uploading to Cloudinary.");
+            if (error.message?.includes('signature') || error.message?.includes('sign')) {
+                toast.error('Could not connect to upload server. Please check your internet connection and try again.');
+            } else if (error.message?.includes('abort') || error.name === 'AbortError') {
+                toast.error('Upload timed out. Please check your connection and try again.');
+            } else {
+                toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
+            }
         } finally {
             setLoading(false);
         }
@@ -260,17 +275,40 @@ export default function AddProperty() {
     // Called by PaymentModal after user submits transaction ID
     const handlePaymentSubmitted = async (paymentDocId) => {
         if (!currentUser) return;
+        
+        const rent = Number(formData.rent);
+        const beds = Number(formData.beds);
+        const baths = Number(formData.baths);
+        const area = formData.area ? Number(formData.area) : null;
+        const securityDeposit = formData.securityDeposit ? Number(formData.securityDeposit) : 0;
+        const utilitiesCost = Number(formData.utilitiesCost) || 0;
+
+        if (Number.isNaN(rent) || rent <= 0) {
+            toast.error('Please enter a valid rent amount.');
+            return;
+        }
+        if (Number.isNaN(beds) || beds < 0 || Number.isNaN(baths) || baths < 0) {
+            toast.error('Please enter valid numbers for beds and baths.');
+            return;
+        }
+
         setLoading(true);
 
         try {
+            const cleanTitle = DOMPurify.sanitize(formData.title, { ALLOWED_TAGS: [] });
+            const cleanDescription = DOMPurify.sanitize(formData.description, { ALLOWED_TAGS: [] });
+
             const propertyData = {
                 ...formData,
-                rent: Number(formData.rent),
-                area: formData.area ? Number(formData.area) : null,
-                beds: Number(formData.beds),
-                baths: Number(formData.baths),
-                securityDeposit: formData.securityDeposit ? Number(formData.securityDeposit) : 0,
-                utilitiesCost: Number(formData.utilitiesCost) || 0,
+                title: cleanTitle,
+                description: cleanDescription,
+                rent,
+                area,
+                beds,
+                baths,
+                verandas: Number(formData.verandas) || 0,
+                securityDeposit,
+                utilitiesCost,
                 ownerId: currentUser.uid,
                 isApproved: false,
                 listingPaymentId: paymentDocId,
@@ -331,18 +369,18 @@ export default function AddProperty() {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark pb-32 text-slate-900 dark:text-slate-100">
+        <div className="flex flex-col min-h-screen bg-[#F8F9FA] dark:bg-[#0F1117] pb-32 text-slate-900 dark:text-slate-100">
             <AnimatePresence>
                 {showSuccess && (
                     <motion.div 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 dark:bg-slate-950/90 backdrop-blur-xl px-6"
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 dark:bg-[#0F1117]/90 backdrop-blur-xl px-6"
                     >
                         <motion.div 
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
-                            className="bg-white dark:bg-slate-900 p-10 rounded-[40px] shadow-2xl border border-slate-100 dark:border-slate-800 text-center max-w-sm w-full"
+                            className="bg-white dark:bg-[#1A1D24] p-10 rounded-[40px] shadow-2xl border border-slate-100 dark:border-white/[0.06] text-center max-w-sm w-full"
                         >
                             <div className="size-24 bg-primary rounded-full flex items-center justify-center text-white mx-auto mb-8 shadow-xl shadow-primary/20">
                                 <CheckCircle size={48} strokeWidth={2.5} />
@@ -372,7 +410,7 @@ export default function AddProperty() {
                             <motion.div 
                                 initial={{ scale: 0.9, y: 20 }}
                                 animate={{ scale: 1, y: 0 }}
-                                className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 text-center max-w-sm w-full"
+                                className="bg-white dark:bg-[#1A1D24] p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-white/[0.06] text-center max-w-sm w-full"
                             >
                                 <div className="size-20 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center text-rose-500 mx-auto mb-6">
                                     <Phone size={36} strokeWidth={2.5} />
@@ -405,7 +443,7 @@ export default function AddProperty() {
             
 
 
-            <header className="flex items-center p-4 justify-between sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
+            <header className="flex items-center px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] justify-between sticky top-0 z-50 bg-white/80 dark:bg-[#1A1D24]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/[0.06]">
                 <button onClick={prevStep} className="text-slate-700 dark:text-slate-300 p-2">
                     <ArrowLeft size={24} />
                 </button>
@@ -413,7 +451,7 @@ export default function AddProperty() {
                     <h1 className="text-lg font-black uppercase tracking-tight">Post Property</h1>
                     <div className="flex gap-1 mt-1">
                         {[1, 2, 3].map(i => (
-                            <div key={i} className={`h-1 w-8 rounded-full ${step >= i ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                            <div key={i} className={`h-1 w-8 rounded-full ${step >= i ? 'bg-primary' : 'bg-slate-200 dark:bg-white/[0.06]'}`} />
                         ))}
                     </div>
                 </div>
@@ -437,18 +475,9 @@ export default function AddProperty() {
                                     <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest flex items-center gap-1">
                                         <Calendar size={12} /> Billing Cycle
                                     </label>
-                                    <div className="flex gap-2 mt-2">
-                                        {BILLING_CYCLES.map(cycle => (
-                                            <button
-                                                key={cycle}
-                                                type="button"
-                                                onClick={() => setFormData(prev => ({ ...prev, billingCycle: cycle }))}
-                                                className={`flex-1 py-3 px-2 rounded-xl border-2 font-black text-[10px] uppercase tracking-wider transition-all ${formData.billingCycle === cycle ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20' : 'bg-slate-50 dark:bg-slate-900/50 border-transparent text-slate-400'}`}
-                                            >
-                                                {cycle}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <Select name="billingCycle" value={formData.billingCycle} onChange={handleChange}>
+                                        {BILLING_CYCLES.map(cycle => <option key={cycle} value={cycle}>{cycle}</option>)}
+                                    </Select>
                                 </div>
 
                                 <div className="space-y-1">
@@ -497,34 +526,27 @@ export default function AddProperty() {
                         </Section>
 
                         <Section title="Specifications & Utilities" icon={<Info size={20} />}>
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 <Input label="Beds" name="beds" type="number" value={formData.beds} onChange={handleChange} />
                                 <Input label="Baths" name="baths" type="number" value={formData.baths} onChange={handleChange} />
+                                <Input label="Verandas" name="verandas" type="number" value={formData.verandas} onChange={handleChange} />
                                 <Input label="SqFt (Optional)" name="area" type="number" value={formData.area} onChange={handleChange} placeholder="N/A" />
                             </div>
-                            
-                            {/* BD Specific Core Fields */}
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                <Select label="Gas Supply" name="gasSupply" value={formData.gasSupply} onChange={handleChange}>
-                                    <option value="Cylinder">Cylinder</option>
-                                    <option value="Titas Line">Titas / Piped Gas</option>
-                                    <option value="None">None</option>
-                                </Select>
-                                <Select label="Electricity Billing" name="electricityBilling" value={formData.electricityBilling} onChange={handleChange}>
-                                    <option value="Excluded">Excluded (Sub-meter)</option>
-                                    <option value="Prepaid Meter">Prepaid Meter</option>
-                                    <option value="Included">Included in Rent</option>
-                                </Select>
-                                <Select label="Facing" name="facing" value={formData.facing} onChange={handleChange}>
-                                    <option value="">Select Facing</option>
-                                    <option value="South">South Facing</option>
-                                    <option value="North">North Facing</option>
-                                    <option value="East">East Facing</option>
-                                    <option value="West">West Facing</option>
-                                </Select>
+
+                            <div className="pt-4 mt-4 border-t border-slate-100 dark:border-white/[0.06]">
+                                <div className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20">
+                                    <div className="flex-1 pr-4">
+                                        <h4 className="text-sm font-black text-indigo-900 dark:text-indigo-400">Instant Booking</h4>
+                                        <p className="text-[10px] font-bold text-indigo-700/70 dark:text-indigo-400/70 mt-1 leading-relaxed">If enabled, a "Book Now" button will appear on your listing. You can set up the required deposit amount in your dashboard later.</p>
+                                    </div>
+                                    <Select name="instantBooking" value={formData.instantBooking ? 'Yes' : 'No'} onChange={(e) => setFormData(prev => ({ ...prev, instantBooking: e.target.value === 'Yes' }))} className="w-24 bg-white dark:bg-[#222630] !py-2">
+                                        <option value="No">No</option>
+                                        <option value="Yes">Yes</option>
+                                    </Select>
+                                </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-4 mt-4">
                                 <Input label="Security Deposit (Optional)" name="securityDeposit" type="number" value={formData.securityDeposit} onChange={handleChange} placeholder="৳0" />
                                 {/* <Input label="Agent Commission (if applicable)" name="agentCommission" value={formData.agentCommission} onChange={handleChange} placeholder="e.g. 1 Month Rent or ৳10000" /> */}
                             </div>
@@ -535,7 +557,7 @@ export default function AddProperty() {
                             <div className="space-y-4">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     {formData.images.map((url, index) => (
-                                        <div key={index} className="relative aspect-square rounded-2xl overflow-hidden group border border-slate-100 dark:border-slate-800 shadow-sm">
+                                        <div key={index} className="relative aspect-square rounded-2xl overflow-hidden group border border-slate-100 dark:border-white/[0.06] shadow-sm">
                                             <img loading="lazy" src={url} alt={`Property ${index + 1}`} className="w-full h-full object-cover" />
                                             <button 
                                                 onClick={() => removeImage(index)}
@@ -552,7 +574,7 @@ export default function AddProperty() {
                                     ))}
                                     
                                     {formData.images.length < 5 && (
-                                        <div className="relative aspect-square">
+                                        <div className="relative aspect-square flex flex-col gap-2">
                                             <input 
                                                 type="file" 
                                                 accept="image/*" 
@@ -562,24 +584,43 @@ export default function AddProperty() {
                                                 id="image-upload" 
                                                 disabled={loading}
                                             />
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                capture="environment"
+                                                onChange={handleImageUpload}
+                                                className="hidden" 
+                                                id="camera-upload" 
+                                                disabled={loading}
+                                            />
                                             <label 
                                                 htmlFor="image-upload"
-                                                className="flex flex-col items-center justify-center w-full h-full border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all"
+                                                className="flex-1 flex flex-col items-center justify-center w-full border-2 border-dashed border-slate-200 dark:border-white/[0.06] rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
                                             >
-                                                <div className="p-2 bg-primary/10 rounded-xl text-primary dark:text-indigo-400 mb-1">
-                                                    <ImageIcon size={20} />
+                                                <div className="text-primary dark:text-indigo-400 mb-0.5">
+                                                    <ImageIcon size={18} />
                                                 </div>
                                                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                                    {loading ? "..." : "Add Photo"}
+                                                    {loading ? "..." : "Gallery"}
                                                 </p>
-                                                <p className="text-[7px] font-bold text-slate-300 mt-0.5">{formData.images.length}/5</p>
+                                            </label>
+                                            <label 
+                                                htmlFor="camera-upload"
+                                                className="flex-1 flex flex-col items-center justify-center w-full border-2 border-dashed border-slate-200 dark:border-white/[0.06] rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
+                                            >
+                                                <div className="text-primary dark:text-indigo-400 mb-0.5">
+                                                    <Camera size={18} />
+                                                </div>
+                                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                                                    {loading ? "..." : "Camera"}
+                                                </p>
                                             </label>
                                         </div>
                                     )}
                                 </div>
                                 
                                 {loading && (
-                                    <div className="h-1 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="h-1 w-full bg-slate-100 dark:bg-white/[0.06] rounded-full overflow-hidden">
                                         <div className="h-full bg-primary animate-progress" style={{ width: '100%' }} />
                                     </div>
                                 )}
@@ -610,7 +651,7 @@ export default function AddProperty() {
                                                 key={opt.id}
                                                 type="button"
                                                 onClick={() => toggleItem('utilities', opt.id)}
-                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.utilities.includes(opt.id) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-slate-900/50 border-transparent text-slate-500'}`}
+                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.utilities.includes(opt.id) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-[#222630] border-transparent text-slate-500'}`}
                                             >
                                                 {opt.icon}
                                                 <span className="truncate">{opt.id}</span>
@@ -629,7 +670,7 @@ export default function AddProperty() {
                                                 key={opt.id}
                                                 type="button"
                                                 onClick={() => toggleItem('features', opt.id)}
-                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.features.includes(opt.id) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-slate-900/50 border-transparent text-slate-500'}`}
+                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.features.includes(opt.id) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-[#222630] border-transparent text-slate-500'}`}
                                             >
                                                 {opt.icon}
                                                 <span className="truncate">{opt.id}</span>
@@ -750,7 +791,7 @@ export default function AddProperty() {
                                 <PreviewInfo label="Utilities Cost" value={`৳${formData.utilitiesCost || 0}`} />
                                 <PreviewInfo label="Security" value={`৳${formData.securityDeposit || 0}`} />
                             </div>
-                            <div className="pt-4 border-t border-slate-50 dark:border-slate-800">
+                            <div className="pt-4 border-t border-slate-50 dark:border-white/[0.06]">
                                 <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1 leading-none">Full Address</p>
                                 <p className="text-sm font-black text-slate-800 dark:text-slate-200 mb-3">{formData.addressDetails || 'Not specified'}, {formData.upazila}, {formData.district}, {formData.division}</p>
                                 <p className="text-xs text-slate-400 font-bold leading-relaxed">{formData.description}</p>
@@ -774,7 +815,7 @@ export default function AddProperty() {
                             className={`flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all mb-3 ${
                                 wantOnsiteVerify
                                     ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                                    : 'border-slate-100 dark:border-slate-700 hover:border-primary/40'
+                                    : 'border-slate-100 dark:border-white/[0.06] hover:border-primary/40'
                             }`}
                         >
                             <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
@@ -843,6 +884,7 @@ export default function AddProperty() {
                 isOpen={paymentModalOpen}
                 onClose={() => setPaymentModalOpen(false)}
                 type="listing_fee"
+                bookingType="listing"
                 amount={totalAmount}
                 title="Listing Fee"
                 subtitle={`Publish: ${formData.title}`}
@@ -854,6 +896,7 @@ export default function AddProperty() {
                     ...(wantOnsiteVerify ? [{ label: 'On-Site Verification', amount: ONSITE_FEE }] : []),
                 ]}
                 propertyName={formData.title}
+                metadata={{ onsiteVerification: wantOnsiteVerify }}
                 onPaymentSubmitted={handlePaymentSubmitted}
             />
         </div>
@@ -862,7 +905,7 @@ export default function AddProperty() {
 
 function Section({ title, icon, children }) {
     return (
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm space-y-4">
+        <div className="bg-white dark:bg-[#1A1D24] p-6 rounded-3xl border border-slate-100 dark:border-white/[0.06] shadow-sm space-y-4">
             <div className="flex items-center gap-2 text-primary dark:text-indigo-400">
                 {icon}
                 <h3 className="font-black uppercase text-xs tracking-widest">{title}</h3>
@@ -877,7 +920,7 @@ function Input({ label, ...props }) {
         <div className="space-y-1">
             <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">{label}</label>
             <input
-                className="w-full bg-slate-50 dark:bg-slate-900/50 border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                className="w-full bg-slate-50 dark:bg-[#222630] border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                 {...props}
             />
         </div>
@@ -899,7 +942,7 @@ function Select({ label, children, ...props }) {
             <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">{label}</label>
             <div className="relative">
                 <select
-                    className="w-full bg-slate-50 dark:bg-slate-900/50 border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none disabled:opacity-50"
+                    className="w-full bg-slate-50 dark:bg-[#222630] border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none disabled:opacity-50"
                     {...props}
                 >
                     {children}
@@ -917,7 +960,7 @@ function Textarea({ label, ...props }) {
         <div className="space-y-1">
             <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">{label}</label>
             <textarea
-                className="w-full bg-slate-50 dark:bg-slate-900/50 border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-primary/50 transition-all h-32"
+                className="w-full bg-slate-50 dark:bg-[#222630] border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-primary/50 transition-all h-32"
                 {...props}
             />
         </div>

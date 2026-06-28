@@ -9,14 +9,13 @@ export default function BlogPost() {
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
             {/* Hero Image */}
             <div className="w-full h-[40vh] md:h-[50vh] relative">
-                <img 
-                    src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" 
+                <img loading="lazy" src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" 
                     alt="Blog Cover" 
                     className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
                 
-                <button onClick={() => navigate(-1)} className="absolute top-6 left-6 md:top-10 md:left-10 bg-white/20 backdrop-blur-md p-3 rounded-2xl text-white hover:bg-white/30 transition-colors">
+                <button onClick={() => navigate(-1)} className="hidden md:block absolute top-6 left-6 md:top-10 md:left-10 bg-white/20 backdrop-blur-md p-3 rounded-2xl text-white hover:bg-white/30 transition-colors">
                     <ArrowLeft size={24} />
                 </button>
             </div>

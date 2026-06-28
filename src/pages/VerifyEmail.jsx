@@ -85,10 +85,8 @@ export default function VerifyEmail() {
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col p-6">
-            <header className="max-w-xl mx-auto w-full py-6">
-                <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 transition-colors font-bold text-sm">
-                    <ArrowLeft size={18} /> Back
-                </button>
+            <header className="max-w-xl mx-auto w-full py-3">
+                {/* Back button now handled by MobileNavBar */}
             </header>
 
             <div className="flex-1 flex items-center justify-center">

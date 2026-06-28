@@ -153,7 +153,7 @@ export default function PropertyMap({ properties = [], defaultLayer = 'street', 
 
             const popupHtml = `
                 <div class="pin-popup">
-                    ${imageUrl ? `<img src="${imageUrl}" alt="${title}" class="pin-popup__img" />` : '<div class="pin-popup__img pin-popup__img--empty">🏠</div>'}
+                    ${imageUrl ? `<img loading="lazy" src="${imageUrl}" alt="${title}" class="pin-popup__img" />` : '<div class="pin-popup__img pin-popup__img--empty">🏠</div>'}
                     <div class="pin-popup__body">
                         <div class="pin-popup__rent">${rent}<span> / ${cycle}</span></div>
                         <div class="pin-popup__title">${title}</div>
@@ -216,26 +216,29 @@ export default function PropertyMap({ properties = [], defaultLayer = 'street', 
 
             {/* Layer switcher */}
             {showLayerControl && (
-                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[1000] flex bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+                <div className="map-layer-control absolute z-[1000] bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden">
                     {Object.entries(TILE_LAYERS).map(([key, layer]) => (
                         <button
                             key={key}
                             onClick={() => setActiveLayer(key)}
-                            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-black transition-all ${
+                            className={`flex min-w-0 items-center justify-center gap-1 px-2.5 py-2.5 text-[10px] font-black transition-all sm:gap-1.5 sm:text-[11px] md:px-4 md:text-xs ${
                                 activeLayer === key
                                     ? 'bg-primary text-white'
                                     : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
                             }`}
                         >
-                            <span>{layer.icon}</span>
-                            <span>{layer.label}</span>
+                            <span className="hidden shrink-0 sm:inline">{layer.icon}</span>
+                            <span className="min-w-0 truncate">{layer.label}</span>
                         </button>
                     ))}
                 </div>
             )}
 
             {/* Property count pill */}
-            <div className="absolute bottom-12 left-4 z-[1000]">
+            <div
+                className="absolute left-4 z-[1000]"
+                style={{ bottom: 'calc(5.5rem + max(env(safe-area-inset-bottom), 0.75rem))' }}
+            >
                 <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-lg border border-slate-100 dark:border-slate-700 flex items-center gap-2">
                     <span className="size-2 rounded-full bg-primary animate-pulse" />
                     <span className="text-xs font-black text-slate-900 dark:text-white">{properties.length} properties</span>

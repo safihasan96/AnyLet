@@ -21,6 +21,8 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { subscribeToUnreadCount } from '../utils/messageService';
 import logger from '../utils/logger';
+import { fadeDown } from '../lib/motion';
+import { useAnimationSafe } from '../hooks/useAnimationSafe';
 
 export default function Header() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -33,6 +35,7 @@ export default function Header() {
   const { currentUser, logout, userProfile, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const shouldAnimate = useAnimationSafe();
 
   useEffect(() => {
     if (!currentUser) {
@@ -98,8 +101,13 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+    <motion.header 
+      className="bg-white/70 dark:bg-[#0F1117]/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 sticky top-0 z-50"
+      variants={shouldAnimate ? fadeDown : {}}
+      initial="hidden"
+      animate="show"
+    >
+      <div className="mx-auto px-6 h-20 flex items-center justify-between lg:max-w-[1400px] max-w-7xl">
         {/* Logo */}
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-2 group">
@@ -112,7 +120,43 @@ export default function Header() {
           </Link>
         </div>
 
-        {/* Desktop Nav removed as per request */}
+        {/* Desktop Nav */}
+        <nav className="hidden lg:flex items-center gap-10">
+          {[
+            { path: '/', label: 'Explore' },
+            { path: '/map', label: 'Map' },
+            { path: '/messages', label: 'Messages' },
+            { path: '/profile', label: 'Profile' }
+          ].map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`relative py-1 text-[16px] transition-colors ${
+                  isActive 
+                    ? 'font-bold text-[#1a227f] dark:text-indigo-400' 
+                    : 'font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                {item.label}
+                {item.path === '/messages' && (unreadCount > 0 || unreadNotificationCount > 0) && (
+                  <span className="absolute -top-1 -right-3.5 flex size-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                    <span className="relative inline-flex size-2.5 rounded-full bg-rose-500" />
+                  </span>
+                )}
+                {isActive && (
+                  <motion.div
+                    layoutId="header-active-underline"
+                    className="absolute -bottom-1.5 left-0 right-0 h-[2.5px] bg-[#1a227f] dark:bg-indigo-400 rounded-t-sm"
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  />
+                )}
+              </Link>
+            );
+          })}
+        </nav>
 
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-4">
@@ -202,7 +246,7 @@ export default function Header() {
           )}
         </div>
       </div>
-    </header>
+    </motion.header>
   );
 }
 

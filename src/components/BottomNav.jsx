@@ -32,16 +32,16 @@ export default function BottomNav() {
     const NavItem = ({ to, icon, label, badge = false }) => {
         const active = isActive(to);
         return (
-            <Link to={to} className="relative flex flex-col items-center gap-1 w-12 outline-none">
+            <Link to={to} className="relative flex flex-col items-center gap-1 w-12 outline-none group">
                 <motion.div
-                    className={`flex flex-col items-center gap-1 ${active ? 'text-[#3730a3]' : 'text-[#94a3b8]'}`}
-                    whileTap={{ scale: 0.88 }}
-                    transition={{ type: 'spring', stiffness: 600, damping: 20 }}
+                    className={`flex flex-col items-center gap-1 ${active ? 'text-primary dark:text-indigo-400' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors'}`}
+                    whileTap={{ scale: 0.9 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 25 }}
                 >
                     {active && (
                         <motion.div
                             layoutId="bottomNavDot"
-                            className="absolute -top-3 w-5 h-1 bg-[#3730a3] rounded-full"
+                            className="absolute -top-3 w-5 h-[3px] bg-primary dark:bg-indigo-400 rounded-full"
                             transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                         />
                     )}
@@ -50,11 +50,11 @@ export default function BottomNav() {
                         {badge && unreadCount > 0 && (
                             <span className="absolute -top-0.5 -right-1 flex size-3">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                                <span className="relative inline-flex size-3 rounded-full bg-rose-500 border-2 border-white dark:border-slate-950" />
+                                <span className="relative inline-flex size-3 rounded-full bg-rose-500 border-2 border-white dark:border-[#0F1117]" />
                             </span>
                         )}
                     </div>
-                    <span className={`text-[10px] font-[800] tracking-wide transition-colors ${active ? 'text-[#3730a3]' : 'text-[#94a3b8]'}`}>
+                    <span className={`text-[10px] font-[800] tracking-wide transition-colors ${active ? 'text-primary dark:text-indigo-400' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}>
                         {label}
                     </span>
                 </motion.div>
@@ -63,50 +63,52 @@ export default function BottomNav() {
     };
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 w-full bg-white dark:bg-slate-950 border-t border-slate-100 dark:border-slate-800 px-6 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex justify-between items-center z-50 min-h-[5rem]">
-            <NavItem
-                to="/"
-                icon={(active) => <Compass size={24} strokeWidth={active ? 2.5 : 2} />}
-                label={t('explore')}
-            />
-            <NavItem
-                to="/map"
-                icon={(active) => <Map size={24} strokeWidth={active ? 2.5 : 2} />}
-                label="Map"
-            />
+        <nav className="fixed bottom-0 left-0 right-0 w-full bg-white/80 dark:bg-[#0F1117]/80 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 z-50" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)' }}>
+            <div className="flex justify-evenly items-center px-1 sm:px-6 w-full h-[4.5rem]">
+                <NavItem
+                    to="/"
+                    icon={(active) => <Compass size={24} strokeWidth={active ? 2.5 : 2} />}
+                    label={t('explore')}
+                />
+                <NavItem
+                    to="/map"
+                    icon={(active) => <Map size={24} strokeWidth={active ? 2.5 : 2} />}
+                    label="Map"
+                />
 
-            {/* Floating Center Button */}
-            <div className="relative -top-6 flex justify-center w-20">
-                <motion.div
-                    whileTap={{ scale: 0.85 }}
-                    whileHover={{ scale: 1.08 }}
-                    transition={{ type: 'spring', stiffness: 500, damping: 18 }}
-                >
-                    <Link
-                        to="/post-ad"
-                        className="flex items-center justify-center size-[60px] rounded-full bg-[#3730a3] text-white shadow-xl shadow-[#3730a3]/30 border-[6px] border-[#f8fafc] dark:border-slate-950"
+                {/* Floating Center Button */}
+                <div className="relative -top-6 flex justify-center w-16 sm:w-20 shrink-0">
+                    <motion.div
+                        whileTap={{ scale: 0.9 }}
+                        whileHover={{ scale: 1.05 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 20 }}
                     >
-                        <motion.div
-                            animate={{ rotate: isActive('/post-ad') ? 45 : 0 }}
-                            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                        <Link
+                            to="/post-ad"
+                            className="flex items-center justify-center size-[56px] sm:size-[60px] rounded-full bg-primary text-white shadow-xl shadow-primary/30 border-[4px] sm:border-[6px] border-[#F8F9FA] dark:border-[#0F1117]"
                         >
-                            <Plus size={28} strokeWidth={3} />
-                        </motion.div>
-                    </Link>
-                </motion.div>
-            </div>
+                            <motion.div
+                                animate={{ rotate: isActive('/post-ad') ? 45 : 0 }}
+                                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                            >
+                                <Plus size={26} strokeWidth={3} className="sm:w-7 sm:h-7" />
+                            </motion.div>
+                        </Link>
+                    </motion.div>
+                </div>
 
-            <NavItem
-                to="/messages"
-                icon={(active) => <MessageSquare size={24} strokeWidth={active ? 2.5 : 2} />}
-                label={t('messages')}
-                badge={true}
-            />
-            <NavItem
-                to="/profile"
-                icon={(active) => <User size={24} strokeWidth={active ? 2.5 : 2} />}
-                label={t('profile')}
-            />
+                <NavItem
+                    to="/messages"
+                    icon={(active) => <MessageSquare size={24} strokeWidth={active ? 2.5 : 2} />}
+                    label={t('messages')}
+                    badge={true}
+                />
+                <NavItem
+                    to="/profile"
+                    icon={(active) => <User size={24} strokeWidth={active ? 2.5 : 2} />}
+                    label={t('profile')}
+                />
+            </div>
         </nav>
     );
 }

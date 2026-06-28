@@ -93,7 +93,7 @@ export default function AdminReviewsTab({ openModal }) {
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
                                             <div className="size-8 rounded-xl bg-zinc-100 flex items-center justify-center font-bold text-zinc-900 text-xs">
-                                                {review.reviewerAvatar ? <img src={review.reviewerAvatar} alt="" className="w-full h-full rounded-xl object-cover" /> : (review.reviewerName?.[0] || 'A')}
+                                                {review.reviewerAvatar ? <img loading="lazy" src={review.reviewerAvatar} alt="" className="w-full h-full rounded-xl object-cover" /> : (review.reviewerName?.[0] || 'A')}
                                             </div>
                                             <span className="font-bold text-sm text-zinc-900">{review.reviewerName}</span>
                                         </div>

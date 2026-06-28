@@ -41,7 +41,7 @@ export default function OwnerProfileModal({ isOpen, onClose, owner }) {
                         <div className="relative mb-4">
                             <div className="size-24 rounded-[28px] bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 overflow-hidden shadow-inner border-4 border-white dark:border-slate-800 shadow-xl shadow-primary/10">
                                 {displayAvatar ? (
-                                    <img src={displayAvatar} alt={displayName} className="w-full h-full object-cover" />
+                                    <img loading="lazy" src={displayAvatar} alt={displayName} className="w-full h-full object-cover" />
                                 ) : (
                                     <span className="text-3xl font-black uppercase">{displayName.charAt(0)}</span>
                                 )}

@@ -3,14 +3,37 @@ import { useNavigate } from 'react-router-dom';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Home, Star, CheckCircle2, Clock, ChevronRight, MapPin, User } from 'lucide-react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { Key, Building2, Calendar, ShieldCheck, MapPin, CheckCircle2, User, Phone, ArrowLeft, Loader2, Home, Star, Clock, ChevronRight } from 'lucide-react';
+import { Skeleton } from '../components/Skeleton';
 import WriteReviewModal from '../components/WriteReviewModal';
 import { Helmet } from 'react-helmet-async';
+
+// ─── Animation variants (Framer Motion rule #1: defined OUTSIDE component) ───
+const containerVariants = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
+};
+
+const cardVariants = {
+    hidden: { opacity: 0, y: 22 },
+    visible: {
+        opacity: 1,
+        y: 0,
+        transition: { type: 'spring', stiffness: 320, damping: 26 },
+    },
+    exit: { opacity: 0, y: -10, transition: { duration: 0.2 } },
+};
+
+const headerVariants = {
+    hidden: { opacity: 0, y: -8 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
+};
 
 export default function MyMoveIns() {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
+    const shouldReduceMotion = useReducedMotion();
 
     const [moveIns, setMoveIns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -66,46 +89,48 @@ export default function MyMoveIns() {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-28">
+        <div className="flex flex-col min-h-screen bg-[#F8F9FA] dark:bg-[#0F1117] pb-28">
             <Helmet>
                 <title>My Move-Ins | Any-Let</title>
             </Helmet>
 
             {/* Header */}
-            <header className="flex items-center px-6 pt-10 pb-6 sticky top-0 bg-[#f8fafc]/95 dark:bg-slate-950/95 backdrop-blur-md z-20 border-b border-slate-100 dark:border-slate-800/50">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="p-2 -ml-2 text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-                >
-                    <ArrowLeft size={24} strokeWidth={2.5} />
-                </button>
-                <h1 className="flex-1 text-center text-[20px] font-[900] text-slate-900 dark:text-white tracking-tight">
+            <motion.header
+                variants={shouldReduceMotion ? {} : headerVariants}
+                initial="hidden"
+                animate="visible"
+                className="flex items-center justify-center px-6 pt-6 pb-5 sticky top-14 bg-[#F8F9FA]/90 dark:bg-[#0F1117]/90 backdrop-blur-md z-20 border-b border-slate-200/60 dark:border-white/[0.06]"
+            >
+                <h1 className="text-[20px] font-[900] text-slate-900 dark:text-white tracking-tight">
                     My Move-Ins
                 </h1>
-                <div className="w-10" />
-            </header>
+            </motion.header>
 
-            <main className="flex-1 px-6 pt-6">
+            <main className="flex-1 px-4 md:px-6 pt-6 max-w-2xl mx-auto w-full">
                 {loading ? (
                     <div className="flex flex-col gap-4">
                         {[1, 2, 3].map(n => (
-                            <div key={n} className="animate-pulse h-[140px] w-full rounded-[28px] bg-slate-200 dark:bg-slate-800" />
+                            <Skeleton key={n} className="h-[240px] w-full rounded-[28px]" />
                         ))}
                     </div>
                 ) : moveIns.length === 0 ? (
                     <EmptyState />
                 ) : (
-                    <div className="flex flex-col gap-4">
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">
+                    <motion.div
+                        variants={shouldReduceMotion ? {} : containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="flex flex-col gap-4"
+                    >
+                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">
                             {moveIns.length} {moveIns.length === 1 ? 'Property' : 'Properties'} Recorded
                         </p>
                         <AnimatePresence>
-                            {moveIns.map((item, idx) => (
+                            {moveIns.map((item) => (
                                 <motion.div
                                     key={item.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: idx * 0.05 }}
+                                    variants={shouldReduceMotion ? {} : cardVariants}
+                                    layout
                                 >
                                     <MoveInCard
                                         moveIn={item}
@@ -122,7 +147,7 @@ export default function MyMoveIns() {
                                 </motion.div>
                             ))}
                         </AnimatePresence>
-                    </div>
+                    </motion.div>
                 )}
             </main>
 
@@ -137,23 +162,44 @@ export default function MyMoveIns() {
     );
 }
 
+// ─── Card hover variants (outside sub-component too) ─────────────────────────
+const cardHoverVariants = {
+    rest: { y: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
+    hover: {
+        y: -4,
+        boxShadow: '0 12px 40px rgba(0,0,0,0.13)',
+        transition: { type: 'spring', stiffness: 400, damping: 22 },
+    },
+};
+
 function MoveInCard({ moveIn, ownerName, formatDate, onReview, onViewOwner }) {
     const hasImage = !!moveIn.propertyImage;
     const hasReviewed = !!moveIn.hasReviewed;
 
     return (
-        <div className="bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden border border-slate-100 dark:border-slate-800/80 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none transition-all">
+        <motion.div
+            initial="rest"
+            whileHover="hover"
+            animate="rest"
+            variants={cardHoverVariants}
+            className="transform-gpu bg-white dark:bg-[#1A1D24] rounded-[28px] overflow-hidden border border-slate-100/80 dark:border-white/[0.06] shadow-sm"
+        >
             {/* Property Image */}
-            <div className="relative w-full h-36 bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <div className="relative w-full h-40 bg-slate-100 dark:bg-[#222630] overflow-hidden">
                 {hasImage ? (
-                    <img src={moveIn.propertyImage} alt={moveIn.propertyName} className="w-full h-full object-cover" />
+                    <img
+                        loading="lazy"
+                        src={moveIn.propertyImage}
+                        alt={moveIn.propertyName}
+                        className="w-full h-full object-cover"
+                    />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center">
                         <Home size={36} className="text-slate-300 dark:text-slate-600" />
                     </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/10 to-transparent" />
-                
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/75 via-slate-900/10 to-transparent" />
+
                 {/* Status Badge */}
                 <div className={`absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest backdrop-blur-sm ${
                     hasReviewed
@@ -174,19 +220,20 @@ function MoveInCard({ moveIn, ownerName, formatDate, onReview, onViewOwner }) {
             <div className="p-4">
                 {/* Owner & Date */}
                 <div className="flex items-center justify-between mb-4">
-                    <button
+                    <motion.button
                         onClick={onViewOwner}
-                        className="flex items-center gap-2 group"
+                        whileTap={{ scale: 0.96 }}
+                        className="flex items-center gap-2.5 group min-w-0"
                     >
-                        <div className="size-8 rounded-full bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 text-sm font-black group-hover:bg-primary group-hover:text-white transition-colors">
+                        <div className="size-9 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary text-sm font-black group-hover:bg-primary group-hover:text-white transition-colors shrink-0">
                             {ownerName[0]?.toUpperCase()}
                         </div>
-                        <div className="text-left">
-                            <p className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-primary dark:text-indigo-400 transition-colors">{ownerName}</p>
+                        <div className="text-left min-w-0">
+                            <p className="text-xs font-black text-slate-800 dark:text-slate-100 group-hover:text-primary transition-colors truncate">{ownerName}</p>
                             <p className="text-[10px] text-slate-400 font-bold">Landlord · View Profile</p>
                         </div>
-                    </button>
-                    <div className="flex items-center gap-1 text-slate-400">
+                    </motion.button>
+                    <div className="flex items-center gap-1 text-slate-400 shrink-0 ml-2">
                         <Clock size={11} />
                         <span className="text-[10px] font-bold">{formatDate(moveIn.movedInAt)}</span>
                     </div>
@@ -194,45 +241,66 @@ function MoveInCard({ moveIn, ownerName, formatDate, onReview, onViewOwner }) {
 
                 {/* CTA */}
                 {!hasReviewed ? (
-                    <button
+                    <motion.button
                         onClick={onReview}
-                        className="w-full py-3.5 bg-gradient-to-r from-primary to-indigo-600 text-white font-black text-sm rounded-2xl shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                        whileHover={{ scale: 1.02, y: -1 }}
+                        whileTap={{ scale: 0.97 }}
+                        className="transform-gpu w-full py-3.5 bg-gradient-to-r from-primary to-indigo-600 text-white font-black text-sm rounded-2xl shadow-lg shadow-primary/25 flex items-center justify-center gap-2"
                     >
-                        <Star size={16} className="fill-white" /> Write a Review
-                        <ChevronRight size={16} />
-                    </button>
+                        <Star size={15} className="fill-white" /> Write a Review
+                        <ChevronRight size={15} />
+                    </motion.button>
                 ) : (
                     <div className="w-full py-3.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-black text-sm rounded-2xl flex items-center justify-center gap-2 border border-amber-100 dark:border-amber-500/20">
-                        <Star size={16} className="fill-amber-500 text-amber-500" /> Review Submitted
+                        <Star size={15} className="fill-amber-500 text-amber-500" /> Review Submitted
                     </div>
                 )}
             </div>
-        </div>
+        </motion.div>
     );
 }
+
+// ─── Empty state variants ─────────────────────────────────────────────────────
+const emptyIconVariants = {
+    hidden: { scale: 0.85, opacity: 0 },
+    visible: { scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 260, damping: 20, delay: 0.1 } },
+};
+
+const emptyTextVariants = {
+    hidden: { opacity: 0, y: 12 },
+    visible: { opacity: 1, y: 0, transition: { delay: 0.22, duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
+};
 
 function EmptyState() {
     const navigate = useNavigate();
     return (
-        <div className="py-20 flex flex-col items-center justify-center text-center px-4">
-            <div className="relative mb-8">
-                <div className="size-24 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 rounded-[28px] flex items-center justify-center shadow-inner">
+        <motion.div
+            initial="hidden"
+            animate="visible"
+            className="py-20 flex flex-col items-center justify-center text-center px-4"
+        >
+            <motion.div variants={emptyIconVariants} className="relative mb-8">
+                <div className="size-24 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-[#1A1D24] dark:to-[#222630] rounded-[28px] flex items-center justify-center shadow-inner border border-slate-200/60 dark:border-white/[0.06]">
                     <Home size={40} className="text-slate-400 dark:text-slate-500" />
                 </div>
                 <div className="absolute -bottom-2 -right-2 size-10 bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/30">
                     <Star size={20} className="text-white fill-white" />
                 </div>
-            </div>
-            <h3 className="text-[20px] font-[900] text-slate-900 dark:text-white mb-3">No Move-Ins Yet</h3>
-            <p className="text-[#64748b] text-[15px] font-medium leading-relaxed mb-8 max-w-[280px]">
-                When you mark a viewing request as "Moved In", it will appear here. You can then leave a verified review.
-            </p>
-            <button
-                onClick={() => navigate('/requests')}
-                className="bg-primary text-white font-[800] text-[15px] py-4 px-8 rounded-full shadow-lg shadow-primary/20 transition-transform active:scale-95"
-            >
-                View My Requests
-            </button>
-        </div>
+            </motion.div>
+            <motion.div variants={emptyTextVariants}>
+                <h3 className="text-[20px] font-[900] text-slate-900 dark:text-white mb-3">No Move-Ins Yet</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-[15px] font-medium leading-relaxed mb-8 max-w-[280px]">
+                    When you mark a viewing request as "Moved In", it will appear here. You can then leave a verified review.
+                </p>
+                <motion.button
+                    onClick={() => navigate('/requests')}
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="transform-gpu bg-primary text-white font-[800] text-[15px] py-4 px-8 rounded-full shadow-lg shadow-primary/20 transition-shadow"
+                >
+                    View My Requests
+                </motion.button>
+            </motion.div>
+        </motion.div>
     );
 }

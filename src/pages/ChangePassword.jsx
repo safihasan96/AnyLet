@@ -61,11 +61,8 @@ export default function ChangePassword() {
 
     return (
         <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-32">
-            <header className="flex items-center p-6 mb-2">
-                <button onClick={() => navigate(-1)} className="text-slate-800 dark:text-white p-2 -ml-2">
-                    <ArrowLeft size={24} strokeWidth={2.5} />
-                </button>
-                <h1 className="text-lg font-[800] text-slate-900 dark:text-white flex-1 text-center pr-8 tracking-tight">Change Password</h1>
+            <header className="flex items-center justify-center p-6 mb-2">
+                <h1 className="text-lg font-[800] text-slate-900 dark:text-white tracking-tight">Change Password</h1>
             </header>
 
             <div className="flex-1 flex flex-col items-center px-6 max-w-md mx-auto w-full">

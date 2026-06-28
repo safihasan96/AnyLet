@@ -14,6 +14,7 @@ import {
   Bed, 
   Bath, 
   Maximize, 
+  ChevronLeft,
   ChevronRight, 
   Calendar, 
   MessageSquare, 
@@ -39,7 +40,8 @@ import {
   Flame,
   Droplets,
   ArrowRight,
-  UserX
+  UserX,
+  DoorOpen
 } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from 'framer-motion';
 
@@ -77,11 +79,29 @@ const bottomBarVariants = {
 };
 import ViewingRequestModal from '../components/ViewingRequestModal';
 import ConfirmationModal from '../components/ConfirmationModal';
-import PropertyLoader from '../components/PropertyLoader';
+import { PropertyDetailSkeleton } from '../components/Skeleton';
 import ShareModal from '../components/ShareModal';
 import BookPropertyModal from '../components/BookPropertyModal';
 import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
+import { getOptimizedImageUrl } from '../utils/imageUtils';
+
+const sliderVariants = {
+    enter: (direction) => ({
+        x: direction > 0 ? 1000 : -1000,
+        opacity: 0
+    }),
+    center: {
+        zIndex: 1,
+        x: 0,
+        opacity: 1
+    },
+    exit: (direction) => ({
+        zIndex: 0,
+        x: direction < 0 ? 1000 : -1000,
+        opacity: 0
+    })
+};
 
 export default function PropertyDetails() {
     const { id } = useParams();
@@ -92,6 +112,7 @@ export default function PropertyDetails() {
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeImage, setActiveImage] = useState(0);
+    const [slideDirection, setSlideDirection] = useState(0);
     const [requestSending, setRequestSending] = useState(false);
     const [requestSent, setRequestSent] = useState(false);
     const [owner, setOwner] = useState(null);
@@ -123,7 +144,7 @@ export default function PropertyDetails() {
                     try {
                         // ✅ F-08: bounded
                         const moveInsQ = query(
-                            collection(db, 'moveIns'), 
+                            collection(db, 'tenantMoveIns'), 
                             where('propertyId', '==', id), 
                             where('status', '==', 'active'),
                             limit(QUERY_LIMITS.HARD_CAP)
@@ -297,14 +318,10 @@ export default function PropertyDetails() {
         }
     };
 
-    if (loading) return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-            <PropertyLoader />
-        </div>
-    );
+    if (loading) return <PropertyDetailSkeleton />;
 
     if (!property) return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 text-center">
+        <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0F1117] flex items-center justify-center p-6 text-center">
             <div>
                 <h1 className="text-2xl font-black mb-4">{t('no_properties')}</h1>
                 <Link to="/search" className="text-primary dark:text-indigo-400 font-bold">{t('search')}</Link>
@@ -313,6 +330,16 @@ export default function PropertyDetails() {
     );
 
     const images = property.images || [];
+
+    const paginateImage = (newDirection) => {
+        setSlideDirection(newDirection);
+        setActiveImage((prev) => {
+            const next = prev + newDirection;
+            if (next >= images.length) return 0;
+            if (next < 0) return images.length - 1;
+            return next;
+        });
+    };
 
     const isOwner = currentUser && (currentUser.uid === property.ownerId || currentUser.uid === property.userId);
 
@@ -329,10 +356,10 @@ export default function PropertyDetails() {
     })();
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-32 lg:pb-12">
-            <div className="max-w-7xl mx-auto px-0 md:px-6 py-4 md:py-8">
-                {/* Navigation Row with Back and Share */}
-                <div className="flex items-center justify-between px-4 md:px-0 mb-4 md:mb-6">
+        <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0F1117] pb-32 lg:pb-12">
+        <div className="max-w-7xl mx-auto px-0 md:px-6 py-4 md:py-8 lg:max-w-[1400px] lg:px-12 lg:py-10">
+                {/* Navigation Row with Back and Share (Desktop Only) */}
+                <div className="hidden md:flex items-center justify-between px-4 md:px-0 mb-4 md:mb-6">
                     <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 transition-colors font-bold">
                         <ArrowLeft size={20} /> {t('back_to_discovery')}
                     </button>
@@ -350,35 +377,74 @@ export default function PropertyDetails() {
                     <div className="flex-1 lg:max-w-[750px]">
                         {/* Image Gallery */}
                         <div className="relative md:rounded-[40px] overflow-hidden bg-slate-200 dark:bg-slate-900 group shadow-2xl shadow-slate-200/50 dark:shadow-none mb-6 md:mb-10">
+                            {/* Mobile Share Overlay */}
+                            <button 
+                                onClick={() => setShareModalOpen(true)}
+                                className="md:hidden absolute top-4 right-4 z-10 flex items-center justify-center size-10 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-lg border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 active:scale-90 transition-transform"
+                                aria-label="Share property"
+                            >
+                                <Share2 size={18} />
+                            </button>
+
                             {images.length > 0 ? (
                                 <>
-                                    <motion.div
-                                        key={activeImage}
-                                        className="w-full aspect-[4/3] relative overflow-hidden cursor-grab active:cursor-grabbing"
-                                        drag="x"
-                                        dragConstraints={{ left: 0, right: 0 }}
-                                        dragElastic={0.2}
-                                        onDragEnd={(e, info) => {
-                                            if (info.offset.x < -60 && activeImage < images.length - 1) setActiveImage(i => i + 1);
-                                            if (info.offset.x > 60 && activeImage > 0) setActiveImage(i => i - 1);
-                                        }}
-                                    >
-                                        <motion.img
-                                            key={activeImage}
-                                            initial={{ opacity: 0, scale: 1.04 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            transition={{ duration: 0.35 }}
-                                            src={images[activeImage]}
-                                            className="w-full h-full object-cover pointer-events-none select-none"
-                                            draggable={false}
-                                        />
-                                    </motion.div>
-                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 px-4 py-3 bg-black/20 backdrop-blur-md rounded-full border border-white/20">
+                                    <div className="w-full aspect-[4/3] relative overflow-hidden cursor-grab active:cursor-grabbing">
+                                        <AnimatePresence initial={false} custom={slideDirection}>
+                                            <motion.img
+                                                key={activeImage}
+                                                custom={slideDirection}
+                                                variants={sliderVariants}
+                                                initial="enter"
+                                                animate="center"
+                                                exit="exit"
+                                                transition={{ x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.2 } }}
+                                                src={getOptimizedImageUrl(images[activeImage], 1200)}
+                                                className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+                                                draggable={false}
+                                                drag="x"
+                                                dragConstraints={{ left: 0, right: 0 }}
+                                                dragElastic={1}
+                                                onDragEnd={(e, { offset, velocity }) => {
+                                                    const swipe = Math.abs(offset.x) * velocity.x;
+                                                    if (swipe < -10000) {
+                                                        paginateImage(1);
+                                                    } else if (swipe > 10000) {
+                                                        paginateImage(-1);
+                                                    } else if (offset.x < -100) {
+                                                        paginateImage(1);
+                                                    } else if (offset.x > 100) {
+                                                        paginateImage(-1);
+                                                    }
+                                                }}
+                                            />
+                                        </AnimatePresence>
+                                        
+                                        {images.length > 1 && (
+                                            <>
+                                                <button
+                                                    onClick={() => paginateImage(-1)}
+                                                    className="absolute left-4 top-1/2 -translate-y-1/2 size-12 rounded-full bg-white/70 backdrop-blur-md text-slate-800 flex items-center justify-center shadow-lg hover:bg-white transition-all opacity-0 group-hover:opacity-100 hidden md:flex z-10"
+                                                >
+                                                    <ChevronLeft size={24} />
+                                                </button>
+                                                <button
+                                                    onClick={() => paginateImage(1)}
+                                                    className="absolute right-4 top-1/2 -translate-y-1/2 size-12 rounded-full bg-white/70 backdrop-blur-md text-slate-800 flex items-center justify-center shadow-lg hover:bg-white transition-all opacity-0 group-hover:opacity-100 hidden md:flex z-10"
+                                                >
+                                                    <ChevronRight size={24} />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 px-4 py-3 bg-black/20 backdrop-blur-md rounded-full border border-white/20 z-20">
                                         {images.map((_, idx) => (
                                             <motion.button
                                                 key={idx}
                                                 layoutId={`dot-${idx}`}
-                                                onClick={() => setActiveImage(idx)}
+                                                onClick={() => {
+                                                    setSlideDirection(idx > activeImage ? 1 : -1);
+                                                    setActiveImage(idx);
+                                                }}
                                                 animate={{ width: activeImage === idx ? 24 : 10, background: activeImage === idx ? 'var(--color-primary, #6366f1)' : 'rgba(255,255,255,0.6)' }}
                                                 transition={{ type: 'spring', stiffness: 300, damping: 22 }}
                                                 className="h-2.5 rounded-full"
@@ -503,7 +569,7 @@ export default function PropertyDetails() {
                         )}
 
                         {/* Description */}
-                        <motion.section variants={sectionVariants} className="bg-white dark:bg-slate-900 p-6 md:p-10 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800 mb-6 md:mb-10">
+                        <motion.section variants={sectionVariants} className="bg-white dark:bg-[#1A1D24] p-6 md:p-10 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800/70 mb-6 md:mb-10">
                             <h2 className="text-xl md:text-2xl font-black mb-4 md:mb-6">{t('description')}</h2>
                             <p className="text-slate-600 dark:text-slate-400 leading-relaxed text-base md:text-lg font-medium whitespace-pre-wrap">
                                 {property.description || 'No description provided.'}
@@ -511,15 +577,13 @@ export default function PropertyDetails() {
                         </motion.section>
 
                         {/* BD Specific Specs */}
-                        <motion.section variants={sectionVariants} className="bg-white dark:bg-slate-900 p-6 md:p-10 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800 mb-6 md:mb-10">
+                        <motion.section variants={sectionVariants} className="bg-white dark:bg-[#1A1D24] p-6 md:p-10 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800/70 mb-6 md:mb-10">
                             <h2 className="text-xl md:text-2xl font-black mb-6 flex items-center gap-3">
                                 <Building2 size={24} className="text-primary dark:text-indigo-400" /> Property Specifications
                             </h2>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
-                                <SpecItem icon={<Flame />} label="Gas Supply" value={property.gasSupply || 'Cylinder'} />
-                                <SpecItem icon={<Zap />} label="Electricity" value={property.electricityBilling || 'Excluded'} />
+                                <SpecItem icon={<DoorOpen />} label="Verandas" value={property.verandas || '0'} />
                                 <SpecItem icon={<Droplets />} label="Water Source" value={property.waterSource || 'WASA'} />
-                                <SpecItem icon={<Map />} label="Facing" value={property.facing || 'Not Specified'} />
                                 <SpecItem icon={<ArrowRight className="-rotate-45" />} label="Floor" value={property.floorNumber || 'Not Specified'} />
                                 <SpecItem icon={<Car />} label="Parking" value={property.parkingType || 'None'} />
                                 <SpecItem icon={<Home />} label="Pet Policy" value={property.petPolicy || 'Not Allowed'} />
@@ -541,7 +605,7 @@ export default function PropertyDetails() {
 
                         {/* Features & Amenities */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-10">
-                            <section className="bg-white dark:bg-slate-900 p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800">
+                            <section className="bg-white dark:bg-[#1A1D24] p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800/70">
                                 <h3 className="text-lg md:text-xl font-black mb-4 md:mb-6 flex items-center gap-3">
                                     <Zap size={20} className="text-primary dark:text-indigo-400 md:w-6 md:h-6" /> {t('amenities')}
                                 </h3>
@@ -554,7 +618,7 @@ export default function PropertyDetails() {
                                     )) : <div className="text-sm text-slate-400">None specified</div>}
                                 </div>
                             </section>
-                            <section className="bg-white dark:bg-slate-900 p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800">
+                            <section className="bg-white dark:bg-[#1A1D24] p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800/70">
                                 <h3 className="text-lg md:text-xl font-black mb-4 md:mb-6 flex items-center gap-3">
                                     <Info size={20} className="text-primary dark:text-indigo-400 md:w-6 md:h-6" /> {t('inclusions')}
                                 </h3>
@@ -575,11 +639,19 @@ export default function PropertyDetails() {
                         <div className="sticky top-28 space-y-6">
                             {/* Desktop Action Card (Hidden on Mobile) */}
                             {!isOwner ? (
-                                <div className="hidden lg:block bg-white dark:bg-slate-900 p-8 rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                                <div className="hidden lg:block bg-white dark:bg-[#1A1D24] p-8 rounded-[40px] border border-slate-100 dark:border-slate-800/70 shadow-sm relative overflow-hidden">
                                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 text-center">{t('interested')}</h3>
                                     
                                     {property.status !== 'Let Agreed' && property.status !== 'Booked' ? (
                                         <>
+                                            {property.instantBooking && (
+                                                <button 
+                                                    onClick={() => setBookModalOpen(true)}
+                                                    className="w-full py-5 rounded-2xl bg-slate-900 dark:bg-slate-50 text-white dark:text-slate-900 font-black text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 mb-4 shadow-xl"
+                                                >
+                                                    <Zap size={20} className="text-yellow-400" /> Book Now
+                                                </button>
+                                            )}
                                             <motion.button 
                                                 onClick={() => !requestSent && setIsModalOpen(true)}
                                                 disabled={requestSent || requestSending}
@@ -639,7 +711,7 @@ export default function PropertyDetails() {
                             ) }
 
                             {/* Owner Card */}
-                            <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-3xl md:rounded-[40px] border border-slate-100 dark:border-slate-800 shadow-sm">
+                            <div className="bg-white dark:bg-[#1A1D24] p-6 md:p-8 rounded-3xl md:rounded-[40px] border border-slate-100 dark:border-slate-800/70 shadow-sm">
                                 <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6">{t('owner_contact')}</h3>
                                 <Link to={`/owner/${property.ownerId || property.userId}`} className="flex items-center gap-4 group cursor-pointer">
                                     <div className="size-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary dark:text-indigo-400 shadow-inner group-hover:bg-primary group-hover:text-white transition-colors">
@@ -670,7 +742,7 @@ export default function PropertyDetails() {
                 {/* Property Reviews Section (Bottom full width) */}
                 {property.reviewCount > 0 && (
                     <div className="mt-8 mb-6 px-4 md:px-0">
-                        <div className="bg-white dark:bg-slate-900 rounded-[32px] md:rounded-[40px] p-6 md:p-10 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div className="bg-white dark:bg-[#1A1D24] rounded-[32px] md:rounded-[40px] p-6 md:p-10 border border-slate-100 dark:border-slate-800/70 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
                             <div className="flex items-center gap-6 w-full md:w-auto">
                                 <div className="size-16 rounded-3xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
                                     <Star size={28} className="fill-amber-500" />
@@ -700,6 +772,16 @@ export default function PropertyDetails() {
                         
                         {property.status !== 'Let Agreed' && property.status !== 'Booked' ? (
                             <div className="flex flex-col sm:flex-row items-center gap-4">
+                                {property.instantBooking && (
+                                    <motion.button 
+                                        onClick={() => setBookModalOpen(true)}
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.96 }}
+                                        className="w-full h-14 rounded-2xl bg-slate-900 dark:bg-slate-50 text-white dark:text-slate-900 font-black text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-xl"
+                                    >
+                                        <Zap size={20} className="text-yellow-400" /> Book Now
+                                    </motion.button>
+                                )}
                                 <motion.button 
                                     onClick={() => !requestSent && setIsModalOpen(true)}
                                     disabled={requestSent || requestSending}
@@ -820,7 +902,7 @@ function SpecItem({ icon, label, value }) {
             variants={specCardVariants}
             initial="rest"
             whileHover="hover"
-            className="flex items-start gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-100 dark:border-slate-700 will-change-transform"
+            className="flex items-start gap-3 bg-white dark:bg-[#1A1D24] p-3 rounded-2xl border border-slate-100 dark:border-slate-800/70 will-change-transform"
         >
             <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 shrink-0">
                 {icon}

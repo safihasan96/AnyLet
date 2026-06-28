@@ -3,18 +3,38 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
     ArrowLeft, Star, ShieldCheck, Calendar, Home, MessageSquare,
-    ChevronRight, User2, Award, Building2, Loader2, ThumbsUp
+    Award, Building2, Loader2, ThumbsUp, MapPin
 } from 'lucide-react';
 import PropertyCard from '../components/PropertyCard';
-import PropertyLoader from '../components/PropertyLoader';
+import { OwnerProfileSkeleton } from '../components/Skeleton';
 import WriteReviewModal from '../components/WriteReviewModal';
 import { Helmet } from 'react-helmet-async';
 import { useToast } from '../contexts/ToastContext';
 import { toggleHelpfulVote, submitLandlordReply } from '../utils/reviewService';
 import logger from '../utils/logger';
+
+// ── Named variants (Framer Motion rule #1 — all motion config OUTSIDE the component) ──
+const fadeUp = {
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 26 } },
+};
+
+const reviewCardVariants = {
+    hidden: { opacity: 0, y: 16 },
+    visible: (i) => ({
+        opacity: 1,
+        y: 0,
+        transition: { delay: i * 0.05, type: 'spring', stiffness: 320, damping: 26 },
+    }),
+};
+
+const ctaBannerVariants = {
+    hidden: { opacity: 0, y: 8 },
+    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } },
+};
 
 const CATEGORIES = [
     { key: 'communication', label: 'Communication', emoji: '💬' },
@@ -55,7 +75,6 @@ export default function OwnerProfile() {
     const [eligibleMoveIn, setEligibleMoveIn] = useState(null); // the tenantMoveIn record that unlocks review
     const [loading, setLoading] = useState(true);
     const [reviewsLoading, setReviewsLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('listings'); // 'listings' | 'reviews'
 
     const [reviewModal, setReviewModal] = useState(false);
 
@@ -188,242 +207,211 @@ export default function OwnerProfile() {
         ? (owner.createdAt.toDate ? owner.createdAt.toDate().getFullYear() : new Date(owner.createdAt).getFullYear())
         : '2026';
 
-    if (loading) return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-            <PropertyLoader />
-        </div>
-    );
+    if (loading) return <OwnerProfileSkeleton />;
 
     if (!owner) return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 text-center">
+        <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0F1117] flex items-center justify-center p-6 text-center">
             <h1 className="text-2xl font-black">User not found</h1>
         </div>
     );
 
     return (
-        <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-24">
+        <div className="flex flex-col min-h-screen bg-[#F8F9FA] dark:bg-[#0F1117] pb-24">
             <Helmet>
                 <title>{displayName} — Landlord Profile | Any-Let</title>
             </Helmet>
 
-            {/* Back */}
-            <div className="max-w-5xl mx-auto px-4 md:px-6 pt-6">
-                <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 transition-colors font-bold mb-6">
+            <main className="flex-1 w-full max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-12 space-y-8">
+                
+                {/* Back button */}
+                <button onClick={() => navigate(-1)} className="hidden md:flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 transition-colors font-bold -mt-4">
                     <ArrowLeft size={20} /> Back
                 </button>
-            </div>
+                
+                {/* Profile Header Card */}
+                <section className="relative bg-white dark:bg-[#1A1D24] rounded-[32px] shadow-sm border border-slate-100/80 dark:border-white/[0.06] overflow-hidden">
+                    {/* Cover Photo Area */}
+                    <div className="h-48 md:h-72 w-full relative">
+                        <div 
+                            className="bg-cover bg-center w-full h-full"
+                            style={{ backgroundImage: `url(${owner.coverPhoto || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80'})` }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent" />
+                    </div>
 
-            {/* ─── HERO CARD ─── */}
-            <div className="max-w-5xl mx-auto px-4 md:px-6 mb-8">
-                <div className="relative bg-white dark:bg-slate-900 rounded-[40px] overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
-                    {/* Top gradient bar */}
-                    <div className="h-28 bg-gradient-to-r from-primary via-indigo-600 to-violet-600" />
-
-                    <div className="px-8 pb-8 -mt-14">
-                        <div className="flex flex-col sm:flex-row sm:items-end gap-6">
-                            {/* Avatar */}
-                            <div className="relative">
-                                <div className="size-28 rounded-[28px] bg-white dark:bg-slate-800 border-4 border-white dark:border-slate-900 shadow-xl flex items-center justify-center text-4xl font-black text-primary dark:text-indigo-400 overflow-hidden">
-                                    {owner.photoURL ? (
-                                        <img src={owner.photoURL} alt={displayName} className="w-full h-full object-cover" />
-                                    ) : (
-                                        displayName[0].toUpperCase()
-                                    )}
+                    {/* Profile Info */}
+                    <div className="relative px-6 md:px-10 pb-8 md:pb-10 -mt-20 md:-mt-24 flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 z-10">
+                        <div className="relative">
+                            <img 
+                                src={owner.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=1a227f&color=fff`}
+                                alt="Profile" 
+                                className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover border-4 border-white dark:border-[#1A1D24] shadow-md bg-white"
+                            />
+                            {(owner.verified || owner.role === 'admin') && (
+                                <div className="absolute bottom-2 right-2 bg-emerald-500 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg border-2 border-white dark:border-[#1A1D24]">
+                                    <ShieldCheck size={20} strokeWidth={2.5} />
                                 </div>
-                                {(owner.verified || owner.role === 'admin') && (
-                                    <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1.5 rounded-xl shadow-lg shadow-emerald-500/30 ring-2 ring-white dark:ring-slate-900">
-                                        <ShieldCheck size={14} strokeWidth={3} />
-                                    </div>
-                                )}
-                            </div>
+                            )}
+                        </div>
+                        
+                        <div className="text-center md:text-left flex-1 mb-2">
+                            <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+                                {displayName}
+                            </h1>
+                            <p className="text-slate-500 font-bold flex items-center justify-center md:justify-start gap-1.5 mt-2">
+                                <MapPin size={16} className="text-[#1a227f] dark:text-indigo-400" />
+                                {owner.location || 'Bangladesh'} • {owner.role === 'admin' ? 'Platform Admin' : owner.membershipTier || 'Property Owner'}
+                            </p>
+                        </div>
+                        
+                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto mt-2 md:mt-0 mb-2">
+                            <button 
+                                onClick={() => {
+                                    if(navigator.share) {
+                                        navigator.share({
+                                            title: `${displayName}'s Profile`,
+                                            url: window.location.href
+                                        });
+                                    } else {
+                                        navigator.clipboard.writeText(window.location.href);
+                                        toast.success("Profile link copied!");
+                                    }
+                                }}
+                                className="bg-slate-100 dark:bg-slate-800 text-[#1a227f] dark:text-indigo-400 px-6 py-3.5 rounded-2xl font-black hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                                Share Profile
+                            </button>
+                        </div>
+                    </div>
+                </section>
 
-                            {/* Info */}
-                            <div className="flex-1 min-w-0 pb-1">
-                                <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white leading-tight mb-1 truncate">
-                                    {displayName}
-                                </h1>
-                                <p className="text-sm font-bold text-slate-500 mb-3">
-                                    {owner.role === 'admin' ? 'Platform Admin' : 'Property Owner / Landlord'}
-                                </p>
+                {/* Eligible Review CTA */}
+                {eligibleMoveIn && (
+                    <motion.div
+                        variants={ctaBannerVariants}
+                        initial="hidden"
+                        animate="visible"
+                        className="bg-gradient-to-r from-primary/5 to-indigo-500/5 border border-primary/20 dark:border-indigo-500/30 rounded-[32px] p-6 flex items-center gap-4"
+                    >
+                        <div className="size-14 rounded-2xl bg-[#1a227f]/10 flex items-center justify-center text-[#1a227f] dark:text-indigo-400 shrink-0">
+                            <Award size={28} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-base font-black text-slate-900 dark:text-white">You're a verified ex-tenant!</p>
+                            <p className="text-sm font-medium text-slate-500">Share your experience with future renters.</p>
+                        </div>
+                        <button
+                            onClick={() => setReviewModal(true)}
+                            className="shrink-0 flex items-center gap-2 bg-[#1a227f] text-white font-black text-sm px-6 py-3 rounded-2xl shadow-lg shadow-[#1a227f]/20 hover:scale-105 active:scale-95 transition-all"
+                        >
+                            <Star size={16} className="fill-white" /> Write Review
+                        </button>
+                    </motion.div>
+                )}
 
-                                <div className="flex flex-wrap items-center gap-3">
-                                    {stats ? (
-                                        <div className="flex items-center gap-1.5 bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 rounded-xl">
-                                            <Star size={14} className="text-amber-500 fill-amber-500" />
-                                            <span className="text-sm font-black text-amber-700 dark:text-amber-400">
-                                                {stats.overallAvg.toFixed(1)}
-                                            </span>
-                                            <span className="text-xs font-bold text-amber-600/70 dark:text-amber-400/70">
-                                                ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl">
-                                            <Star size={14} className="text-slate-400" />
-                                            <span className="text-xs font-bold text-slate-500">No reviews yet</span>
-                                        </div>
-                                    )}
-                                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl">
-                                        <Calendar size={12} className="text-slate-400" />
-                                        <span className="text-xs font-bold text-slate-500">Member since {memberYear}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl">
-                                        <Building2 size={12} className="text-slate-400" />
-                                        <span className="text-xs font-bold text-slate-500">{properties.length} active listing{properties.length !== 1 ? 's' : ''}</span>
-                                    </div>
-                                </div>
-                            </div>
+                {/* Bento Grid Content */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+                    
+                    {/* Main Column (About Me + Listings) */}
+                    <div className="md:col-span-2 space-y-6 md:space-y-8">
+                        {/* Bio */}
+                        <div className="bg-white dark:bg-[#1A1D24] p-8 rounded-[32px] shadow-sm border border-slate-100/80 dark:border-white/[0.06]">
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                <MessageSquare size={20} className="text-[#1a227f] dark:text-indigo-400" />
+                                About Me
+                            </h3>
+                            <p className="text-[15px] font-medium text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-line">
+                                {owner.bio || "This owner hasn't added a bio yet."}
+                            </p>
                         </div>
 
-                        {/* Eligible Review CTA */}
-                        {eligibleMoveIn && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="mt-6 bg-gradient-to-r from-primary/5 to-indigo-500/5 border border-primary/20 dark:border-primary/30 rounded-3xl p-5 flex items-center gap-4"
-                            >
-                                <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 shrink-0">
-                                    <Award size={24} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-black text-slate-900 dark:text-white">You're a verified ex-tenant!</p>
-                                    <p className="text-xs font-medium text-slate-500">Share your experience with future renters.</p>
-                                </div>
-                                <button
-                                    onClick={() => setReviewModal(true)}
-                                    className="shrink-0 flex items-center gap-1.5 bg-primary text-white font-black text-xs px-4 py-2.5 rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-                                >
-                                    <Star size={14} className="fill-white" /> Write Review
-                                </button>
-                            </motion.div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* ─── TABS ─── */}
-            <div className="max-w-5xl mx-auto px-4 md:px-6 mb-8">
-                <div className="bg-white dark:bg-slate-900 rounded-[20px] p-1.5 flex border border-slate-100 dark:border-slate-800 shadow-sm">
-                    {[
-                        { key: 'listings', label: `Listings (${properties.length})`, icon: <Home size={16} /> },
-                        { key: 'reviews', label: `Reviews (${reviews.length})`, icon: <Star size={16} /> },
-                    ].map(tab => (
-                        <button
-                            key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl font-black text-sm transition-all ${activeTab === tab.key
-                                ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                                }`}
-                        >
-                            {tab.icon} {tab.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* ─── TAB CONTENT ─── */}
-            <div className="max-w-5xl mx-auto px-4 md:px-6">
-                <AnimatePresence mode="wait">
-                    {activeTab === 'listings' && (
-                        <motion.div key="listings" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+                        {/* Listings */}
+                        <div className="bg-white dark:bg-[#1A1D24] p-8 rounded-[32px] shadow-sm border border-slate-100/80 dark:border-white/[0.06]">
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                                <Home size={20} className="text-[#1a227f] dark:text-indigo-400" />
+                                Listings from this owner
+                            </h3>
+                            
                             {properties.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {properties.map(p => <PropertyCard key={p.id} property={p} />)}
                                 </div>
                             ) : (
-                                <div className="py-16 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
-                                    <Home size={40} className="text-slate-300 mx-auto mb-4" />
-                                    <p className="text-lg font-bold text-slate-400">No active listings</p>
+                                <div className="py-12 text-center bg-slate-50 dark:bg-[#222630] rounded-3xl border border-slate-100/80 dark:border-white/[0.04]">
+                                    <Home size={40} className="text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+                                    <p className="text-lg font-bold text-slate-400 dark:text-slate-500">No active listings</p>
                                 </div>
                             )}
-                        </motion.div>
-                    )}
+                        </div>
+                    </div>
 
-                    {activeTab === 'reviews' && (
-                        <motion.div key="reviews" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+                    {/* Side Column (Quick Stats + Reviews) */}
+                    <div className="space-y-6">
+                        
+                        {/* Stats Group */}
+                        <div className="grid grid-cols-2 md:grid-cols-1 gap-6">
+                            <div className="bg-white dark:bg-[#1A1D24] p-6 rounded-[32px] shadow-sm border border-slate-100/80 dark:border-white/[0.06] flex flex-col items-center text-center">
+                                <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 rounded-2xl flex items-center justify-center mb-4">
+                                    <Calendar size={28} strokeWidth={2.5} />
+                                </div>
+                                <span className="text-2xl font-black text-slate-900 dark:text-white mb-1">{memberYear}</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Member Since</span>
+                            </div>
+                            
+                            <div className="bg-white dark:bg-[#1A1D24] p-6 rounded-[32px] shadow-sm border border-slate-100/80 dark:border-white/[0.06] flex flex-col items-center text-center">
+                                <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-500/10 text-primary dark:text-indigo-400 rounded-2xl flex items-center justify-center mb-4">
+                                    <Building2 size={28} strokeWidth={2.5} />
+                                </div>
+                                <span className="text-2xl font-black text-slate-900 dark:text-white mb-1">{properties.length}</span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Properties Managed</span>
+                            </div>
+
+                            <div className="bg-white dark:bg-[#1A1D24] p-6 rounded-[32px] shadow-sm border border-slate-100/80 dark:border-white/[0.06] flex flex-col items-center text-center col-span-2 md:col-span-1">
+                                <div className="w-14 h-14 bg-amber-50 dark:bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-4">
+                                    <MessageSquare size={28} strokeWidth={2.5} />
+                                </div>
+                                <span className="text-2xl font-black text-slate-900 dark:text-white mb-1">
+                                    {owner.responseRate ? `${owner.responseRate}%` : 'N/A'}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Response Rate</span>
+                            </div>
+                        </div>
+
+                        {/* Reviews Section */}
+                        <div className="bg-white dark:bg-[#1A1D24] p-6 md:p-8 rounded-[32px] shadow-sm border border-slate-100/80 dark:border-white/[0.06]">
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                                <Star size={20} className="text-[#1a227f] dark:text-indigo-400" />
+                                Reviews
+                            </h3>
+                            
                             {reviewsLoading ? (
-                                <div className="flex justify-center py-16">
-                                    <Loader2 size={32} className="animate-spin text-primary dark:text-indigo-400" />
+                                <div className="flex justify-center py-8">
+                                    <Loader2 size={32} className="animate-spin text-[#1a227f] dark:text-indigo-400" />
                                 </div>
                             ) : reviews.length === 0 ? (
-                                <div className="py-16 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
+                                <div className="py-8 text-center">
                                     <div className="size-16 rounded-3xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
                                         <Star size={28} className="text-amber-400" />
                                     </div>
-                                    <p className="text-lg font-black text-slate-700 dark:text-white mb-1">No reviews yet</p>
-                                    <p className="text-sm font-medium text-slate-400 max-w-xs mx-auto">
-                                        Be the first verified tenant to leave a review for this landlord.
+                                    <p className="text-base font-black text-slate-700 dark:text-white mb-1">No reviews yet</p>
+                                    <p className="text-xs font-medium text-slate-400">
+                                        Check back later for reviews.
                                     </p>
-                                    {eligibleMoveIn && (
-                                        <button
-                                            onClick={() => setReviewModal(true)}
-                                            className="mt-6 inline-flex items-center gap-2 bg-primary text-white font-black px-6 py-3.5 rounded-2xl shadow-lg shadow-primary/20 hover:scale-105 transition-all text-sm"
-                                        >
-                                            <Star size={16} className="fill-white" /> Write First Review
-                                        </button>
-                                    )}
                                 </div>
                             ) : (
                                 <div className="space-y-6">
-                                    {/* Rating Summary */}
+                                    {/* Small Rating Summary */}
                                     {stats && (
-                                        <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                                            <div className="flex flex-col md:flex-row gap-8">
-                                                {/* Big Score */}
-                                                <div className="flex flex-col items-center justify-center shrink-0 min-w-[140px]">
-                                                    <p className="text-6xl font-black text-slate-900 dark:text-white">
-                                                        {stats.overallAvg.toFixed(1)}
-                                                    </p>
-                                                    <StarDisplay rating={stats.overallAvg} size={20} />
-                                                    <p className="text-xs font-bold text-slate-400 mt-2">{reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}</p>
-                                                </div>
-
-                                                {/* Star Distribution */}
-                                                <div className="flex-1 space-y-2">
-                                                    {stats.distribution.map(({ star, count, pct }) => (
-                                                        <div key={star} className="flex items-center gap-3">
-                                                            <span className="text-xs font-black text-slate-500 w-3">{star}</span>
-                                                            <Star size={12} className="text-amber-400 fill-amber-400 shrink-0" />
-                                                            <div className="flex-1 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                                                <motion.div
-                                                                    className="h-full bg-amber-400 rounded-full"
-                                                                    initial={{ width: 0 }}
-                                                                    animate={{ width: `${pct}%` }}
-                                                                    transition={{ delay: 0.1, duration: 0.5, ease: 'easeOut' }}
-                                                                />
-                                                            </div>
-                                                            <span className="text-xs font-bold text-slate-400 w-4 text-right">{count}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-
-                                                {/* Category Averages */}
-                                                <div className="flex-1 grid grid-cols-2 gap-3">
-                                                    {CATEGORIES.map((cat) => (
-                                                        <div key={cat.key} className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-3 text-center">
-                                                            <p className="text-lg mb-1">{cat.emoji}</p>
-                                                            <p className="text-xs font-black text-slate-500 dark:text-slate-400 mb-1">{cat.label}</p>
-                                                            <p className="text-lg font-black text-slate-900 dark:text-white">{stats.catAvgs[cat.key].toFixed(1)}</p>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                        <div className="bg-slate-50 dark:bg-[#222630] rounded-2xl p-4 flex flex-col items-center mb-6 border border-slate-100/80 dark:border-white/[0.04]">
+                                            <p className="text-4xl font-black text-slate-900 dark:text-white">
+                                                {stats.overallAvg.toFixed(1)}
+                                            </p>
+                                            <StarDisplay rating={stats.overallAvg} size={16} />
+                                            <p className="text-xs font-bold text-slate-400 mt-1">{reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}</p>
                                         </div>
                                     )}
 
-                                    {/* Write Review CTA (if eligible) */}
-                                    {eligibleMoveIn && (
-                                        <button
-                                            onClick={() => setReviewModal(true)}
-                                            className="w-full bg-gradient-to-r from-primary to-indigo-600 text-white font-black py-5 rounded-[24px] shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-98 transition-all flex items-center justify-center gap-2 text-base"
-                                        >
-                                            <Star size={20} className="fill-white" /> Write Your Review
-                                            <ChevronRight size={20} />
-                                        </button>
-                                    )}
-
-                                    {/* Reviews List */}
+                                    {/* Review Cards */}
                                     <div className="space-y-4">
                                         {reviews.map((review, idx) => (
                                             <ReviewCard 
@@ -439,10 +427,11 @@ export default function OwnerProfile() {
                                     </div>
                                 </div>
                             )}
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </main>
 
             {/* Write Review Modal */}
             <WriteReviewModal
@@ -470,16 +459,17 @@ function ReviewCard({ review, idx, onHelpful, currentUserId, isOwner, onReply })
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05 }}
-            className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-100 dark:border-slate-800 p-6 shadow-sm"
+            custom={idx}
+            variants={reviewCardVariants}
+            initial="hidden"
+            animate="visible"
+            className="bg-white dark:bg-[#1A1D24] rounded-[28px] border border-slate-100/80 dark:border-white/[0.06] p-6 shadow-sm"
         >
             {/* Reviewer header */}
             <div className="flex items-start gap-4 mb-4">
                 <div className="size-11 rounded-full bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 font-black text-base shrink-0 overflow-hidden">
                     {review.reviewerAvatar ? (
-                        <img src={review.reviewerAvatar} alt={review.reviewerName} className="w-full h-full object-cover" />
+                        <img loading="lazy" src={review.reviewerAvatar} alt={review.reviewerName} className="w-full h-full object-cover" />
                     ) : (
                         (review.reviewerName || 'A')[0].toUpperCase()
                     )}
@@ -529,7 +519,7 @@ function ReviewCard({ review, idx, onHelpful, currentUserId, isOwner, onReply })
             )}
 
             {/* Actions & Replies */}
-            <div className="flex flex-col gap-4 mt-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+            <div className="flex flex-col gap-4 mt-2 border-t border-slate-100 dark:border-white/[0.06] pt-4">
                 <div className="flex items-center justify-between">
                     <button 
                         onClick={onHelpful}
@@ -551,7 +541,7 @@ function ReviewCard({ review, idx, onHelpful, currentUserId, isOwner, onReply })
 
                 {/* Landlord Reply Box */}
                 {review.landlordReply && (
-                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl ml-4 sm:ml-8 border border-slate-100 dark:border-slate-700 relative">
+                     <div className="bg-slate-50 dark:bg-[#222630] p-4 rounded-2xl ml-4 sm:ml-8 border border-slate-100/80 dark:border-white/[0.04] relative">
                          <div className="absolute top-0 left-0 w-1 h-full bg-primary/30 rounded-l-2xl"></div>
                          <div className="flex items-center gap-2 mb-2">
                              <div className="size-6 bg-primary/20 text-primary rounded-full flex items-center justify-center font-bold text-xs">
@@ -568,7 +558,7 @@ function ReviewCard({ review, idx, onHelpful, currentUserId, isOwner, onReply })
 
                 {/* Reply Input Form */}
                 {isOwner && !review.landlordReply && isReplying && (
-                     <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+                     <div className="bg-slate-50 dark:bg-[#222630] p-4 rounded-2xl border border-slate-200 dark:border-white/[0.06]">
                          <textarea
                              value={replyText}
                              onChange={e => setReplyText(e.target.value)}

@@ -4,8 +4,10 @@ import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/f
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Shield, Lock, CheckCircle2, Clock, Home, ChevronRight, AlertTriangle, Banknote, Search } from 'lucide-react';
+import { Ticket, Building2, Calendar, MapPin, Search, ArrowLeft, Loader2, CreditCard, ChevronRight, Shield, Lock, CheckCircle2, Clock, AlertTriangle, Banknote } from 'lucide-react';
+import { Skeleton } from '../components/Skeleton';
 import PaymentStatusModal from '../components/PaymentStatusModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../contexts/ToastContext';
 import { Helmet } from 'react-helmet-async';
 import { createNotification } from '../utils/notificationService';
@@ -84,18 +86,14 @@ export default function MyBookings() {
         <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-28">
             <Helmet><title>My Bookings | Any-Let</title></Helmet>
 
-            <header className="flex items-center px-6 pt-10 pb-6 sticky top-0 bg-[#f8fafc]/95 dark:bg-slate-950/95 backdrop-blur-md z-20 border-b border-slate-100 dark:border-slate-800/50">
-                <button onClick={() => navigate(-1)} className="p-2 -ml-2 text-slate-800 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-                    <ArrowLeft size={24} strokeWidth={2.5} />
-                </button>
-                <h1 className="flex-1 text-center text-[20px] font-[900] text-slate-900 dark:text-white tracking-tight">My Bookings</h1>
-                <div className="w-10" />
+            <header className="flex items-center justify-center px-6 pt-6 pb-4 sticky top-14 bg-[#f8fafc]/95 dark:bg-slate-950/95 backdrop-blur-md z-20 border-b border-slate-100 dark:border-slate-800/50">
+                <h1 className="text-[20px] font-[900] text-slate-900 dark:text-white tracking-tight">My Bookings</h1>
             </header>
 
             <main className="flex-1 px-6 pt-6">
                 {loading ? (
                     <div className="flex flex-col gap-4">
-                        {[1,2,3].map(n => <div key={n} className="animate-pulse h-[180px] w-full rounded-[28px] bg-slate-200 dark:bg-slate-800" />)}
+                        {[1,2,3].map(n => <Skeleton key={n} className="h-[180px] w-full rounded-[28px]" />)}
                     </div>
                 ) : bookings.length === 0 ? (
                     <div className="py-20 flex flex-col items-center justify-center text-center px-4">

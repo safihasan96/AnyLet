@@ -55,7 +55,7 @@ if [ -n "$SECRET_HITS" ]; then
 fi
 
 # Check for dangerouslySetInnerHTML
-INNER_HTML=$(git diff "$BASE_REF" 2>/dev/null | grep '^\+.*dangerouslySetInnerHTML' || true)
+INNER_HTML=$(git diff "$BASE_REF" -- . ':(exclude).agents/scripts/*' 2>/dev/null | grep '^\+.*dangerouslySetInnerHTML' || true)
 if [ -n "$INNER_HTML" ]; then
   echo "  ⚠️  MAJOR: dangerouslySetInnerHTML usage added"
   echo "- ⚠️  **MAJOR**: \`dangerouslySetInnerHTML\` added — ensure content is sanitized with DOMPurify" >> "$REPORT_FILE"
@@ -64,7 +64,7 @@ if [ -n "$INNER_HTML" ]; then
 fi
 
 # Check for eval()
-EVAL_HITS=$(git diff "$BASE_REF" 2>/dev/null | grep '^\+.*\beval(' || true)
+EVAL_HITS=$(git diff "$BASE_REF" -- . ':(exclude).agents/scripts/*' 2>/dev/null | grep '^\+.*\beval(' || true)
 if [ -n "$EVAL_HITS" ]; then
   echo "  ❌ CRITICAL: eval() usage detected"
   echo "- ❌ **CRITICAL**: \`eval()\` found — this is a serious security vulnerability" >> "$REPORT_FILE"
@@ -82,7 +82,7 @@ echo "## ⚡ Performance Findings" >> "$REPORT_FILE"
 PERF_ISSUES=0
 
 # Check for getDocs without limit
-NO_LIMIT=$(git diff "$BASE_REF" 2>/dev/null | grep -E '^\+.*getDocs\(collection\(' | grep -v 'limit(' || true)
+NO_LIMIT=$(git diff "$BASE_REF" -- . ':(exclude).agents/scripts/*' 2>/dev/null | grep -E '^\+.*getDocs\(collection\(' | grep -v 'limit(' || true)
 if [ -n "$NO_LIMIT" ]; then
   echo "  ⚠️  MAJOR: getDocs() call without limit() detected"
   echo "- ⚠️  **MAJOR**: \`getDocs()\` used without \`limit()\` — could fetch unbounded data" >> "$REPORT_FILE"
@@ -92,10 +92,10 @@ if [ -n "$NO_LIMIT" ]; then
 fi
 
 # Check for onSnapshot without cleanup reference
-SNAPSHOT_NO_CLEANUP=$(git diff "$BASE_REF" 2>/dev/null | grep -E '^\+.*onSnapshot\(' || true)
+SNAPSHOT_NO_CLEANUP=$(git diff "$BASE_REF" -- . ':(exclude).agents/scripts/*' 2>/dev/null | grep -E '^\+.*onSnapshot\(' || true)
 if [ -n "$SNAPSHOT_NO_CLEANUP" ]; then
   # Check if return is nearby (heuristic)
-  CLEANUP=$(git diff "$BASE_REF" 2>/dev/null | grep -E '^\+.*return\s+unsubscribe|return\s+\(\)\s*=>' || true)
+  CLEANUP=$(git diff "$BASE_REF" -- . ':(exclude).agents/scripts/*' 2>/dev/null | grep -E '^\+.*return\s+unsubscribe|return\s+\(\)\s*=>' || true)
   if [ -z "$CLEANUP" ]; then
     echo "  ⚠️  MAJOR: onSnapshot() without visible cleanup — check useEffect return"
     echo "- ⚠️  **MAJOR**: \`onSnapshot()\` added — verify the unsubscribe function is returned from \`useEffect\`" >> "$REPORT_FILE"
@@ -106,7 +106,7 @@ if [ -n "$SNAPSHOT_NO_CLEANUP" ]; then
 fi
 
 # Check for mousemove listeners
-MOUSEMOVE=$(git diff "$BASE_REF" 2>/dev/null | grep '^\+.*addEventListener.*mousemove\|onMouseMove' || true)
+MOUSEMOVE=$(git diff "$BASE_REF" -- . ':(exclude).agents/scripts/*' 2>/dev/null | grep '^\+.*addEventListener.*mousemove\|onMouseMove' || true)
 if [ -n "$MOUSEMOVE" ]; then
   echo "  ⚠️  MODERATE: mousemove listener added — verify GPU perf impact"
   echo "- ⚠️  **Moderate**: \`mousemove\` listener detected — ensure it targets small elements only; prefer \`whileHover\` for Framer Motion cards" >> "$REPORT_FILE"
@@ -124,7 +124,7 @@ echo "## 🧹 Code Quality Findings" >> "$REPORT_FILE"
 QUALITY_ISSUES=0
 
 # Check for console.log in production files
-CONSOLE_LOGS=$(git diff "$BASE_REF" 2>/dev/null | grep -E '^\+.*console\.(log|warn|error)\(' | grep -v '//.*console' || true)
+CONSOLE_LOGS=$(git diff "$BASE_REF" -- . ':(exclude).agents/scripts/*' 2>/dev/null | grep -E '^\+.*console\.(log|warn|error)\(' | grep -v '//.*console' || true)
 if [ -n "$CONSOLE_LOGS" ]; then
   COUNT=$(echo "$CONSOLE_LOGS" | wc -l | tr -d ' ')
   echo "  ℹ️  Minor: $COUNT console.log statement(s) found"
@@ -133,7 +133,7 @@ if [ -n "$CONSOLE_LOGS" ]; then
 fi
 
 # Check for TODO/FIXME
-TODOS=$(git diff "$BASE_REF" 2>/dev/null | grep -E '^\+.*(TODO|FIXME|HACK|XXX):' || true)
+TODOS=$(git diff "$BASE_REF" -- . ':(exclude).agents/scripts/*' 2>/dev/null | grep -E '^\+.*(TODO|FIXME|HACK|XXX):' || true)
 if [ -n "$TODOS" ]; then
   COUNT=$(echo "$TODOS" | wc -l | tr -d ' ')
   echo "  ℹ️  Minor: $COUNT TODO/FIXME comment(s) added"
@@ -152,7 +152,7 @@ if [ -n "$FM_CHANGED" ]; then
   FM_ISSUES=0
 
   # Check for inline animation objects
-  INLINE_ANIM=$(git diff "$BASE_REF" 2>/dev/null | grep -E '^\+.*<motion\.[a-z]+ .*initial=\{\{|animate=\{\{' || true)
+  INLINE_ANIM=$(git diff "$BASE_REF" -- . ':(exclude).agents/scripts/*' 2>/dev/null | grep -E '^\+.*<motion\.[a-z]+ .*initial=\{\{|animate=\{\{' || true)
   if [ -n "$INLINE_ANIM" ]; then
     echo "  ⚠️  MODERATE: Inline animation objects detected (should use Variants)"
     echo "- ⚠️  **Moderate**: Inline animation objects \`{{ }}\` found in JSX — decouple into named \`Variants\` objects" >> "$REPORT_FILE"

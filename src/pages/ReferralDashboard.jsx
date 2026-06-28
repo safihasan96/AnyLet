@@ -22,7 +22,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useReferral } from '../hooks/useReferral';
 import { useAuth } from '../contexts/AuthContext';
-import { requestWithdrawal } from '../utils/commissionService';
+import { auth } from '../firebase';
 import { formatBDT } from '../utils/referral';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -66,7 +66,26 @@ function WithdrawModal({ available, onClose, uid }) {
         }
         setLoading(true);
         try {
-            await requestWithdrawal(uid, amt, { bankName, accountNumber: accNo, accountName: accName });
+            // ── Secure: call the server-side withdrawal endpoint ──────────────
+            // The server validates the balance atomically and writes to Firestore
+            // via the Admin SDK, bypassing client-side Firestore rules entirely.
+            const idToken = await auth.currentUser?.getIdToken(true);
+            if (!idToken) throw new Error('Not authenticated');
+
+            const response = await fetch('/api/request-withdrawal', {
+                method:  'POST',
+                headers: {
+                    'Content-Type':  'application/json',
+                    'Authorization': `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({
+                    amount: amt,
+                    bankDetails: { bankName, accountNumber: accNo, accountName: accName },
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Withdrawal failed');
             setSuccess(true);
         } catch (err) {
             setError(err.message || 'Withdrawal failed. Please try again.');
@@ -231,12 +250,8 @@ export default function ReferralDashboard() {
         <>
             <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-32">
                 {/* ── Header ── */}
-                <header className="flex items-center justify-between p-6 bg-white dark:bg-slate-950 sticky top-0 z-10 border-b border-slate-100 dark:border-slate-800">
-                    <button onClick={() => navigate(-1)} className="text-[#1a227f] dark:text-white p-2">
-                        <ArrowLeft size={20} strokeWidth={2.5} />
-                    </button>
+                <header className="flex items-center justify-center p-6 bg-white dark:bg-slate-950 sticky top-14 z-10 border-b border-slate-100 dark:border-slate-800">
                     <h1 className="text-[14px] font-[900] text-[#1a227f] dark:text-white tracking-[0.2em] uppercase">Earn Money</h1>
-                    <div className="w-10" />
                 </header>
 
                 <div className="p-6 space-y-6 max-w-lg mx-auto w-full">

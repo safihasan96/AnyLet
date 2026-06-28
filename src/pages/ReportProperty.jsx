@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { ArrowLeft, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { PageSkeleton } from '../components/Skeleton';
 import logger from '../utils/logger';
 
 const REPORT_REASONS = [
@@ -78,14 +79,7 @@ export default function ReportProperty() {
         }
     };
 
-    if (loading) return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6">
-            <div className="animate-pulse flex flex-col items-center">
-                <div className="size-12 bg-primary/20 rounded-full mb-4"></div>
-                <div className="h-4 w-32 bg-slate-200 dark:bg-slate-800 rounded"></div>
-            </div>
-        </div>
-    );
+    if (loading) return <PageSkeleton />;
 
     if (submitted) {
         return (
@@ -116,7 +110,7 @@ export default function ReportProperty() {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 px-4 md:px-6">
             <div className="max-w-2xl mx-auto">
-                <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 transition-colors mb-8 font-bold">
+                <button onClick={() => navigate(-1)} className="hidden md:flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 transition-colors mb-8 font-bold">
                     <ArrowLeft size={20} /> Back
                 </button>
 

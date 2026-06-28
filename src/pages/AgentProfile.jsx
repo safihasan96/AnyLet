@@ -30,7 +30,7 @@ export default function AgentProfile() {
                 <div className="flex flex-col lg:flex-row gap-8">
                     {/* Left: Agent Details Card */}
                     <div className="bg-white dark:bg-slate-900 rounded-[40px] p-8 shadow-xl border border-slate-100 dark:border-slate-800 lg:w-96 shrink-0 relative flex flex-col items-center">
-                        <img src={agent.avatar} alt={agent.name} className="size-32 rounded-3xl border-4 border-white dark:border-slate-900 shadow-md bg-slate-100 -mt-24 mb-4 object-cover" />
+                        <img loading="lazy" src={agent.avatar} alt={agent.name} className="size-32 rounded-3xl border-4 border-white dark:border-slate-900 shadow-md bg-slate-100 -mt-24 mb-4 object-cover" />
                         
                         <div className="text-center w-full border-b border-slate-100 dark:border-slate-800 pb-6 mb-6">
                             <h1 className="text-2xl font-black text-slate-900 dark:text-white mb-1 flex items-center justify-center gap-2">

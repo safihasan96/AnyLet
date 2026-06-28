@@ -11,7 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
  *  4. Otherwise render children.
  */
 export default function AdminRoute({ children }) {
-    const { currentUser, userProfile, loading } = useAuth();
+    const { currentUser, userRole, loading } = useAuth();
 
     // 1. Wait if global auth/profile is still loading
     if (loading) {
@@ -28,8 +28,8 @@ export default function AdminRoute({ children }) {
         return <Navigate to="/login" replace />;
     }
 
-    // 3. Authenticated but profile doesn't exist or role isn't admin (unless it's the specific admin email)
-    if (currentUser.email !== 'safi.has.official@gmail.com' && (!userProfile || userProfile.role !== 'admin')) {
+    // 3. Authenticated but role isn't admin
+    if (userRole !== 'admin') {
         return <Navigate to="/" replace />;
     }
 

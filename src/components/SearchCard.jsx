@@ -8,7 +8,7 @@ export default function SearchCard({ property }) {
     return (
         <div className="search-card glass-panel">
             <Link to={`/property/${id}`} className="search-card-image-wrapper">
-                <img src={image} alt={title} className="search-card-image" />
+                <img loading="lazy" src={image} alt={title} className="search-card-image" />
                 <div className="property-badges-container">
                     <span className="badge badge-type">{type}</span>
                     {verified && <span className="badge badge-verified">✅ Verified</span>}

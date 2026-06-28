@@ -165,7 +165,7 @@ export default function Onboarding() {
     ───────────────────────────────────────────────────────────────────── */
     if (stepIdx >= STEPS.length) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-[#1a227f] via-[#1a3a7f] to-[#0d1b4b] flex flex-col items-center justify-center p-6 text-center">
+            <div className="min-h-screen bg-gradient-to-br from-primary via-indigo-800 to-indigo-950 flex flex-col items-center justify-center p-6 text-center">
                 <motion.div
                     initial={{ scale: 0, rotate: -30 }}
                     animate={{ scale: 1, rotate: 0 }}
@@ -182,7 +182,7 @@ export default function Onboarding() {
                     <motion.button
                         whileTap={{ scale: 0.95 }}
                         onClick={() => navigate(nextRoute, { replace: true })}
-                        className="px-10 py-4 bg-white text-[#1a227f] font-black rounded-2xl shadow-2xl text-sm uppercase tracking-widest"
+                        className="px-10 py-4 bg-white text-primary font-black rounded-2xl shadow-2xl text-sm uppercase tracking-widest hover:bg-slate-50 transition-colors"
                     >
                         Start Exploring
                     </motion.button>
@@ -201,10 +201,10 @@ export default function Onboarding() {
                 <div className="max-w-lg mx-auto">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                            <div className="size-8 bg-[#1a227f] rounded-xl flex items-center justify-center">
+                            <div className="size-8 bg-primary rounded-xl flex items-center justify-center">
                                 <HomeIcon size={16} className="text-white" />
                             </div>
-                            <span className="text-sm font-black text-[#1a227f] dark:text-indigo-400 uppercase tracking-tighter">AnyLet</span>
+                            <span className="text-sm font-black text-primary dark:text-indigo-400 uppercase tracking-tighter">AnyLet</span>
                         </div>
                         <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                             Step {stepIdx + 1} of {STEPS.length}
@@ -218,11 +218,11 @@ export default function Onboarding() {
                             const active = i === stepIdx;
                             return (
                                 <div key={s.id} className="flex-1 flex flex-col items-center gap-1">
-                                    <div className={`w-full h-1 rounded-full transition-all duration-500 ${done || active ? 'bg-[#1a227f]' : 'bg-slate-200 dark:bg-slate-700'}`} />
-                                    <div className={`size-7 rounded-xl flex items-center justify-center transition-all ${done ? 'bg-[#1a227f] text-white' : active ? 'bg-[#1a227f]/10 text-[#1a227f] dark:bg-indigo-900/40 dark:text-indigo-400' : 'bg-transparent text-slate-300 dark:text-slate-600'}`}>
+                                    <div className={`w-full h-1 rounded-full transition-all duration-500 ${done || active ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                                    <div className={`size-7 rounded-xl flex items-center justify-center transition-all ${done ? 'bg-primary text-white' : active ? 'bg-primary/10 text-primary dark:bg-indigo-900/40 dark:text-indigo-400' : 'bg-transparent text-slate-300 dark:text-slate-600'}`}>
                                         {done ? <CheckCircle2 size={14} /> : <Icon size={14} />}
                                     </div>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider hidden sm:block ${active ? 'text-[#1a227f] dark:text-indigo-400' : done ? 'text-slate-500' : 'text-slate-300 dark:text-slate-600'}`}>{s.label}</span>
+                                    <span className={`text-[9px] font-black uppercase tracking-wider hidden sm:block ${active ? 'text-primary dark:text-indigo-400' : done ? 'text-slate-500' : 'text-slate-300 dark:text-slate-600'}`}>{s.label}</span>
                                 </div>
                             );
                         })}
@@ -257,7 +257,7 @@ export default function Onboarding() {
                                             value={firstName}
                                             onChange={e => setFirstName(e.target.value)}
                                             placeholder="First Name"
-                                            className="w-full px-4 py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-slate-900 dark:text-white focus:border-[#1a227f] focus:outline-none transition-colors"
+                                            className="w-full px-4 py-3.5 bg-white dark:bg-[#0A0C10] border-2 border-slate-200 dark:border-transparent rounded-2xl font-bold text-slate-900 dark:text-white focus:border-primary/50 dark:focus:border-indigo-500/50 outline-none transition-all"
                                         />
                                     </div>
                                     <div>
@@ -266,7 +266,7 @@ export default function Onboarding() {
                                             value={lastName}
                                             onChange={e => setLastName(e.target.value)}
                                             placeholder="Last Name"
-                                            className="w-full px-4 py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-slate-900 dark:text-white focus:border-[#1a227f] focus:outline-none transition-colors"
+                                            className="w-full px-4 py-3.5 bg-white dark:bg-[#0A0C10] border-2 border-slate-200 dark:border-transparent rounded-2xl font-bold text-slate-900 dark:text-white focus:border-primary/50 dark:focus:border-indigo-500/50 outline-none transition-all"
                                         />
                                     </div>
                                 </div>
@@ -277,7 +277,7 @@ export default function Onboarding() {
                                         value={dob}
                                         onChange={e => setDob(e.target.value)}
                                         max={new Date(Date.now() - 18 * 365.25 * 24 * 3600 * 1000).toISOString().split('T')[0]}
-                                        className="w-full px-4 py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-slate-900 dark:text-white focus:border-[#1a227f] focus:outline-none transition-colors"
+                                        className="w-full px-4 py-3.5 bg-white dark:bg-[#0A0C10] border-2 border-slate-200 dark:border-transparent rounded-2xl font-bold text-slate-900 dark:text-white focus:border-primary/50 dark:focus:border-indigo-500/50 outline-none transition-all"
                                     />
                                 </div>
                                 {error && <ErrorBanner message={error} />}
@@ -294,8 +294,8 @@ export default function Onboarding() {
                                 </div>
                                 <div>
                                     <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Phone Number</label>
-                                    <div className="flex gap-2">
-                                        <div className="flex items-center px-4 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-slate-500 text-sm whitespace-nowrap">
+                                    <div className="flex gap-2 group">
+                                        <div className="flex items-center px-4 bg-white dark:bg-[#0A0C10] border-2 border-slate-200 dark:border-transparent rounded-2xl font-bold text-slate-500 text-sm whitespace-nowrap transition-colors group-focus-within:border-primary/50 dark:group-focus-within:border-indigo-500/50">
                                             🇧🇩 +880
                                         </div>
                                         <input
@@ -303,7 +303,7 @@ export default function Onboarding() {
                                             value={phone}
                                             onChange={e => { setPhone(e.target.value); setPhoneError(''); }}
                                             placeholder="01712 345 678"
-                                            className="flex-1 px-4 py-3.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-slate-900 dark:text-white focus:border-[#1a227f] focus:outline-none transition-colors"
+                                            className="flex-1 px-4 py-3.5 bg-white dark:bg-[#0A0C10] border-2 border-slate-200 dark:border-transparent rounded-2xl font-bold text-slate-900 dark:text-white focus:border-primary/50 dark:focus:border-indigo-500/50 outline-none transition-all"
                                         />
                                     </div>
                                     {phoneError && (
@@ -341,7 +341,7 @@ function ContinueButton({ onClick, loading, label = 'Continue', className = '' }
             whileTap={{ scale: 0.97 }}
             onClick={onClick}
             disabled={loading}
-            className={`flex items-center justify-center gap-2 py-4 px-8 bg-[#1a227f] text-white font-black rounded-2xl shadow-lg shadow-[#1a227f]/20 hover:bg-[#1a227f]/90 transition-all disabled:opacity-70 ${className}`}
+            className={`flex items-center justify-center gap-2 py-4 px-8 bg-primary text-white font-black rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all disabled:opacity-70 ${className}`}
         >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <>{label} <ArrowRight size={18} /></>}
         </motion.button>

@@ -57,7 +57,7 @@ export default function Agents() {
                         {MOCK_AGENTS.map(agent => (
                             <div key={agent.id} className="bg-white dark:bg-slate-900 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col hover:border-primary/30 transition-colors group">
                                 <div className="flex items-start gap-4 mb-6">
-                                    <img src={agent.avatar} alt={agent.name} className="size-20 w-20 h-20 rounded-2xl object-cover bg-slate-100 dark:bg-slate-800" />
+                                    <img loading="lazy" src={agent.avatar} alt={agent.name} className="size-20 w-20 h-20 rounded-2xl object-cover bg-slate-100 dark:bg-slate-800" />
                                     <div className="flex-1 min-w-0">
                                         <Link to={`/agent/${agent.id}`} className="block">
                                             <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight mb-1 truncate group-hover:text-primary dark:text-indigo-400 transition-colors">{agent.name}</h3>

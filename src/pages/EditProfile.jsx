@@ -4,7 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { auth, db } from '../firebase';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
-import { ArrowLeft, Camera, MapPin, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Save, Plus, X, Camera, MapPin, MessageCircle } from 'lucide-react';
+import { EditProfileSkeleton } from '../components/Skeleton';
 import logger from '../utils/logger';
 
 export default function EditProfile() {
@@ -163,15 +164,12 @@ export default function EditProfile() {
         return name[0].toUpperCase();
     };
 
-    if (loading) return <div className="p-20 text-center animate-pulse text-[#3730a3]">Loading profile...</div>;
+    if (loading) return <EditProfileSkeleton />;
 
     return (
         <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-28">
-            <header className="flex items-center p-6 mb-2">
-                <button onClick={() => navigate(-1)} className="text-slate-800 dark:text-white p-2 border border-transparent -ml-2">
-                    <ArrowLeft size={24} strokeWidth={2.5} />
-                </button>
-                <h1 className="text-lg font-[900] text-slate-900 dark:text-white flex-1 text-center pr-8 tracking-tight">Edit Profile</h1>
+            <header className="flex items-center justify-center p-6 mb-2">
+                <h1 className="text-lg font-[900] text-slate-900 dark:text-white tracking-tight">Edit Profile</h1>
             </header>
 
             <div className="flex-1 flex flex-col items-center px-6 max-w-md mx-auto w-full">
@@ -181,7 +179,7 @@ export default function EditProfile() {
                     <div className="relative mb-4">
                         <div className="size-[120px] rounded-full bg-slate-200 dark:bg-slate-800 border-4 border-white dark:border-slate-900 shadow-sm overflow-hidden flex items-center justify-center text-5xl font-bold text-[#3730a3] dark:text-indigo-400">
                             {formData.photoURL ? (
-                                <img src={formData.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                                <img loading="lazy" src={formData.photoURL} alt="Profile" className="w-full h-full object-cover" />
                             ) : (
                                 getInitials(formData.fullName)
                             )}

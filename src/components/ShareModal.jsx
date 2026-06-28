@@ -50,8 +50,7 @@ export default function ShareModal({ isOpen, onClose, property }) {
                     {/* Property Preview Card */}
                     <div className="flex gap-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80">
                         {firstImage ? (
-                            <img
-                                src={firstImage}
+                            <img loading="lazy" src={firstImage}
                                 alt={property.title}
                                 className="w-20 h-20 rounded-xl object-cover shrink-0 border border-slate-200/50 dark:border-slate-700/50"
                             />

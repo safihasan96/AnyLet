@@ -27,10 +27,7 @@ export default function Settings() {
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-slate-950 pb-32">
             {/* Header */}
-            <header className="flex items-center p-6 bg-white dark:bg-slate-950 sticky top-0 z-10 border-b border-[#f1f5f9] dark:border-slate-800">
-                <button onClick={() => navigate(-1)} className="text-[#1a227f] dark:text-white p-2 border border-transparent mr-4">
-                    <ArrowLeft size={20} strokeWidth={2.5} />
-                </button>
+            <header className="flex items-center justify-center p-6 bg-white dark:bg-slate-950 sticky top-14 z-10 border-b border-[#f1f5f9] dark:border-slate-800">
                 <h1 className="text-[14px] font-[900] text-[#1a227f] dark:text-white tracking-[0.2em] uppercase">{t('settings')}</h1>
             </header>
 

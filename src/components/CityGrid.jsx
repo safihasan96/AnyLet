@@ -38,7 +38,7 @@ export default function CityGrid() {
                         className="city-card"
                         onClick={() => handleCityClick(city.name)}
                     >
-                        <img src={city.image} alt={city.name} className="city-image" />
+                        <img loading="lazy" src={city.image} alt={city.name} className="city-image" />
                         <div className="city-overlay"></div>
                         <h3 className="city-name">{city.name}</h3>
                     </div>

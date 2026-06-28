@@ -42,6 +42,10 @@ export default function Login() {
         return nextRoute;
     }
 
+    const handleBack = () => {
+        navigate('/', { replace: true });
+    };
+
     async function handleSubmit(e) {
         e.preventDefault();
         setError('');
@@ -51,7 +55,12 @@ export default function Login() {
             setLoading(true);
             const userCredential = await login(email, password);
 
-
+            if (!userCredential.user.emailVerified) {
+                await signOut(auth);
+                setUnverified(true);
+                setLoading(false);
+                return;
+            }
 
             const snap = await getDoc(doc(db, 'users', userCredential.user.uid));
             const data = snap.exists() ? snap.data() : {};
@@ -130,10 +139,10 @@ export default function Login() {
                 </header>
                 <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
                     <div className="flex items-center gap-2 mb-10">
-                        <div className="size-10 bg-[#1a227f] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-[#1a227f]/30">
+                        <div className="size-10 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
                             <HomeIcon size={24} />
                         </div>
-                        <h2 className="text-2xl font-black uppercase tracking-tighter text-[#1a227f] dark:text-indigo-400">AnyLet</h2>
+                        <h2 className="text-2xl font-black uppercase tracking-tighter text-primary dark:text-indigo-400">AnyLet</h2>
                     </div>
                     <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2">Link your accounts</h1>
                     <p className="text-slate-500 font-medium text-sm mb-8">
@@ -147,9 +156,9 @@ export default function Login() {
                             value={linkPassword}
                             onChange={e => setLinkPassword(e.target.value)}
                             required
-                            className="w-full bg-slate-50 dark:bg-slate-900/50 border-none rounded-2xl py-4 px-5 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-[#1a227f]/50 transition-all"
+                            className="w-full bg-slate-50 dark:bg-slate-900/50 border-none rounded-2xl py-4 px-5 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                         />
-                        <button disabled={loading} className="w-full bg-[#1a227f] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#1a227f]/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70">
+                        <button disabled={loading} className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70">
                             {loading ? <Loader2 size={18} className="animate-spin" /> : <><ArrowRight size={20} /> Link Accounts & Continue</>}
                         </button>
                     </form>
@@ -158,21 +167,50 @@ export default function Login() {
         );
     }
 
-    /* ── Main Login Screen ────────────────────────────────────────────────── */
+    /* ── Main Login Screen ─────────────────────────────────────────────── */
     return (
-        <div className="flex flex-col min-h-screen bg-white dark:bg-slate-950 p-6">
+        <div className="flex flex-col min-h-screen bg-white dark:bg-slate-950 p-6 lg:p-0 lg:flex-row">
+            {/* Left Brand Panel (Desktop only) */}
+            <div className="hidden lg:flex lg:flex-1 bg-gradient-to-br from-[#1a227f] via-[#1e2a9a] to-[#0f1559] flex-col items-center justify-center relative overflow-hidden">
+                <div aria-hidden className="absolute -top-20 -right-20 size-80 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, rgba(140,150,255,0.55) 0%, transparent 70%)' }} />
+                <div aria-hidden className="absolute bottom-10 left-10 size-56 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, rgba(200,210,255,0.4) 0%, transparent 70%)' }} />
+                <div className="relative z-10 text-center px-12">
+                    <div className="size-20 bg-white/10 border border-white/20 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
+                        <HomeIcon size={40} className="text-white" />
+                    </div>
+                    <h1 className="text-5xl font-black text-white tracking-tight mb-4">any<span className="italic text-indigo-300">.let</span></h1>
+                    <p className="text-indigo-200 font-semibold text-lg leading-relaxed max-w-xs mx-auto">The smartest way to rent in Bangladesh. Verified landlords. Secure deals.</p>
+                    <div className="flex items-center justify-center gap-3 mt-10">
+                        <div className="flex flex-col items-center bg-white/10 rounded-2xl px-6 py-4 border border-white/10">
+                            <span className="text-2xl font-black text-white">10k+</span>
+                            <span className="text-indigo-200 text-xs font-bold uppercase tracking-wider">Listings</span>
+                        </div>
+                        <div className="flex flex-col items-center bg-white/10 rounded-2xl px-6 py-4 border border-white/10">
+                            <span className="text-2xl font-black text-white">BD</span>
+                            <span className="text-indigo-200 text-xs font-bold uppercase tracking-wider">Nationwide</span>
+                        </div>
+                        <div className="flex flex-col items-center bg-white/10 rounded-2xl px-6 py-4 border border-white/10">
+                            <span className="text-2xl font-black text-white">100%</span>
+                            <span className="text-indigo-200 text-xs font-bold uppercase tracking-wider">Verified</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Right: Form column */}
+            <div className="flex flex-col lg:w-[480px] lg:overflow-y-auto lg:p-12 p-0">
             <header className="flex items-center mb-6">
-                <button onClick={() => navigate(-1)} className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-[#1a227f]/10 hover:text-[#1a227f] dark:text-indigo-400 transition-all active:scale-95 border border-slate-100 dark:border-slate-700">
+                <button onClick={handleBack} className="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-primary/10 hover:text-primary dark:text-indigo-400 transition-all active:scale-95 border border-slate-100 dark:border-slate-700">
                     <ArrowLeft size={20} strokeWidth={3} />
                 </button>
             </header>
 
             <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
                 <div className="flex items-center gap-2 mb-12">
-                    <div className="size-10 bg-[#1a227f] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-[#1a227f]/30">
+                    <div className="size-10 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg shadow-primary/30">
                         <HomeIcon size={24} />
                     </div>
-                    <h2 className="text-2xl font-black uppercase tracking-tighter text-[#1a227f] dark:text-indigo-400">AnyLet</h2>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-primary dark:text-indigo-400">AnyLet</h2>
                 </div>
 
                 <div className="mb-10">
@@ -214,38 +252,51 @@ export default function Login() {
                     <div className="flex-1 h-px bg-slate-100 dark:bg-slate-800" />
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="relative group">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#1a227f] dark:text-indigo-400 transition-colors" size={20} />
-                        <input
-                            type="email"
-                            placeholder="Email Address"
-                            className="w-full bg-slate-50 dark:bg-slate-900/50 border-none rounded-2xl py-4 pl-12 pr-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-[#1a227f]/50 transition-all"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    {/* Email Field Group */}
+                    <div className="space-y-1.5 group">
+                        <label className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 group-focus-within:text-primary dark:group-focus-within:text-indigo-400 transition-colors block ml-1">
+                            Email Address
+                        </label>
+                        <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary dark:text-indigo-400 transition-colors" size={20} />
+                            <input
+                                type="email"
+                                placeholder="you@example.com"
+                                className="w-full bg-slate-50 dark:bg-[#0A0C10] border-2 border-transparent rounded-2xl py-4 pl-12 pr-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 outline-none focus:border-primary/30 dark:focus:border-indigo-500/30 transition-all"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                            />
+                        </div>
                     </div>
 
-                    <div className="relative group">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#1a227f] dark:text-indigo-400 transition-colors" size={20} />
-                        <input
-                            type="password"
-                            placeholder="Password"
-                            className="w-full bg-slate-50 dark:bg-slate-900/50 border-none rounded-2xl py-4 pl-12 pr-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-[#1a227f]/50 transition-all"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                    </div>
-
-                    <div className="flex justify-end pt-2">
-                        <Link to="/forgot-password" className="text-[10px] uppercase font-black text-[#1a227f] dark:text-indigo-400 tracking-widest cursor-pointer hover:underline">Forgot Password?</Link>
+                    {/* Password Field Group */}
+                    <div className="space-y-1.5 group">
+                        <div className="flex items-center justify-between ml-1">
+                            <label className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 group-focus-within:text-primary dark:group-focus-within:text-indigo-400 transition-colors">
+                                Password
+                            </label>
+                            <Link to="/forgot-password" className="text-[10px] uppercase font-black text-primary dark:text-indigo-400 tracking-widest cursor-pointer hover:underline">
+                                Forgot?
+                            </Link>
+                        </div>
+                        <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary dark:text-indigo-400 transition-colors" size={20} />
+                            <input
+                                type="password"
+                                placeholder="••••••••"
+                                className="w-full bg-slate-50 dark:bg-[#0A0C10] border-2 border-transparent rounded-2xl py-4 pl-12 pr-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700 outline-none focus:border-primary/30 dark:focus:border-indigo-500/30 transition-all"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
+                        </div>
                     </div>
 
                     <button
                         disabled={loading}
-                        className="w-full bg-[#1a227f] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#1a227f]/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70 mt-4"
+                        className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-97 disabled:opacity-70 mt-6"
                     >
                         {loading ? <Loader2 size={18} className="animate-spin" /> : <><ArrowRight size={20} /> SIGN IN NOW</>}
                     </button>
@@ -253,10 +304,11 @@ export default function Login() {
 
                 <div className="mt-12 text-center">
                     <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">
-                        Don't have an account? <Link to="/signup" className="text-[#1a227f] dark:text-indigo-400 font-black ml-1">Create One</Link>
+                        Don't have an account? <Link to="/signup" className="text-primary dark:text-indigo-400 font-black ml-1 hover:underline">Create One</Link>
                     </p>
                 </div>
             </div>
+            </div> {/* closes right form column */}
         </div>
     );
 }

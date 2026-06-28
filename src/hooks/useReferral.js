@@ -34,15 +34,7 @@ export function useReferral() {
     const [withdrawn, setWithdrawn]               = useState(0);
     const [loading, setLoading]                   = useState(true);
 
-    // ── 1. Derive referral code from email ──────────────────────────────────
-    useEffect(() => {
-        if (!currentUser?.email) return;
-        const code = generateReferralCode(currentUser.email);
-        setReferralCode(code);
-        setReferralLink(getReferralLink(code));
-    }, [currentUser]);
-
-    // ── 2. Live-listen to user doc for wallet balances ──────────────────────
+    // ── 1. Live-listen to user doc for wallet balances and referral code ──
     useEffect(() => {
         if (!currentUser?.uid) { setLoading(false); return; }
 
@@ -52,6 +44,11 @@ export function useReferral() {
                 const d = snap.data();
                 setAvailableBalance(d.referralWallet?.available ?? 0);
                 setWithdrawn(d.referralWallet?.withdrawn ?? 0);
+                
+                if (d.referralCode) {
+                    setReferralCode(d.referralCode);
+                    setReferralLink(getReferralLink(d.referralCode));
+                }
             }
         });
 

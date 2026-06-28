@@ -15,14 +15,7 @@ export default function Pricing() {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10">
             <div className="max-w-6xl mx-auto px-6">
-                <div className="flex justify-start mb-8">
-                    <button 
-                        onClick={() => navigate(-1)} 
-                        className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 font-bold transition-colors"
-                    >
-                        <ArrowLeft size={20} /> Back to previous
-                    </button>
-                </div>
+                {/* Back button handled by MobileNavBar */}
                 <header className="text-center mb-16">
                     <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-4">Simple, Transparent Pricing</h1>
                     <p className="text-lg text-slate-500 font-medium max-w-xl mx-auto">Choose the perfect plan to maximize your property's visibility or manage multiple portfolios.</p>
@@ -107,6 +100,7 @@ export default function Pricing() {
                     isOpen={paymentModalOpen}
                     onClose={() => setPaymentModalOpen(false)}
                     type="subscription"
+                    bookingType="subscription"
                     amount={selectedPlan.amount}
                     title="Subscription Upgrade"
                     subtitle={`Upgrade to ${selectedPlan.name} Plan`}

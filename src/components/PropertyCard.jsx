@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Bed, DoorOpen, Building2, Star, Heart, Zap, CheckCircle2, Clock, Lock, ShieldCheck } from 'lucide-react';
+import { MapPin, Bed, DoorOpen, Building2, Star, Heart, Zap, CheckCircle2, Clock, Lock, ShieldCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import useSavedProperties from '../hooks/useSavedProperties';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { getOptimizedImageUrl } from '../utils/imageUtils';
 
 // ── Variants (all decoupled from JSX per framer-motion-expert skill) ──────────
 
@@ -32,10 +34,27 @@ export default function PropertyCard({ property }) {
     const { id, title, rent, area, beds, baths, sqft, image, type, isVerified, utilitiesCost } = property;
     const { toggleSaveProperty, isPropertySaved } = useSavedProperties();
     const isSaved = isPropertySaved(id);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+    // Get up to 3 images for the slider
+    const allImages = property?.images?.length > 0 ? property.images : [image || property.imageUrl];
+    const displayImages = allImages.filter(Boolean).slice(0, 3);
+    const hasMultipleImages = displayImages.length > 1;
+
+    const nextImage = (e) => {
+        e.preventDefault(); // Prevent Link navigation
+        e.stopPropagation();
+        setActiveImageIndex((prev) => (prev === displayImages.length - 1 ? 0 : prev + 1));
+    };
+
+    const prevImage = (e) => {
+        e.preventDefault(); // Prevent Link navigation
+        e.stopPropagation();
+        setActiveImageIndex((prev) => (prev === 0 ? displayImages.length - 1 : prev - 1));
+    };
 
     // Fallbacks
     const displayRent = rent || property.price || 0;
-    const displayImage = property?.images?.[0] || image || property.imageUrl || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80';
     
     const locationParts = [property.addressDetails, property.upazila, property.district].filter(Boolean);
     const displayLocation = locationParts.length > 0 ? locationParts.join(', ') : 'Dhaka, Bangladesh';
@@ -70,24 +89,65 @@ export default function PropertyCard({ property }) {
         >
             <Link
                 to={`/property/${id}`}
-                className="h-full group flex flex-col bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-2xl hover:shadow-primary/10 transition-shadow"
+                className="h-full group flex flex-col bg-white dark:bg-[#1A1D24] rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800/70 hover:shadow-2xl hover:shadow-primary/10 transition-shadow lg:hover:border-primary/20"
             >
-                {/* ── Image ──────────────────────────────── */}
-                <div className="relative h-56 w-full overflow-hidden">
-                    <img
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                        src={displayImage}
-                        alt={title}
-                    />
+                {/* ── Image Slider ──────────────────────────────── */}
+                <div className="relative h-56 w-full overflow-hidden group/slider bg-slate-100 dark:bg-slate-800 lg:h-52">
+                    <AnimatePresence initial={false} mode="wait">
+                        <motion.img
+                            key={activeImageIndex}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            loading="lazy"
+                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            src={getOptimizedImageUrl(displayImages[activeImageIndex] || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80', 600)}
+                            alt={title}
+                        />
+                    </AnimatePresence>
+
+                    {hasMultipleImages && (
+                        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/40 to-transparent pointer-events-none z-10" />
+                    )}
+
+                    {/* Slider Controls */}
+                    {hasMultipleImages && (
+                        <>
+                            <button
+                                onClick={prevImage}
+                                className="absolute left-2 top-1/2 -translate-y-1/2 size-8 rounded-full bg-white/70 backdrop-blur-sm text-slate-700 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity hover:bg-white shadow-sm z-20"
+                            >
+                                <ChevronLeft size={18} />
+                            </button>
+                            <button
+                                onClick={nextImage}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 size-8 rounded-full bg-white/70 backdrop-blur-sm text-slate-700 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity hover:bg-white shadow-sm z-20"
+                            >
+                                <ChevronRight size={18} />
+                            </button>
+                            {/* Pagination Dots */}
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                                {displayImages.map((_, idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`h-1.5 rounded-full transition-all ${
+                                            idx === activeImageIndex ? 'bg-white w-4' : 'bg-white/60 w-1.5'
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                        </>
+                    )}
 
                     {/* Heart button */}
-                    <div className="absolute top-4 right-4">
+                    <div className="absolute top-4 right-4 z-20">
                         <motion.button
                             animate={isSaved ? 'saved' : 'unsaved'}
                             variants={heartVariants}
                             whileHover={{ scale: 1.15 }}
                             whileTap={{ scale: 0.8 }}
-                            className={`size-10 rounded-xl bg-white/90 backdrop-blur flex items-center justify-center shadow-sm ${isSaved ? 'text-rose-500' : 'text-slate-400 hover:text-rose-500'}`}
+                            className={`size-10 rounded-xl bg-white/95 flex items-center justify-center shadow-sm ${isSaved ? 'text-rose-500' : 'text-slate-400 hover:text-rose-500'}`}
                             onClick={(e) => toggleSaveProperty(id, e)}
                         >
                             <Heart size={20} fill={isSaved ? "currentColor" : "none"} strokeWidth={isSaved ? 0 : 2} />
@@ -96,8 +156,7 @@ export default function PropertyCard({ property }) {
 
                     {/* Price */}
                     <motion.div
-                        className="absolute bottom-4 left-4 bg-primary text-white px-4 py-2 rounded-xl font-black text-sm shadow-lg shadow-primary/20"
-                        style={{ translateZ: 6 }}
+                        className="absolute bottom-4 left-4 bg-primary text-white px-4 py-2 rounded-xl font-black text-sm shadow-lg shadow-primary/20 z-20"
                         whileHover={{ scale: 1.05 }}
                         transition={{ type: 'spring', stiffness: 400 }}
                     >
@@ -105,25 +164,25 @@ export default function PropertyCard({ property }) {
                     </motion.div>
 
                     {/* Badges */}
-                    <div className="absolute top-4 left-4 flex flex-col gap-2 items-start">
+                    <div className="absolute top-4 left-4 flex flex-col gap-2 items-start z-20">
                         {isVerified && (
-                            <div className="bg-white/90 backdrop-blur text-emerald-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm border border-emerald-100">
+                            <div className="bg-white/95 text-emerald-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm border border-emerald-100">
                                 <ShieldCheck size={12} className="fill-emerald-600" /> Verified Landlord
                             </div>
                         )}
                         {property.reviewCount > 0 && (
-                            <div className="bg-white/90 backdrop-blur text-amber-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm border border-amber-100">
+                            <div className="bg-white/95 text-amber-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-1 shadow-sm border border-amber-100">
                                 <Star size={12} className="fill-amber-500" />
                                 {Number(property.reviewScore || 0).toFixed(1)} ({property.reviewCount})
                             </div>
                         )}
                         {property.status && property.status !== 'Available' && (
-                            <div className={`backdrop-blur-md px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm flex items-center gap-1.5 border ${
+                            <div className={`px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm flex items-center gap-1.5 border ${
                                 property.status === 'Let Agreed' 
-                                    ? 'bg-rose-500/80 text-white border-rose-400/50' 
+                                    ? 'bg-rose-500 text-white border-rose-400' 
                                     : property.status === 'Booked'
-                                        ? 'bg-blue-500/80 text-white border-blue-400/50'
-                                        : 'bg-amber-500/80 text-white border-amber-400/50'
+                                        ? 'bg-blue-500 text-white border-blue-400'
+                                        : 'bg-amber-500 text-white border-amber-400'
                             }`}>
                                 {property.status === 'Let Agreed' ? <CheckCircle2 size={12} strokeWidth={3} /> : property.status === 'Booked' ? <Lock size={12} strokeWidth={3} /> : <Clock size={12} strokeWidth={3} />}
                                 {property.status}

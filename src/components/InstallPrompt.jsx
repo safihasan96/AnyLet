@@ -47,7 +47,7 @@ const InstallPrompt = () => {
   if (!showPrompt) return null;
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 z-50 md:bottom-24 md:left-auto md:right-8 md:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-700 p-4 transition-all duration-300 transform translate-y-0 opacity-100">
+    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-4 right-4 z-50 md:bottom-24 md:left-auto md:right-8 md:w-96 bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-100 dark:border-slate-700 p-4 transition-all duration-300 transform translate-y-0 opacity-100">
       <div className="flex items-start">
         <div className="bg-primary/10 p-3 rounded-full mr-4 text-primary dark:text-indigo-400 shrink-0">
           <Download className="w-6 h-6" />

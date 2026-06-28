@@ -4,6 +4,7 @@ import { collection, query, onSnapshot, deleteDoc, doc, updateDoc, serverTimesta
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, MoreHorizontal, MapPin, ChevronRight, Home as HomeIcon, Trash2, RefreshCcw, Info, RefreshCw, Shield, CheckCircle2, Search, SlidersHorizontal, Eye, Edit, Activity, DoorOpen } from 'lucide-react';
+import { Skeleton } from '../components/Skeleton';
 import ConfirmationModal from '../components/ConfirmationModal';
 import PaymentModal from '../components/PaymentModal';
 import { sendListingExpiryEmail } from '../utils/emailService';
@@ -185,19 +186,16 @@ export default function MyListings() {
     };
 
     return (
-        <div className="flex flex-col min-h-screen pb-28" style={{ background: '#f8f9ff', color: '#0b1c30' }}>
+        <div className="flex flex-col min-h-screen pb-28 bg-[#F8F9FA] dark:bg-[#0F1117]">
             {/* Header */}
-            <header className="sticky top-0 z-20 flex flex-col px-5 pt-6 pb-4" style={{ background: '#f8f9ff', borderBottom: '1px solid #e5eeff' }}>
-                <div className="flex items-center justify-between mb-4">
-                    <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-[#e5eeff] transition-colors active:scale-90">
-                        <ArrowLeft size={24} style={{ color: '#14147c' }} strokeWidth={2.5} />
-                    </button>
-                    <button className="p-2 -mr-2 rounded-full hover:bg-[#e5eeff] transition-colors">
-                        <MoreHorizontal size={24} style={{ color: '#14147c' }} strokeWidth={2.5} />
+            <header className="sticky top-14 z-20 flex flex-col px-5 pt-4 pb-4 bg-[#F8F9FA]/90 dark:bg-[#0F1117]/90 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50">
+                <div className="flex items-center justify-end mb-4">
+                    <button className="p-2 -mr-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                        <MoreHorizontal size={24} className="text-slate-900 dark:text-white" strokeWidth={2.5} />
                     </button>
                 </div>
                 <div>
-                    <h1 className="text-[28px] font-bold tracking-tight" style={{ color: '#14147c', lineHeight: 1.2 }}>
+                    <h1 className="text-[28px] font-black tracking-tight text-slate-900 dark:text-white leading-[1.2]">
                         Manage<br />Listings
                     </h1>
                 </div>
@@ -205,41 +203,40 @@ export default function MyListings() {
 
             <main className="flex-1 px-5 pt-4">
                 {/* Metrics */}
-                <div className="flex gap-3 overflow-x-auto pb-2 mb-4 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                    <MetricCard title="Total Listings" count={metrics.total} color="#14147c" bg="#e5eeff" />
-                    <MetricCard title="Active" count={metrics.active} color="#0060ac" bg="#e1efff" />
-                    <MetricCard title="Pending" count={metrics.pending} color="#464652" bg="#fff" border="#c7c5d4" />
+                <div className="flex gap-3 overflow-x-auto pb-2 mb-4 scrollbar-hide no-scrollbar">
+                    <MetricCard title="Total Listings" count={metrics.total} bg="bg-primary/10 dark:bg-indigo-500/10" color="text-primary dark:text-indigo-400" />
+                    <MetricCard title="Active" count={metrics.active} bg="bg-blue-50 dark:bg-blue-500/10" color="text-blue-600 dark:text-blue-400" />
+                    <MetricCard title="Pending" count={metrics.pending} bg="bg-white dark:bg-[#1A1D24]" color="text-slate-700 dark:text-slate-300" border="border-slate-200 dark:border-slate-800" />
                 </div>
 
                 {/* Search Bar */}
                 <div className="flex gap-2 mb-6">
                     <div className="relative flex-1">
-                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: '#777683' }} />
+                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                             type="text"
                             placeholder="Search properties..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-11 pr-4 py-3.5 rounded-[16px] text-[15px] font-medium outline-none transition-shadow"
-                            style={{ background: '#ffffff', color: '#0b1c30', border: '1px solid #e5eeff', boxShadow: '0 2px 12px rgba(45,48,145,0.04)' }}
+                            className="w-full pl-11 pr-4 py-3.5 rounded-[16px] text-[15px] font-medium outline-none transition-shadow bg-white dark:bg-[#1A1D24] text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 shadow-sm"
                         />
                     </div>
-                    <button className="flex items-center justify-center w-14 rounded-[16px] transition-colors active:scale-95" style={{ background: '#14147c', color: '#fff' }}>
+                    <button className="flex items-center justify-center w-14 rounded-[16px] transition-colors active:scale-95 bg-primary text-white hover:bg-primary/90">
                         <SlidersHorizontal size={20} />
                     </button>
                 </div>
 
                 {/* Filter Chips */}
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-1 no-scrollbar">
                     {['All', 'Active', 'Pending'].map(filter => (
                         <button
                             key={filter}
                             onClick={() => setActiveFilter(filter)}
-                            className="px-5 py-2 rounded-full text-[14px] font-semibold whitespace-nowrap transition-all"
-                            style={activeFilter === filter 
-                                ? { background: '#14147c', color: '#fff' }
-                                : { background: '#fff', color: '#464652', border: '1px solid #c7c5d4' }
-                            }
+                            className={`px-5 py-2 rounded-full text-[14px] font-semibold whitespace-nowrap transition-all ${
+                                activeFilter === filter 
+                                    ? 'bg-primary text-white shadow-md'
+                                    : 'bg-white dark:bg-[#1A1D24] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
+                            }`}
                         >
                             {filter}
                         </button>
@@ -249,7 +246,7 @@ export default function MyListings() {
                 {/* Listings */}
                 {loading ? (
                     <div className="flex flex-col gap-4">
-                        {[1, 2, 3].map(n => <div key={n} className="animate-pulse h-[140px] w-full rounded-[20px]" style={{ background: '#e5eeff' }} />)}
+                        {[1, 2, 3].map(n => <Skeleton key={n} className="h-[140px] w-full rounded-[20px]" />)}
                     </div>
                 ) : filteredListings.length > 0 ? (
                     <div className="flex flex-col gap-4">
@@ -273,11 +270,11 @@ export default function MyListings() {
                     </div>
                 ) : (
                     <div className="py-20 flex flex-col items-center justify-center text-center px-4">
-                        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6" style={{ background: '#e5eeff' }}>
-                            <HomeIcon size={32} style={{ color: '#14147c' }} strokeWidth={2.5} />
+                        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6 bg-primary/10 dark:bg-primary/20">
+                            <HomeIcon size={32} className="text-primary dark:text-indigo-400" strokeWidth={2.5} />
                         </div>
-                        <h3 className="text-[19px] font-bold mb-2">No Properties Found</h3>
-                        <p className="text-[15px] font-medium leading-relaxed mb-8 max-w-[280px]" style={{ color: '#777683' }}>
+                        <h3 className="text-[19px] font-black text-slate-900 dark:text-white mb-2">No Properties Found</h3>
+                        <p className="text-[15px] font-medium leading-relaxed mb-8 max-w-[280px] text-slate-500">
                             {searchQuery || activeFilter !== 'All' 
                                 ? "Try adjusting your search or filters." 
                                 : "You haven't added any properties yet. Post your first ad to get started."}
@@ -285,8 +282,7 @@ export default function MyListings() {
                         {!searchQuery && activeFilter === 'All' && (
                             <button
                                 onClick={() => navigate('/post-ad')}
-                                className="font-bold text-[15px] py-4 px-8 rounded-full shadow-lg transition-transform active:scale-95"
-                                style={{ background: '#14147c', color: '#fff', boxShadow: '0 8px 24px rgba(20,20,124,0.2)' }}
+                                className="font-black text-[15px] py-4 px-8 rounded-full shadow-xl shadow-primary/20 transition-transform active:scale-95 bg-primary text-white"
                             >
                                 Post New Ad
                             </button>
@@ -312,12 +308,11 @@ export default function MyListings() {
                             animate={{ y: 0 }}
                             exit={{ y: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[32px] p-6 pb-10"
-                            style={{ background: '#fff', boxShadow: '0 -10px 40px rgba(11,28,48,0.1)' }}
+                            className="fixed bottom-0 left-0 right-0 z-50 rounded-t-[32px] p-6 pb-10 bg-white dark:bg-[#1A1D24] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.3)]"
                         >
-                            <div className="w-12 h-1.5 rounded-full mx-auto mb-6" style={{ background: '#e5eeff' }} />
+                            <div className="w-12 h-1.5 rounded-full mx-auto mb-6 bg-slate-200 dark:bg-slate-700" />
                             
-                            <h3 className="text-[18px] font-bold mb-6 truncate" style={{ color: '#0b1c30' }}>
+                            <h3 className="text-[18px] font-black text-slate-900 dark:text-white mb-6 truncate">
                                 {bottomSheet.property.title}
                             </h3>
 
@@ -365,7 +360,7 @@ export default function MyListings() {
                                         }} 
                                     />
                                 )}
-                                <div className="h-[1px] w-full my-2" style={{ background: '#e5eeff' }} />
+                                <div className="h-[1px] w-full my-2 bg-slate-100 dark:bg-slate-800" />
                                 <ActionItem 
                                     icon={<Trash2 size={20} />} 
                                     label="Delete Listing" 
@@ -425,6 +420,7 @@ export default function MyListings() {
                 isOpen={verifyModal.isOpen}
                 onClose={() => setVerifyModal({ isOpen: false, id: null, title: '' })}
                 type="verification_fee"
+                bookingType="verification"
                 amount={199}
                 title="Onsite Verification"
                 subtitle={`Verify: ${verifyModal.title}`}
@@ -442,13 +438,12 @@ export default function MyListings() {
 function MetricCard({ title, count, color, bg, border }) {
     return (
         <div 
-            className="flex-shrink-0 min-w-[120px] rounded-[20px] p-4 flex flex-col justify-between"
-            style={{ background: bg, border: border ? `1px solid ${border}` : 'none' }}
+            className={`flex-shrink-0 min-w-[120px] rounded-[20px] p-4 flex flex-col justify-between ${bg} ${border ? `border ${border}` : ''}`}
         >
-            <span className="text-[13px] font-semibold mb-2" style={{ color: border ? '#777683' : color, opacity: 0.8 }}>
+            <span className={`text-[13px] font-semibold mb-2 ${border ? 'text-slate-500' : color} opacity-80`}>
                 {title}
             </span>
-            <span className="text-[28px] font-bold tracking-tight" style={{ color }}>
+            <span className={`text-[28px] font-black tracking-tight ${color}`}>
                 {count}
             </span>
         </div>
@@ -459,13 +454,12 @@ function ActionItem({ icon, label, danger, onClick }) {
     return (
         <button 
             onClick={onClick}
-            className="flex items-center gap-4 w-full p-4 rounded-2xl active:bg-slate-50 transition-colors"
-            style={{ color: danger ? '#ef4444' : '#0b1c30' }}
+            className={`flex items-center gap-4 w-full p-4 rounded-2xl active:bg-slate-50 dark:active:bg-slate-800 transition-colors ${danger ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}
         >
-            <div className="flex items-center justify-center w-10 h-10 rounded-full" style={{ background: danger ? '#fef2f2' : '#f8f9ff', color: danger ? '#ef4444' : '#464652' }}>
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full ${danger ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
                 {icon}
             </div>
-            <span className="text-[16px] font-semibold">{label}</span>
+            <span className="text-[16px] font-bold">{label}</span>
         </button>
     );
 }
@@ -495,18 +489,11 @@ function ListingCard({ property, onClick, onActionClick }) {
     return (
         <div 
             onClick={onClick}
-            className="group w-full bg-white rounded-[24px] overflow-hidden p-3 flex gap-4 cursor-pointer active:scale-[0.98] transition-transform"
-            style={{ border: '1px solid #e5eeff', boxShadow: '0 4px 20px rgba(45,48,145,0.03)' }}
+            className="group w-full bg-white dark:bg-[#1A1D24] rounded-[24px] overflow-hidden p-3 flex gap-4 cursor-pointer active:scale-[0.98] transition-transform border border-slate-100 dark:border-slate-800/70 shadow-sm"
         >
             <div className="w-[100px] h-[100px] shrink-0 overflow-hidden rounded-[16px] relative">
-                <img className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={displayImage} alt={title || 'Listing'} />
-                <div className="absolute top-2 left-2 px-2 py-1 rounded-full text-[10px] font-bold shadow-sm" 
-                    style={{ 
-                        background: isPendingOrRejected ? 'rgba(245,158,11,0.9)' : (isAvailable ? 'rgba(255,255,255,0.9)' : 'rgba(11,28,48,0.8)'), 
-                        color: isPendingOrRejected ? '#fff' : (isAvailable ? '#0b1c30' : '#fff'),
-                        backdropFilter: 'blur(4px)'
-                    }}
-                >
+                <img loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={displayImage} alt={title || 'Listing'} />
+                <div className={`absolute top-2 left-2 px-2 py-1 rounded-full text-[10px] font-black shadow-sm backdrop-blur-md ${isPendingOrRejected ? 'bg-amber-500/90 text-white' : (isAvailable ? 'bg-white/90 text-slate-900' : 'bg-slate-900/80 text-white')}`}>
                     {badgeText}
                 </div>
             </div>
@@ -514,27 +501,26 @@ function ListingCard({ property, onClick, onActionClick }) {
             <div className="flex-1 min-w-0 flex flex-col justify-center py-1 relative">
                 <button 
                     onClick={onActionClick}
-                    className="absolute top-0 right-0 p-2 rounded-full hover:bg-[#f8f9ff] active:scale-90 transition-all z-10"
-                    style={{ color: '#464652' }}
+                    className="absolute top-0 right-0 p-2 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-90 transition-all z-10 text-slate-500 dark:text-slate-400"
                 >
                     <MoreHorizontal size={20} />
                 </button>
 
-                <h4 className="font-bold text-[16px] leading-tight mb-1 truncate pr-8" style={{ color: '#0b1c30' }}>
+                <h4 className="font-black text-[16px] leading-tight mb-1 truncate pr-8 text-slate-900 dark:text-white">
                     {title || 'Property Title'}
                 </h4>
 
-                <div className="flex items-center gap-1 mb-2 truncate" style={{ color: '#777683' }}>
+                <div className="flex items-center gap-1 mb-2 truncate text-slate-500 dark:text-slate-400">
                     <MapPin size={13} className="shrink-0" />
-                    <span className="text-[13px] font-medium truncate">{displayLocation}</span>
+                    <span className="text-[13px] font-bold truncate">{displayLocation}</span>
                 </div>
 
                 <div className="flex items-center justify-between mt-auto">
                     <div className="flex items-baseline gap-1">
-                        <span className="font-bold text-[18px]" style={{ color: '#14147c' }}>
+                        <span className="font-black text-[18px] text-primary dark:text-indigo-400">
                             ৳{displayRent.toLocaleString()}
                         </span>
-                        <span className="text-[12px] font-medium" style={{ color: '#777683' }}>
+                        <span className="text-[12px] font-bold text-slate-400 dark:text-slate-500">
                             / month
                         </span>
                     </div>
@@ -543,12 +529,7 @@ function ListingCard({ property, onClick, onActionClick }) {
                     <button
                         onClick={handleCopyId}
                         title={copied ? 'Copied!' : `Copy full ID: ${property.id}`}
-                        className="flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all active:scale-90"
-                        style={{
-                            background: copied ? '#e6fff3' : '#f0f0ff',
-                            border: `1px solid ${copied ? '#6ee7b7' : '#c7c5d4'}`,
-                            color: copied ? '#059669' : '#464652',
-                        }}
+                        className={`flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all active:scale-90 border ${copied ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}
                     >
                         <span className="text-[10px] font-black tracking-widest uppercase font-mono">
                             {copied ? '✓ Copied' : `#${shortId}`}

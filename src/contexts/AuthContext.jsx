@@ -10,10 +10,11 @@ import {
     onAuthStateChanged,
     reload
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, getDocs, query, collection, where, arrayUnion } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../firebase';
 import { generateReferralCode } from '../utils/referral';
-import LoadingScreen from '../components/LoadingScreen';
+import SplashScreen from '../components/SplashScreen';
+import { AnimatePresence } from 'framer-motion';
 import logger from '../utils/logger';
 
 const AuthContext = createContext();
@@ -53,6 +54,7 @@ export function AuthProvider({ children }) {
     const [userRole, setUserRole] = useState(null);
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [splashFinished, setSplashFinished] = useState(false);
 
     // ── Derived convenience flags ────────────────────────────────────────────
     const onboardingStep = userData?.onboardingStep ?? null;
@@ -91,7 +93,7 @@ export function AuthProvider({ children }) {
     }
 
     // ── Google Sign-In (with auto account-linking) ───────────────────────────
-    async function signInWithGoogle() {
+    async function signInWithGoogle(refCode = '') {
         try {
             const result = await signInWithPopup(auth, googleProvider);
             const user = result.user;
@@ -100,13 +102,28 @@ export function AuthProvider({ children }) {
             const snap = await getDoc(userRef);
 
             if (!snap.exists()) {
+                // Resolve referrer
+                let referrerId = null;
+                if (refCode) {
+                    const refSnap = await getDocs(query(collection(db, 'users'), where('referralCode', '==', refCode)));
+                    if (!refSnap.empty && refSnap.docs[0].id !== user.uid) {
+                        referrerId = refSnap.docs[0].id;
+                    }
+                }
+
                 // Brand-new user via Google → create doc + start onboarding
                 const newDoc = await createUserDoc(user, {
                     displayName: user.displayName || '',
                     photoURL: user.photoURL || '',
                     emailVerified: true, // Google accounts are pre-verified
                     providers: ['google'],
+                    ...(referrerId ? { referredBy: referrerId } : {})
                 });
+
+                if (referrerId) {
+                    await updateDoc(doc(db, 'users', referrerId), { refereeIds: arrayUnion(user.uid) });
+                }
+
                 setUserData(newDoc);
                 setUserRole('user');
             } else {
@@ -187,13 +204,16 @@ export function AuthProvider({ children }) {
             setCurrentUser(user);
             if (user) {
                 try {
+                    const token = await user.getIdTokenResult();
+                    const isAdminClaim = !!token.claims.admin;
+
                     const userRef = doc(db, 'users', user.uid);
                     const docSnap = await getDoc(userRef);
 
                     if (docSnap.exists()) {
                         const data = docSnap.data();
                         setUserData(data);
-                        setUserRole(data.role || 'user');
+                        setUserRole(isAdminClaim ? 'admin' : (data.role || 'user'));
 
                         // Backfill referral fields
                         const patch = {};
@@ -206,26 +226,9 @@ export function AuthProvider({ children }) {
                         if (Object.keys(patch).length > 0) {
                             updateDoc(userRef, patch).catch(() => {});
                         }
-                    } else if (user.email === 'safi.has.official@gmail.com') {
-                        const superadminData = {
-                            email: user.email,
-                            role: 'admin',
-                            isAdmin: true,
-                            accessLevel: 'superadmin',
-                            fullName: 'Safi Hasan',
-                            accountStatus: 'active',
-                            createdAt: new Date(),
-                            referralCode: generateReferralCode(user.email),
-                            referralWallet: { available: 0, withdrawn: 0 },
-                            onboardingStep: 'completed',
-                            onboardingStatus: 'COMPLETED',
-                        };
-                        await setDoc(userRef, superadminData);
-                        setUserData(superadminData);
-                        setUserRole('admin');
                     } else {
                         setUserData(null);
-                        setUserRole(null);
+                        setUserRole(isAdminClaim ? 'admin' : null);
                     }
                 } catch (error) {
                     logger.error('AuthContext error:', error);
@@ -270,7 +273,12 @@ export function AuthProvider({ children }) {
 
     return (
         <AuthContext.Provider value={value}>
-            {loading ? <LoadingScreen /> : children}
+            <AnimatePresence>
+                {!splashFinished && (
+                    <SplashScreen key="splash" onComplete={() => setSplashFinished(true)} />
+                )}
+            </AnimatePresence>
+            {!loading && children}
         </AuthContext.Provider>
     );
 }

@@ -3,6 +3,7 @@ import { getFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getStorage } from "firebase/storage";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
 // Your web app's Firebase configuration using Environment Variables
 const firebaseConfig = {
@@ -18,8 +19,15 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 let analytics;
+let appCheck;
+
 if (typeof window !== "undefined") {
     analytics = getAnalytics(app);
+    // Initialize App Check for Bot Protection
+    appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider('6Lfs1zotAAAAAG5c73YvfdkwUFmJTIWWXMbkCQL_'),
+      isTokenAutoRefreshEnabled: true
+    });
 }
 
 // Initialize Cloud Firestore

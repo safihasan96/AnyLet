@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { X, Building2, MapPin, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Modal3D from './Modal3D';
-import PropertyLoader from './PropertyLoader';
+import { PropertyDetailSkeleton } from './Skeleton';
 import logger from '../utils/logger';
 
 export default function ListingPreviewModal({ isOpen, request, onClose }) {
@@ -41,7 +41,7 @@ export default function ListingPreviewModal({ isOpen, request, onClose }) {
             <div className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-2xl">
                 <div className="relative h-48 w-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
                     {displayImage ? (
-                        <img src={displayImage} alt={title} className="w-full h-full object-cover" />
+                        <img loading="lazy" src={displayImage} alt={title} className="w-full h-full object-cover" />
                     ) : (
                         <Building2 size={48} className="text-slate-300 dark:text-slate-600" />
                     )}
@@ -60,7 +60,7 @@ export default function ListingPreviewModal({ isOpen, request, onClose }) {
 
                 <div className="p-5">
                     {loading ? (
-                        <PropertyLoader />
+                        <PropertyDetailSkeleton />
                     ) : (
                         <>
                             <h3 className="font-black text-lg text-slate-900 dark:text-white leading-tight mb-2">

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, orderBy } from 'firebase/firestore';
+import { useState, useEffect, useRef } from 'react';
+import { collection, query, getDocs, where, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import PropertyCard from './PropertyCard';
+import { PropertyCardSkeleton } from './Skeleton';
 import useInfiniteScroll from '../hooks/useInfiniteScroll';
 import { motion, AnimatePresence } from 'framer-motion';
 import logger from '../utils/logger';
@@ -16,9 +17,37 @@ const gridVariants = {
     },
 };
 
+// Module-level cache so we don't re-fetch on re-mount
+let _cachedListings = null;
+let _cachePromise = null;
+
+async function fetchAllApprovedListings() {
+    if (_cachedListings) return _cachedListings;
+    if (_cachePromise) return _cachePromise;
+
+    _cachePromise = getDocs(
+        query(collection(db, 'properties'), where('isApproved', '==', true), limit(200))
+    ).then(snapshot => {
+        _cachedListings = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                image: data.image || data.imageUrl || data.image_url || (data.images && data.images[0]),
+            };
+        });
+        return _cachedListings;
+    }).catch(err => {
+        _cachePromise = null; // allow retry on error
+        throw err;
+    });
+
+    return _cachePromise;
+}
+
 export default function FeaturedListings({ category = 'All', division = '' }) {
-    const [listings, setListings] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [allListings, setAllListings] = useState(_cachedListings || []);
+    const [loading, setLoading] = useState(!_cachedListings);
     const [displayCount, setDisplayCount] = useState(12);
 
     const { sentinelRef } = useInfiniteScroll(() => {
@@ -30,49 +59,46 @@ export default function FeaturedListings({ category = 'All', division = '' }) {
     }, [category, division]);
 
     useEffect(() => {
+        if (_cachedListings) {
+            setAllListings(_cachedListings);
+            setLoading(false);
+            return;
+        }
         setLoading(true);
-        const q = query(
-            collection(db, 'properties'),
-            orderBy('createdAt', 'desc')
-        );
+        fetchAllApprovedListings()
+            .then(listings => {
+                setAllListings(listings);
+                setLoading(false);
+            })
+            .catch(error => {
+                logger.error("Error fetching featured listings:", error);
+                setLoading(false);
+            });
+    }, []);
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const listingsData = snapshot.docs
-                .map(doc => {
-                    const data = doc.data();
-                    return {
-                        id: doc.id,
-                        ...data,
-                        image: data.image || data.imageUrl || data.image_url || (data.images && data.images[0]),
-                        isApproved: data.isApproved !== false
-                    };
-                })
-                .filter(item => {
-                    const yearAgo = new Date();
-                    yearAgo.setDate(yearAgo.getDate() - 365);
-                    const propDate = item.updatedAt?.toDate() || item.createdAt?.toDate() || new Date(0);
-                    
-                    const isNotExpired = propDate >= yearAgo;
-                    const matchesCategory = category === 'All' || item.type === category;
-                    const matchesDivision = !division || item.division === division;
-                    return item.isApproved && isNotExpired && matchesCategory && matchesDivision;
-                });
+    const yearAgo = new Date();
+    yearAgo.setDate(yearAgo.getDate() - 365);
 
-            setListings(listingsData);
-            setLoading(false);
-        }, (error) => {
-            logger.error("Error fetching featured listings:", error);
-            setLoading(false);
+    const listings = allListings
+        .filter(item => {
+            const propDate = item.updatedAt?.toDate() || item.createdAt?.toDate() || new Date(0);
+            const isNotExpired = propDate >= yearAgo;
+            const matchesCategory = category === 'All' || item.type === category;
+            const matchesDivision = !division || item.division === division;
+            return isNotExpired && matchesCategory && matchesDivision;
+        })
+        .sort((a, b) => {
+            const dateA = a.updatedAt?.toDate() || a.createdAt?.toDate() || new Date(0);
+            const dateB = b.updatedAt?.toDate() || b.createdAt?.toDate() || new Date(0);
+            return dateB - dateA;
         });
 
-        return () => unsubscribe();
-    }, [category, division]);
 
     if (loading) {
         return (
             <div className="px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
                 {[1, 2, 3].map(i => (
-                    <div key={i} className="h-72 bg-slate-100 dark:bg-slate-800 rounded-3xl animate-pulse" />
+                    <PropertyCardSkeleton key={i} />
                 ))}
             </div>
         );

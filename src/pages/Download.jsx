@@ -3,7 +3,7 @@ import { Download as DownloadIcon, Smartphone, Apple, Chrome, Share2, PlusSquare
 
 const STEPS_ANDROID = [
   { icon: Chrome, title: "Open in Chrome", desc: "Visit any-let.indevs.in in Chrome browser on your Android device." },
-  { icon: Download, title: "Tap the banner", desc: 'A banner at the bottom will say "Install App" — tap it.' },
+  { icon: DownloadIcon, title: "Tap the banner", desc: 'A banner at the bottom will say "Install App" — tap it.' },
   { icon: CheckCircle, title: "Confirm Install", desc: "Tap 'Install' in the dialog. The app icon will appear on your home screen!" },
 ];
 

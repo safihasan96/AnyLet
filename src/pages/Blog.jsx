@@ -55,7 +55,7 @@ export default function Blog() {
                     {MOCK_POSTS.map(post => (
                         <Link to={`/blog/${post.id}`} key={post.id} className="bg-white dark:bg-slate-900 rounded-[32px] overflow-hidden border border-slate-100 dark:border-slate-800 shadow-sm group hover:-translate-y-1 hover:shadow-xl transition-all">
                             <div className="relative h-56 overflow-hidden">
-                                <img src={post.image} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                <img loading="lazy" src={post.image} alt={post.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                 <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest text-[#3E2B88]">
                                     {post.category}
                                 </div>

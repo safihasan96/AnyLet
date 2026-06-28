@@ -8,7 +8,7 @@ import {
     ArrowLeft, Star, ShieldCheck, Loader2, MessageSquare, ThumbsUp
 } from 'lucide-react';
 import { toggleHelpfulVote, submitLandlordReply } from '../utils/reviewService';
-import PropertyLoader from '../components/PropertyLoader';
+import { ReviewsSkeleton } from '../components/Skeleton';
 import { Helmet } from 'react-helmet-async';
 import { useToast } from '../contexts/ToastContext';
 import logger from '../utils/logger';
@@ -149,11 +149,7 @@ export default function PropertyReviews() {
         }
     };
 
-    if (loading) return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-            <PropertyLoader />
-        </div>
-    );
+    if (loading) return <ReviewsSkeleton />;
 
     if (!property) return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 text-center">
@@ -282,7 +278,7 @@ function ReviewCard({ review, idx, onHelpful, currentUserId, isOwner, onReply })
             <div className="flex items-start gap-4 mb-4">
                 <div className="size-11 rounded-full bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 font-black text-base shrink-0 overflow-hidden">
                     {review.reviewerAvatar ? (
-                        <img src={review.reviewerAvatar} alt={review.reviewerName} className="w-full h-full object-cover" />
+                        <img loading="lazy" src={review.reviewerAvatar} alt={review.reviewerName} className="w-full h-full object-cover" />
                     ) : (
                         (review.reviewerName || 'A')[0].toUpperCase()
                     )}

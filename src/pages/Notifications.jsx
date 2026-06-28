@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot, doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, Bell, Clock, ChevronRight, MessageSquare, ShieldCheck, Star, CreditCard, Info } from 'lucide-react';
+import { Bell, ArrowLeft, Building2, CheckCircle2, MapPin, AlertTriangle, ShieldCheck, ShieldAlert, Star, Wallet, Activity, Loader2, Info, MessageSquare, Clock, ChevronRight, CreditCard } from 'lucide-react';
+import { Skeleton } from '../components/Skeleton';
 import { useNavigate } from 'react-router-dom';
 import logger from '../utils/logger';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 
 export default function Notifications() {
     const { currentUser } = useAuth();
@@ -89,16 +91,30 @@ export default function Notifications() {
             default: return 'bg-primary/10 text-primary dark:text-indigo-400';
         }
     };
+    // Framer Motion variants for premium entrance animations
+    const containerVariants = {
+      hidden: { opacity: 0 },
+      visible: {
+        opacity: 1,
+        transition: { staggerChildren: 0.08, when: "beforeChildren" },
+      },
+    };
+    const itemVariants = {
+      hidden: { opacity: 0, y: 20 },
+      visible: {
+        opacity: 1,
+        y: 0,
+        transition: { type: "spring", stiffness: 300, damping: 30 },
+      },
+    };
+    const shouldReduce = useReducedMotion();
+    // If user prefers reduced motion, disable variants
+    const effectiveContainer = shouldReduce ? {} : containerVariants;
+    const effectiveItem = shouldReduce ? {} : itemVariants;
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-900 pb-24">
-            <header className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 sticky top-0 z-10 border-b border-slate-100 dark:border-slate-700">
-                <button onClick={() => navigate(-1)} className="text-slate-700 dark:text-slate-300 p-2">
-                    <ArrowLeft size={24} />
-                </button>
-                <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Notifications</h1>
-                <div className="w-10 h-10" /> {/* Spacer */}
-            </header>
+
 
             <div className="p-4">
                 <div className="flex justify-between items-center mb-4">
@@ -113,7 +129,7 @@ export default function Notifications() {
                 {loading ? (
                     <div className="space-y-4">
                         {[1, 2, 3].map(i => (
-                            <div key={i} className="h-20 bg-white dark:bg-slate-800 rounded-2xl animate-pulse" />
+                            <Skeleton key={i} className="h-20 w-full rounded-2xl" />
                         ))}
                     </div>
                 ) : notifications.length === 0 ? (
@@ -124,39 +140,41 @@ export default function Notifications() {
                         <p className="font-bold text-slate-500">No notifications yet</p>
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        {notifications.map(notif => (
-                            <div
-                                key={notif.id}
-                                onClick={() => markAsRead(notif)}
-                                className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${notif.isRead
-                                    ? 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 opacity-70'
-                                    : 'bg-white dark:bg-slate-800 border-primary shadow-sm ring-1 ring-primary/10'
-                                    }`}
-                            >
-                                <div className={`size-12 rounded-xl flex items-center justify-center shrink-0 ${getIconColor(notif.type, notif.isRead)}`}>
-                                    {getIcon(notif.type)}
+            <AnimatePresence>
+                <motion.div
+                    className="space-y-3"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                >
+                    {notifications.map(notif => (
+                        <motion.div
+                            key={notif.id}
+                            variants={itemVariants}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => markAsRead(notif)}
+                            className={`flex items-start gap-4 p-4 rounded-2xl border transition-all cursor-pointer ${notif.isRead
+                                ? 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 opacity-70'
+                                : 'bg-white dark:bg-slate-800 border-primary shadow-sm ring-1 ring-primary/10'}`}
+                        >
+                            <div className={`size-12 rounded-xl flex items-center justify-center shrink-0 ${getIconColor(notif.type, notif.isRead)}`}> {getIcon(notif.type)} </div>
+                            <div className="flex-1 min-w-0 pt-0.5">
+                                <p className={`text-sm tracking-tight ${notif.isRead ? 'font-bold text-slate-600 dark:text-slate-300' : 'font-black text-slate-900 dark:text-white'}`}> {notif.title} </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed"> {notif.message} </p>
+                                <div className="flex items-center gap-1.5 mt-2">
+                                    <Clock size={10} className="text-slate-400" />
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                        {notif.createdAt?.toDate ? notif.createdAt.toDate().toLocaleDateString() : 'Just now'}
+                                    </span>
                                 </div>
-                                <div className="flex-1 min-w-0 pt-0.5">
-                                    <p className={`text-sm tracking-tight ${notif.isRead ? 'font-bold text-slate-600 dark:text-slate-300' : 'font-black text-slate-900 dark:text-white'}`}>
-                                        {notif.title}
-                                    </p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                                        {notif.message}
-                                    </p>
-                                    <div className="flex items-center gap-1.5 mt-2">
-                                        <Clock size={10} className="text-slate-400" />
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-                                            {notif.createdAt?.toDate ? notif.createdAt.toDate().toLocaleDateString() : 'Just now'}
-                                        </span>
-                                    </div>
-                                </div>
-                                {!notif.isRead && (
-                                    <div className="size-2.5 bg-primary rounded-full mt-2 shrink-0" />
-                                )}
                             </div>
-                        ))}
-                    </div>
+                            {!notif.isRead && <div className="size-2.5 bg-primary rounded-full mt-2 shrink-0" />}
+                        </motion.div>
+                    ))}
+                </motion.div>
+            </AnimatePresence>
                 )}
             </div>
         </div>

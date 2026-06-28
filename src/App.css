@@ -8,6 +8,30 @@ main {
   flex: 1;
 }
 
+/* ── Safe area support for Capacitor / PWA ──────────────────────────────────
+   env(safe-area-inset-*) fills the space around the notch, Dynamic Island,
+   and the phone's bottom home indicator on all device models.
+   viewport-fit=cover (in index.html) lets us paint edge-to-edge and then
+   selectively push content back in using these env() values.
+   -------------------------------------------------------------------------- */
+
+/* Ensure root element covers the entire screen including safe areas */
+#root {
+  /* This prevents content from being obscured under the status bar */
+  min-height: 100dvh;
+}
+
+/* Global class helper for pages that want top safe area on their own header */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+/* Global class helper for bottom (above home indicator) */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+
 /* Footer Styles */
 .footer {
   background-color: #1e293b;

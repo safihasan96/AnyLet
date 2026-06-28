@@ -67,11 +67,11 @@ function EnquiryCard({ enquiry, onReply, onResolve, onDelete }) {
     };
 
     return (
-        <div className="p-8 hover:bg-zinc-50/50 transition-all border-b border-zinc-50 last:border-0">
+        <div className="p-6 md:p-8 hover:bg-slate-50/60 dark:hover:bg-white/[0.02] transition-all border-b border-slate-100 dark:border-white/[0.05] last:border-0">
             {/* Header */}
             <div className="flex justify-between items-start mb-5">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center font-black text-zinc-400 text-lg">
+                    <div className="w-12 h-12 bg-slate-100 dark:bg-white/[0.06] rounded-2xl flex items-center justify-center font-black text-slate-500 dark:text-slate-400 text-lg">
                         {enquiry.userEmail?.[0]?.toUpperCase() || '?'}
                     </div>
                     <div>
@@ -90,8 +90,8 @@ function EnquiryCard({ enquiry, onReply, onResolve, onDelete }) {
                                 </span>
                             )}
                         </div>
-                        <p className="text-xs font-bold text-zinc-400 mt-0.5">{enquiry.userEmail}</p>
-                        <p className="text-[10px] font-medium text-zinc-300 mt-0.5">
+                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5">{enquiry.userEmail}</p>
+                        <p className="text-[10px] font-medium text-slate-300 dark:text-slate-600 mt-0.5">
                             {enquiry.createdAt?.toDate().toLocaleString()}
                         </p>
                     </div>
@@ -112,7 +112,7 @@ function EnquiryCard({ enquiry, onReply, onResolve, onDelete }) {
             </div>
 
             {/* Conversation thread */}
-            <div className="space-y-3 mb-5 ml-4 border-l-2 border-zinc-100 pl-5">
+            <div className="space-y-3 mb-5 ml-4 border-l-2 border-slate-100 dark:border-white/[0.06] pl-5">
                 {thread.map((msg, idx) => (
                     <div key={idx} className={`${msg.sender === 'admin' ? 'ml-4' : ''}`}>
                         <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${msg.sender === 'admin' ? 'text-emerald-600' : 'text-zinc-400'}`}>
@@ -123,7 +123,7 @@ function EnquiryCard({ enquiry, onReply, onResolve, onDelete }) {
                                 </span>
                             )}
                         </p>
-                        <p className={`text-sm font-medium leading-relaxed p-4 rounded-xl ${msg.sender === 'admin' ? 'bg-emerald-50/60 text-emerald-900' : 'bg-zinc-50 text-zinc-600'}`}>
+                        <p className={`text-sm font-medium leading-relaxed p-4 rounded-xl ${msg.sender === 'admin' ? 'bg-emerald-50/70 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-300' : 'bg-slate-50 dark:bg-white/[0.04] text-slate-600 dark:text-slate-300'}`}>
                             {msg.text}
                         </p>
                     </div>
@@ -132,17 +132,17 @@ function EnquiryCard({ enquiry, onReply, onResolve, onDelete }) {
 
             {/* Reply form — always visible unless resolved */}
             {enquiry.status !== 'resolved' && (
-                <div className="ml-4 pl-5 border-l-2 border-dashed border-zinc-200">
-                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2">Send a Reply</p>
+                <div className="ml-4 pl-5 border-l-2 border-dashed border-slate-200 dark:border-white/[0.08]">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Send a Reply</p>
                     <form ref={formRef} onSubmit={handleSubmit} className="flex gap-3">
                         <input
                             name="reply"
                             placeholder="Type your reply here..."
-                            className="flex-1 bg-zinc-50 border border-zinc-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-300 transition-all"
+                            className="flex-1 bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 dark:focus:border-emerald-500 transition-all"
                         />
                         <button
                             type="submit"
-                            className="px-5 py-2.5 bg-zinc-950 text-white text-xs font-black rounded-xl hover:bg-emerald-600 transition-all whitespace-nowrap"
+                            className="px-5 py-2.5 bg-slate-900 dark:bg-white/[0.08] text-white text-xs font-black rounded-xl hover:bg-emerald-600 dark:hover:bg-emerald-600 transition-all whitespace-nowrap"
                         >
                             Send Reply
                         </button>
@@ -309,12 +309,12 @@ export default function AdminPanel() {
 
     /* ── User actions ─────────────────────────────────────────────────────── */
     const handleLogout = async () => {
-        try { await logout(); router.push('/login'); } catch (e) { logger.error(e); }
+        try { await logout(); navigate('/login'); } catch (e) { logger.error(e); }
     };
 
     const handleToggleAdmin = user => {
         // The toggle admin feature is now handled securely in the AdminClaimsTab
-        router.push('/admin/claims');
+        navigate('/admin/claims');
     };
 
     const handleToggleStatus = user => {
@@ -750,7 +750,7 @@ export default function AdminPanel() {
        RENDER
     ═══════════════════════════════════════════════════════════════════════ */
     return (
-        <div className="flex h-screen overflow-hidden bg-[#fafafa] font-sans">
+        <div className="flex h-screen overflow-hidden bg-[#F8F9FA] dark:bg-[#0F1117] font-sans">
 
             {/* ══════════════════════════  SIDEBAR  ══════════════════════════ */}
             <aside
@@ -1469,7 +1469,7 @@ export default function AdminPanel() {
 
                                                         <div className="flex flex-row lg:flex-col gap-3 w-full lg:w-48">
                                                             <button 
-                                                                onClick={() => router.push(`/property/${report.propertyId}`)}
+                                                                onClick={() => navigate(`/property/${report.propertyId}`)}
                                                                 className="flex-1 py-3 px-4 bg-zinc-950 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
                                                             >
                                                                 <Search size={14} /> View Ad
@@ -1729,7 +1729,7 @@ export default function AdminPanel() {
                                 {/* Profile Head */}
                                 <div className="flex items-center gap-5 bg-zinc-50 dark:bg-slate-800/50 p-6 rounded-3xl">
                                     {selectedUser.photoURL ? (
-                                        <img src={selectedUser.photoURL} alt="Profile" className="w-16 h-16 rounded-2xl object-cover" />
+                                        <img loading="lazy" src={selectedUser.photoURL} alt="Profile" className="w-16 h-16 rounded-2xl object-cover" />
                                     ) : (
                                         <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center font-black text-white text-2xl uppercase">
                                             {selectedUser.fullName?.[0] || selectedUser.email?.[0] || '?'}
@@ -1776,7 +1776,7 @@ export default function AdminPanel() {
                                             rel="noopener noreferrer"
                                             className="block overflow-hidden rounded-2xl border border-zinc-200 dark:border-slate-800 hover:opacity-90 transition-opacity"
                                         >
-                                            <img src={selectedUser.verification.idDocumentUrl} alt="Government ID" className="w-full h-40 object-cover bg-zinc-50" />
+                                            <img loading="lazy" src={selectedUser.verification.idDocumentUrl} alt="Government ID" className="w-full h-40 object-cover bg-zinc-50" />
                                         </a>
                                     </div>
                                 )}

@@ -56,12 +56,11 @@ export default function HorizontalPropertyCard({ property }) {
         >
             <Link
                 to={`/property/${id}`}
-                className="h-full group flex bg-white dark:bg-slate-800 rounded-[28px] overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl hover:shadow-indigo-500/5 p-3 gap-4 transition-shadow"
+                className="h-full group flex bg-white dark:bg-[#1A1D24] rounded-[28px] overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800/70 hover:shadow-xl hover:shadow-indigo-500/5 p-3 gap-4 transition-shadow"
             >
                 {/* Image Container with parallax depth */}
                 <div className="relative h-[120px] w-[120px] shrink-0 overflow-hidden rounded-[20px]">
-                    <img
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    <img loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         src={displayImage}
                         alt={title || 'Property'}
                     />

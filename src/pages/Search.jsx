@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { collection, getDocs, query, limit } from 'firebase/firestore';
+import { collection, getDocs, query, limit, where, orderBy, startAfter } from 'firebase/firestore';
 import { db } from '../firebase';
 import { 
   Search as SearchIcon, 
@@ -42,11 +42,14 @@ const resultCountVariants = {
     animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 200, damping: 20 } },
 };
 import HorizontalPropertyCard from '../components/HorizontalPropertyCard';
+import { PropertyCardSkeleton } from '../components/Skeleton';
 import { bdLocations } from '../data/locations';
 import { Helmet } from 'react-helmet-async';
 import useInfiniteScroll from '../hooks/useInfiniteScroll';
 import logger from '../utils/logger';
 import { staggerContainer, staggerItem, modalBackdrop, modalSheet } from '../utils/motionVariants';
+import { useAnimationSafe } from '../hooks/useAnimationSafe';
+import { useIsDesktop } from '../hooks/useMediaQuery';
 
 // Constants
 const BILLING_CYCLES = ["Day", "Week", "Month"];
@@ -80,6 +83,8 @@ export default function Search() {
     const [searchTerm, setSearchTerm] = useState('');
     const [searchHistory, setSearchHistory] = useState(loadHistory);
     const [inputFocused, setInputFocused] = useState(false);
+    const isDesktop = useIsDesktop();
+    const shouldAnimate = useAnimationSafe();
 
     // Save a term to history (called on Enter or when input blurs with a value)
     const commitSearch = (term) => {
@@ -109,6 +114,8 @@ export default function Search() {
     });
     
     const [displayCount, setDisplayCount] = useState(12);
+    const lastDocRef = useRef(null);   // Cursor for Firestore pagination
+    const [hasMore, setHasMore] = useState(true);
 
     const { sentinelRef } = useInfiniteScroll(() => {
         setDisplayCount(prev => prev + 12);
@@ -142,29 +149,59 @@ export default function Search() {
         setSearchTerm('');
     };
 
+    const buildServerQuery = useCallback((filters) => {
+        // Push the most selective, equality-based filters to Firestore.
+        // These must match composite indexes in firestore.indexes.json.
+        // Client-side filtering handles the rest (utilities, features, searchTerm)
+        // which cannot be expressed as simple compound Firestore queries.
+        const constraints = [
+            where('isApproved', '==', true),
+            orderBy('updatedAt', 'desc'),
+        ];
+        // Only add where() clauses for filters that are actively set
+        if (filters.district) constraints.push(where('district', '==', filters.district));
+        else if (filters.division) constraints.push(where('division', '==', filters.division));
+        if (filters.type) constraints.push(where('type', '==', filters.type));
+        if (filters.upazila) constraints.push(where('upazila', '==', filters.upazila));
+        constraints.push(limit(60)); // Server page size: fetch 60 at a time
+        return constraints;
+    }, []);
+
     useEffect(() => {
         const fetchProperties = async () => {
             try {
                 setLoading(true);
-                // Apply a limit to avoid unbounded queries fetching the entire database
-                const querySnapshot = await getDocs(query(collection(db, "properties"), limit(200)));
-                const allListings = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                lastDocRef.current = null;
+                setHasMore(true);
+                // Build a server-side filtered query to minimise data transfer.
+                // CRITICAL: `where('isApproved', '==', true)` must always be present;
+                // Firestore security rules reject reads where isApproved != true.
+                const constraints = buildServerQuery(filterState);
+                if (lastDocRef.current) constraints.splice(-1, 0, startAfter(lastDocRef.current));
+                const q = query(collection(db, 'properties'), ...constraints);
+                const querySnapshot = await getDocs(q);
+                const docs = querySnapshot.docs;
+                lastDocRef.current = docs[docs.length - 1] || null;
+                if (docs.length < 60) setHasMore(false);
+                const allListings = docs.map(d => ({ id: d.id, ...d.data() }));
                 setProperties(allListings);
             } catch (error) {
-                logger.error("Error fetching properties:", error);
+                logger.error('Error fetching properties:', error);
             } finally {
                 setLoading(false);
             }
         };
         fetchProperties();
-    }, []);
+    // Re-fetch whenever the server-filterable fields change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filterState.division, filterState.district, filterState.upazila, filterState.type, buildServerQuery]);
 
     const filteredProperties = useMemo(() => {
         const yearAgo = new Date();
         yearAgo.setDate(yearAgo.getDate() - 365);
         
         return properties.filter(p => {
-            if (p.isApproved === false) return false;
+            // isApproved is already guaranteed by the Firestore query
             
             const propDate = p.updatedAt?.toDate() || p.createdAt?.toDate() || new Date(0);
             if (propDate < yearAgo) return false;
@@ -206,22 +243,22 @@ export default function Search() {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950">
+        <div className="flex flex-col min-h-screen bg-[#F8F9FA] dark:bg-[#0F1117]">
             <Helmet>
                 <title>Search Properties | Any-Let</title>
                 <meta name="description" content="Search thousands of verified apartments, flats, and commercial properties for rent across Bangladesh." />
             </Helmet>
-            <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-8 px-6 py-8">
+            <div className="flex-1 max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-8 px-4 md:px-6 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-8 md:pt-8 lg:max-w-[1400px] lg:gap-10 lg:px-10">
                 
                 {/* Desktop Sidebar */}
                 <motion.div
-                    variants={sidebarVariants}
+                    variants={shouldAnimate && isDesktop ? sidebarVariants : {}}
                     initial="hidden"
                     animate="visible"
-                    className="hidden md:block w-80 shrink-0"
+                    className="hidden md:block w-80 shrink-0 lg:w-[280px]"
                 >
                     <aside className="sticky top-28 self-start h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pb-10">
-                        <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-8 shadow-sm">
+                        <div className="bg-white dark:bg-[#1A1D24] rounded-[32px] border border-slate-100 dark:border-white/[0.06] p-8 shadow-sm">
                             <div className="flex items-center justify-between mb-8">
                                 <h2 className="text-xl font-black text-slate-900 dark:text-white">Filters</h2>
                                 <button onClick={resetFilters} className="text-primary dark:text-indigo-400 text-sm font-black hover:underline underline-offset-4">Reset</button>
@@ -241,9 +278,7 @@ export default function Search() {
                 <main className="flex-1 flex flex-col gap-6">
                     <div className="flex flex-col gap-4">
                         <div className="flex items-center gap-4">
-                            <button onClick={() => navigate(-1)} className="md:hidden size-12 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white shadow-sm shrink-0">
-                                <ArrowLeft size={20} strokeWidth={2.5} />
-                            </button>
+                            {/* Mobile back button removed in favor of MobileNavBar */}
                             <div className="relative flex-1 group">
                                 <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary dark:text-indigo-400 transition-colors pointer-events-none">
                                     <SearchIcon size={22} strokeWidth={2.5} />
@@ -256,7 +291,7 @@ export default function Search() {
                                     onBlur={() => setTimeout(() => setInputFocused(false), 150)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') commitSearch(searchTerm); }}
                                     placeholder="Search by title, area or details..."
-                                    className="w-full bg-white dark:bg-slate-900 border-2 border-transparent focus:border-primary/20 rounded-3xl py-4 pl-14 pr-14 font-bold text-slate-900 dark:text-white shadow-sm outline-none transition-all h-16 md:h-20"
+                                    className="w-full bg-white dark:bg-[#1A1D24] border-2 border-transparent focus:border-primary/20 dark:focus:border-indigo-500/30 rounded-3xl py-4 pl-14 pr-14 font-bold text-slate-900 dark:text-white shadow-sm outline-none transition-all h-16 md:h-20"
                                 />
                                 {searchTerm && (
                                     <button
@@ -283,7 +318,7 @@ export default function Search() {
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -6 }}
                                     transition={{ duration: 0.15 }}
-                                    className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800 px-5 py-4"
+                                    className="bg-white dark:bg-[#1A1D24] rounded-3xl shadow-xl border border-slate-100 dark:border-white/[0.06] px-5 py-4"
                                 >
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2 text-slate-400">
@@ -307,7 +342,7 @@ export default function Search() {
                                                     initial="hidden"
                                                     animate="visible"
                                                     exit="exit"
-                                                    className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-3.5 pr-2 py-2 group"
+                                                    className="flex items-center gap-1.5 bg-slate-50 dark:bg-[#222630] border border-slate-200 dark:border-white/[0.04] rounded-2xl pl-3.5 pr-2 py-2 group"
                                                 >
                                                     <button
                                                         className="text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-primary dark:text-indigo-400 transition-colors"
@@ -318,7 +353,7 @@ export default function Search() {
                                                     <motion.button
                                                         whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }}
                                                         onClick={() => removeHistoryItem(item)}
-                                                        className="size-4 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-400 hover:bg-rose-100 hover:text-rose-500 dark:hover:bg-rose-900/40 dark:hover:text-rose-400 flex items-center justify-center transition-colors shrink-0"
+                                                        className="size-4 rounded-full bg-slate-200 dark:bg-white/[0.06] text-slate-400 hover:bg-rose-100 hover:text-rose-500 dark:hover:bg-rose-900/40 dark:hover:text-rose-400 flex items-center justify-center transition-colors shrink-0"
                                                     >
                                                         <X size={9} strokeWidth={3} />
                                                     </motion.button>
@@ -344,8 +379,8 @@ export default function Search() {
                     </div>
 
                     {loading ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            {[1, 2, 3, 4].map(n => <div key={n} className="animate-pulse h-48 w-full rounded-3xl bg-white dark:bg-slate-900" />)}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
+                            {[1, 2, 3, 4].map(n => <PropertyCardSkeleton key={n} />)}
                         </div>
                     ) : (
                         <motion.div layout className="flex flex-col gap-6 pb-24 md:pb-10">
@@ -360,7 +395,7 @@ export default function Search() {
                                     </motion.div>
                                 ) : (
                                     <div className="col-span-full py-20 text-center flex flex-col items-center gap-6">
-                                        <div className="size-24 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-slate-300"><SearchIcon size={48} /></div>
+                                        <div className="size-24 rounded-full bg-slate-100 dark:bg-[#1A1D24] flex items-center justify-center text-slate-300 dark:text-slate-600"><SearchIcon size={48} /></div>
                                         <div>
                                             <h3 className="text-xl font-black text-slate-900 dark:text-white">No properties found</h3>
                                             <p className="text-slate-500 font-medium">Try broadening your filters or location</p>
@@ -385,8 +420,8 @@ export default function Search() {
                 {showFilters && (
                     <div className="md:hidden fixed inset-0 z-[100] flex flex-col justify-end">
                         <motion.div variants={modalBackdrop} initial="hidden" animate="visible" exit="exit" onClick={() => setShowFilters(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-                        <motion.div variants={modalSheet} initial="hidden" animate="visible" exit="exit" className="bg-white dark:bg-slate-950 w-full h-[90vh] rounded-t-[40px] flex flex-col shadow-2xl relative z-10 overflow-hidden">
-                            <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto my-4 shrink-0" />
+                        <motion.div variants={modalSheet} initial="hidden" animate="visible" exit="exit" className="bg-white dark:bg-[#1A1D24] w-full h-[90vh] rounded-t-[40px] flex flex-col shadow-2xl relative z-10 overflow-hidden">
+                            <div className="w-12 h-1.5 bg-slate-200 dark:bg-white/[0.06] rounded-full mx-auto my-4 shrink-0" />
                             <header className="flex items-center justify-between px-8 pb-4 shrink-0">
                                 <h2 className="text-2xl font-black text-slate-900 dark:text-white">Filters</h2>
                                 <button onClick={resetFilters} className="text-primary dark:text-indigo-400 font-black">Reset</button>
@@ -400,7 +435,7 @@ export default function Search() {
                                     toggleList={toggleList}
                                 />
                             </div>
-                            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white dark:from-slate-950 pt-20">
+                            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-white dark:from-[#1A1D24] pt-20">
                                 <button onClick={() => setShowFilters(false)} className="w-full bg-primary text-white font-black text-lg py-5 rounded-[28px] shadow-2xl shadow-primary/30">Show {filteredProperties.length} Results</button>
                             </div>
                         </motion.div>
@@ -439,11 +474,11 @@ function FilterContent({ filterState, setFilterState, districts, thanas, PROPERT
                 <div className="flex items-center gap-4">
                     <div className="relative flex-1">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">৳</span>
-                        <input type="number" placeholder="Min" value={filterState.minPrice} onChange={(e) => setFilterState(prev => ({ ...prev, minPrice: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-primary/20 rounded-2xl py-3 pl-8 pr-4 font-bold outline-none" />
+                        <input type="number" placeholder="Min" value={filterState.minPrice} onChange={(e) => setFilterState(prev => ({ ...prev, minPrice: e.target.value }))} className="w-full bg-slate-50 dark:bg-[#222630] border-2 border-transparent focus:border-primary/20 dark:focus:border-indigo-500/30 rounded-2xl py-3 pl-8 pr-4 font-bold outline-none text-slate-900 dark:text-white" />
                     </div>
                     <div className="relative flex-1">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">৳</span>
-                        <input type="number" placeholder="Max" value={filterState.maxPrice} onChange={(e) => setFilterState(prev => ({ ...prev, maxPrice: e.target.value }))} className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-primary/20 rounded-2xl py-3 pl-8 pr-4 font-bold outline-none" />
+                        <input type="number" placeholder="Max" value={filterState.maxPrice} onChange={(e) => setFilterState(prev => ({ ...prev, maxPrice: e.target.value }))} className="w-full bg-slate-50 dark:bg-[#222630] border-2 border-transparent focus:border-primary/20 dark:focus:border-indigo-500/30 rounded-2xl py-3 pl-8 pr-4 font-bold outline-none text-slate-900 dark:text-white" />
                     </div>
                 </div>
             </section>
@@ -460,7 +495,7 @@ function FilterContent({ filterState, setFilterState, districts, thanas, PROPERT
                 <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Amenities</h3>
                 <div className="flex flex-wrap gap-2">
                     {UTILITY_OPTIONS.map(u => (
-                        <button key={u} onClick={() => toggleList('utilities', u)} className={`py-2 px-4 rounded-xl text-xs font-bold border-2 transition-all flex items-center gap-2 ${filterState.utilities.includes(u) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'}`}>
+                        <button key={u} onClick={() => toggleList('utilities', u)} className={`py-2 px-4 rounded-xl text-xs font-bold border-2 transition-all flex items-center gap-2 ${filterState.utilities.includes(u) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-[#222630] border-transparent text-slate-500'}`}>
                             {filterState.utilities.includes(u) && <Check size={12} strokeWidth={4} />}{u}
                         </button>
                     ))}
@@ -475,7 +510,7 @@ function Select({ label, value, onChange, options, disabled }) {
         <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase ml-1">{label}</label>
             <div className="relative">
-                <select value={value} onChange={onChange} disabled={disabled} className="w-full appearance-none bg-slate-50 dark:bg-slate-800 rounded-2xl py-3 px-4 font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50">
+                <select value={value} onChange={onChange} disabled={disabled} className="w-full appearance-none bg-slate-50 dark:bg-[#222630] text-slate-900 dark:text-white rounded-2xl py-3 px-4 font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-indigo-500/30 transition-all disabled:opacity-50">
                     <option value="">Select {label}</option>
                     {options.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
@@ -496,7 +531,7 @@ function ToggleButton({ label, active, onClick }) {
             className={`py-3 px-5 rounded-2xl font-black text-xs border-2 transition-colors flex items-center gap-1.5 will-change-transform ${
                 active
                     ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
-                    : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
+                    : 'bg-slate-50 dark:bg-[#222630] border-transparent text-slate-500'
             }`}
         >
             <AnimatePresence mode="wait">
@@ -519,7 +554,7 @@ function ToggleButton({ label, active, onClick }) {
 
 function Counter({ label, value, onChange }) {
     return (
-        <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl">
+        <div className="flex items-center justify-between bg-slate-50 dark:bg-[#222630] p-4 rounded-2xl">
             <span className="font-bold text-sm text-slate-600 dark:text-slate-300">{label}</span>
             <div className="flex items-center gap-4">
                 <motion.button
@@ -527,7 +562,7 @@ function Counter({ label, value, onChange }) {
                     whileHover={{ scale: 1.1 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 18 }}
                     onClick={() => onChange(value === 'Any' || Number(value) <= 1 ? 'Any' : (Number(value) - 1).toString())}
-                    className="size-8 rounded-lg bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 shadow-sm will-change-transform"
+                    className="size-8 rounded-lg bg-white dark:bg-[#1A1D24] flex items-center justify-center text-slate-400 shadow-sm will-change-transform"
                 >
                     <Minus size={16} />
                 </motion.button>

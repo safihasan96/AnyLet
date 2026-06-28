@@ -10,8 +10,10 @@ import {
 } from 'firebase/firestore';
 import {
     ArrowLeft, Send, MessageSquare, Clock,
-    CheckCircle, AlertCircle, Plus, ChevronRight, X
+    CheckCircle, AlertCircle, Plus, ChevronRight, X,
+    Search, Filter, CheckCircle2
 } from 'lucide-react';
+import { Skeleton } from '../components/Skeleton';
 import QUERY_LIMITS from '../config/queryLimits';
 import logger from '../utils/logger';
 
@@ -36,7 +38,6 @@ export default function Enquiry() {
             const q = query(
                 collection(db, 'enquiries'),
                 where('userId', '==', currentUser.uid),
-                orderBy('createdAt', 'desc'),
                 limit(QUERY_LIMITS.ENQUIRIES)
             );
 
@@ -44,7 +45,11 @@ export default function Enquiry() {
                 const list = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
-                }));
+                })).sort((a, b) => {
+                    const dateA = a.updatedAt?.toDate() || a.createdAt?.toDate() || new Date(0);
+                    const dateB = b.updatedAt?.toDate() || b.createdAt?.toDate() || new Date(0);
+                    return dateB - dateA;
+                });
                 setEnquiries(list);
                 setLoading(false);
                 setError(null);
@@ -100,12 +105,8 @@ export default function Enquiry() {
     return (
         <div className="flex flex-col min-h-screen bg-white dark:bg-slate-950 pb-32">
             {/* Header */}
-            <header className="flex items-center justify-between p-6 bg-white dark:bg-slate-950 sticky top-0 z-10 border-b border-gray-100 dark:border-slate-800">
-                <button onClick={() => navigate(-1)} className="text-[#1a227f] dark:text-white p-2">
-                    <ArrowLeft size={20} strokeWidth={2.5} />
-                </button>
+            <header className="flex items-center justify-center p-6 bg-white dark:bg-slate-950 sticky top-14 z-10 border-b border-gray-100 dark:border-slate-800">
                 <h1 className="text-[14px] font-[900] text-[#1a227f] dark:text-white tracking-[0.2em] uppercase">Support & Tickets</h1>
-                <div className="w-10" />
             </header>
 
             <div className="p-6 space-y-8">
@@ -182,7 +183,7 @@ export default function Enquiry() {
                         {loading ? (
                             <div className="space-y-4">
                                 {[1, 2, 3].map(i => (
-                                    <div key={i} className="h-28 bg-gray-50 dark:bg-slate-900 rounded-[28px] animate-pulse" />
+                                    <Skeleton key={i} className="h-28 w-full rounded-[28px]" />
                                 ))}
                             </div>
                         ) : enquiries.length === 0 ? (

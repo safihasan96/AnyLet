@@ -1,321 +1,270 @@
-'use client';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useState, useEffect, useMemo, Suspense, lazy } from 'react';
-
-import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
-import QUERY_LIMITS from '../config/queryLimits';
-import { Map as MapIcon, Search, SlidersHorizontal, X, ChevronDown, RotateCcw, Check } from 'lucide-react';
+import { Search, X, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { bdLocations } from '../data/locations';
+import { getPropertyCoords } from '../data/locationCoords';
+import MapView from '../components/map/MapView';
+import FilterBar from '../components/map/FilterBar';
+import ListingCard from '../components/listings/ListingCard';
+import ListingSkeleton from '../components/listings/ListingSkeleton';
+import Toast from '../components/ui/Toast';
 import logger from '../utils/logger';
 
-const PropertyMap = lazy(() => import('../components/PropertyMap'));
+const INITIAL_FILTERS = {
+    type: 'all',
+    minPrice: '',
+    maxPrice: '',
+    beds: 0,
+    searchTerm: '',
+};
 
-const PROPERTY_TYPES = ['House', 'Apartment', 'Sublet', 'Room', 'Mess', 'Cottage', 'Resort', 'Shop', 'Others'];
-const BILLING_CYCLES = ['Day', 'Week', 'Month'];
+function normalizeListing(doc) {
+    const data = doc.data();
+    const directLat = Number(data.lat ?? data.latitude);
+    const directLng = Number(data.lng ?? data.longitude);
+    const fallbackCoords = Number.isFinite(directLat) && Number.isFinite(directLng)
+        ? { lat: directLat, lng: directLng }
+        : getPropertyCoords(data);
 
-export default function MapPage() {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const centerProperty = location.state?.centerProperty || null;
-    const [properties, setProperties] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [showFilters, setShowFilters] = useState(false);
+    if (!fallbackCoords) return null;
 
-    const [filters, setFilters] = useState({
-        division: '',
-        district: '',
-        upazila: '',
-        type: '',
-        minPrice: '',
-        maxPrice: '',
-        billingCycle: 'Month',
-    });
-
-    const [searchTerm, setSearchTerm] = useState('');
-
-    useEffect(() => {
-        const fetch = async () => {
-            try {
-                setLoading(true);
-                // ✅ F-08: Bounded — map only shows available properties up to PROPERTIES_SEARCH
-                const q = query(
-                    collection(db, 'properties'),
-                    where('status', '==', 'Available'),
-                    orderBy('createdAt', 'desc'),
-                    limit(QUERY_LIMITS.MAP_PROPERTIES) // hard cap
-                );
-                const snap = await getDocs(q);
-                setProperties(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-            } catch (e) {
-                logger.error(e);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetch();
-    }, []);
-
-    const districts = useMemo(() =>
-        filters.division ? Object.keys(bdLocations[filters.division] || {}) : [],
-        [filters.division]
-    );
-    const thanas = useMemo(() =>
-        (filters.division && filters.district)
-            ? bdLocations[filters.division][filters.district] || []
-            : [],
-        [filters.division, filters.district]
-    );
-
-    const filtered = useMemo(() => {
-        return properties.filter(p => {
-            if (p.isApproved === false) return false;
-            if (filters.division && p.division !== filters.division) return false;
-            if (filters.district && p.district !== filters.district) return false;
-            if (filters.upazila && p.upazila !== filters.upazila) return false;
-            if (filters.type && p.type !== filters.type) return false;
-            if (filters.minPrice && p.rent < Number(filters.minPrice)) return false;
-            if (filters.maxPrice && p.rent > Number(filters.maxPrice)) return false;
-            if (filters.billingCycle && p.billingCycle !== filters.billingCycle) return false;
-            if (searchTerm) {
-                const t = searchTerm.toLowerCase();
-                return (
-                    p.title?.toLowerCase().includes(t) ||
-                    p.upazila?.toLowerCase().includes(t) ||
-                    p.district?.toLowerCase().includes(t)
-                );
-            }
-            return true;
-        });
-    }, [properties, filters, searchTerm]);
-
-    const activeFilterCount = [
-        filters.division, filters.district, filters.upazila,
-        filters.type, filters.minPrice, filters.maxPrice,
-    ].filter(Boolean).length;
-
-    const resetFilters = () => {
-        setFilters({ division: '', district: '', upazila: '', type: '', minPrice: '', maxPrice: '', billingCycle: 'Month' });
-        setSearchTerm('');
+    return {
+        id: doc.id,
+        ...data,
+        lat: Number(fallbackCoords.lat),
+        lng: Number(fallbackCoords.lng),
     };
-
-    return (
-        <div className="fixed inset-0 bg-slate-900 flex flex-col" style={{ zIndex: 10, bottom: '5rem' }}>
-            {/* ── Top bar ── */}
-            <div className="absolute top-0 left-0 right-0 z-[1100] px-4 pt-4 pb-3 flex items-center gap-3">
-                {/* Search pill */}
-                <div className="flex-1 flex items-center bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden">
-                    <Search size={16} className="ml-4 text-slate-400 shrink-0" />
-                    <input
-                        type="text"
-                        placeholder="Search by area, district…"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        className="flex-1 bg-transparent py-3 px-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none"
-                    />
-                    {searchTerm && (
-                        <button onClick={() => setSearchTerm('')} className="mr-3 text-slate-400 hover:text-slate-600">
-                            <X size={14} />
-                        </button>
-                    )}
-                </div>
-
-                {/* Filter trigger */}
-                <button
-                    onClick={() => setShowFilters(true)}
-                    className="relative size-12 rounded-2xl bg-white dark:bg-slate-900 shadow-xl border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0"
-                >
-                    <SlidersHorizontal size={18} />
-                    {activeFilterCount > 0 && (
-                        <span className="absolute -top-1 -right-1 size-5 rounded-full bg-primary text-white text-[9px] font-black flex items-center justify-center">
-                            {activeFilterCount}
-                        </span>
-                    )}
-                </button>
-            </div>
-
-            {/* ── Full-screen map ── */}
-            <div className="flex-1 w-full">
-                {loading ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-950 gap-4">
-                        <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center">
-                            <MapIcon size={32} className="text-primary dark:text-indigo-400 animate-pulse" />
-                        </div>
-                        <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Loading Map…</p>
-                    </div>
-                ) : (
-                    <Suspense fallback={
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-950 gap-4">
-                            <MapIcon size={32} className="text-primary dark:text-indigo-400 animate-pulse" />
-                            <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Loading Map…</p>
-                        </div>
-                    }>
-                        <PropertyMap
-                            properties={filtered}
-                            defaultLayer="street"
-                            showLayerControl={true}
-                            centerProperty={centerProperty}
-                        />
-                    </Suspense>
-                )}
-            </div>
-
-            {/* ── Filter Drawer ── */}
-            <AnimatePresence>
-                {showFilters && (
-                    <div className="fixed inset-0 z-[2000] flex flex-col justify-end">
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            onClick={() => setShowFilters(false)}
-                            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                        />
-                        <motion.div
-                            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-                            transition={{ type: 'spring', damping: 28, stiffness: 240 }}
-                            className="relative bg-white dark:bg-slate-950 rounded-t-[36px] shadow-2xl overflow-hidden flex flex-col"
-                            style={{ maxHeight: '88vh' }}
-                        >
-                            {/* Handle */}
-                            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-800 rounded-full mx-auto mt-4 mb-1 shrink-0" />
-
-                            {/* Header */}
-                            <div className="flex items-center justify-between px-6 py-4 shrink-0 border-b border-slate-100 dark:border-slate-800">
-                                <h2 className="text-xl font-black text-slate-900 dark:text-white">Filter Map</h2>
-                                <button onClick={resetFilters} className="text-sm font-black text-primary dark:text-indigo-400">Reset all</button>
-                            </div>
-
-                            {/* Scrollable body */}
-                            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8 pb-36">
-
-                                {/* Location */}
-                                <section className="space-y-4">
-                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Location</h3>
-                                    <FilterSelect
-                                        label="Division"
-                                        value={filters.division}
-                                        onChange={v => setFilters(p => ({ ...p, division: v, district: '', upazila: '' }))}
-                                        options={Object.keys(bdLocations)}
-                                    />
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <FilterSelect
-                                            label="District"
-                                            value={filters.district}
-                                            onChange={v => setFilters(p => ({ ...p, district: v, upazila: '' }))}
-                                            options={districts}
-                                            disabled={!filters.division}
-                                        />
-                                        <FilterSelect
-                                            label="Upazila"
-                                            value={filters.upazila}
-                                            onChange={v => setFilters(p => ({ ...p, upazila: v }))}
-                                            options={thanas}
-                                            disabled={!filters.district}
-                                        />
-                                    </div>
-                                </section>
-
-                                {/* Property type */}
-                                <section className="space-y-3">
-                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Property Type</h3>
-                                    <div className="flex flex-wrap gap-2">
-                                        {PROPERTY_TYPES.map(type => (
-                                            <button
-                                                key={type}
-                                                onClick={() => setFilters(p => ({ ...p, type: p.type === type ? '' : type }))}
-                                                className={`py-2.5 px-4 rounded-2xl text-xs font-black border-2 transition-all ${
-                                                    filters.type === type
-                                                        ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
-                                                        : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
-                                                }`}
-                                            >
-                                                {type}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </section>
-
-                                {/* Billing cycle */}
-                                <section className="space-y-3">
-                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Billing Cycle</h3>
-                                    <div className="flex gap-2">
-                                        {BILLING_CYCLES.map(c => (
-                                            <button
-                                                key={c}
-                                                onClick={() => setFilters(p => ({ ...p, billingCycle: c }))}
-                                                className={`flex-1 py-3 rounded-2xl text-xs font-black border-2 transition-all ${
-                                                    filters.billingCycle === c
-                                                        ? 'bg-primary border-primary text-white'
-                                                        : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-500'
-                                                }`}
-                                            >
-                                                /{c}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </section>
-
-                                {/* Price range */}
-                                <section className="space-y-3">
-                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Price Range</h3>
-                                    <div className="flex gap-3">
-                                        <div className="relative flex-1">
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">৳</span>
-                                            <input
-                                                type="number"
-                                                placeholder="Min"
-                                                value={filters.minPrice}
-                                                onChange={e => setFilters(p => ({ ...p, minPrice: e.target.value }))}
-                                                className="w-full bg-slate-50 dark:bg-slate-800 rounded-2xl py-3.5 pl-9 pr-4 font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20"
-                                            />
-                                        </div>
-                                        <div className="relative flex-1">
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">৳</span>
-                                            <input
-                                                type="number"
-                                                placeholder="Max"
-                                                value={filters.maxPrice}
-                                                onChange={e => setFilters(p => ({ ...p, maxPrice: e.target.value }))}
-                                                className="w-full bg-slate-50 dark:bg-slate-800 rounded-2xl py-3.5 pl-9 pr-4 font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20"
-                                            />
-                                        </div>
-                                    </div>
-                                </section>
-                            </div>
-
-                            {/* Apply button */}
-                            <div className="absolute bottom-0 left-0 right-0 p-5 pt-16 bg-gradient-to-t from-white dark:from-slate-950">
-                                <button
-                                    onClick={() => setShowFilters(false)}
-                                    className="w-full bg-primary text-white font-black text-base py-5 rounded-[24px] shadow-2xl shadow-primary/30"
-                                >
-                                    Show {filtered.length} Properties on Map
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
 }
 
-function FilterSelect({ label, value, onChange, options, disabled }) {
+function filterListings(listings, filters) {
+    return listings.filter((listing) => {
+        const type = String(listing.type || '').toLowerCase();
+        const rent = Number(listing.rent || listing.price || 0);
+        const beds = Number(listing.beds || 0);
+
+        if (filters.type !== 'all' && type !== filters.type) return false;
+        if (filters.minPrice && rent < Number(filters.minPrice)) return false;
+        if (filters.maxPrice && rent > Number(filters.maxPrice)) return false;
+
+        if (filters.beds === '4+') {
+            if (beds < 4) return false;
+        } else if (Number(filters.beds) > 0 && beds !== Number(filters.beds)) {
+            return false;
+        }
+
+        if (filters.searchTerm) {
+            const term = filters.searchTerm.toLowerCase().trim();
+            const matchesSearch = listing.title?.toLowerCase().includes(term) || 
+                                  listing.addressDetails?.toLowerCase().includes(term);
+            if (!matchesSearch) return false;
+        }
+
+        return true;
+    });
+}
+
+export default function MapPage() {
+    const [allListings, setAllListings] = useState([]);
+    const [visibleListings, setVisibleListings] = useState([]);
+    const [selectedListingId, setSelectedListingId] = useState(null);
+    const [hoveredListingId, setHoveredListingId] = useState(null);
+    const [hasPanned, setHasPanned] = useState(false);
+    const [currentBounds, setCurrentBounds] = useState(null);
+    const [filters, setFilters] = useState(INITIAL_FILTERS);
+    const [activeLayer, setActiveLayer] = useState('street');
+    const [isLoading, setIsLoading] = useState(true);
+    const [toastMessage, setToastMessage] = useState('');
+    const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        async function fetchListings() {
+            try {
+                setIsLoading(true);
+                const listingsQuery = query(
+                    collection(db, 'properties'),
+                    where('status', '==', 'Available'),
+                    limit(200)
+                );
+                const snapshot = await getDocs(listingsQuery);
+                const listings = snapshot.docs
+                    .map(normalizeListing)
+                    .filter(Boolean)
+                    .filter((listing) => listing.isApproved !== false)
+                    .sort((a, b) => {
+                        const dateA = a.updatedAt?.toDate() || a.createdAt?.toDate() || new Date(0);
+                        const dateB = b.updatedAt?.toDate() || b.createdAt?.toDate() || new Date(0);
+                        return dateB - dateA;
+                    });
+
+                if (!isMounted) return;
+                setAllListings(listings);
+                setVisibleListings(listings);
+            } catch (error) {
+                logger.error('Map listings fetch failed', error);
+                if (isMounted) setToastMessage('Could not load map listings');
+            } finally {
+                if (isMounted) setIsLoading(false);
+            }
+        }
+
+        fetchListings();
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    const filteredVisibleListings = useMemo(
+        () => filterListings(visibleListings, filters),
+        [visibleListings, filters]
+    );
+
+    useEffect(() => {
+        if (!currentBounds) return;
+        const nextVisible = allListings.filter((listing) =>
+            currentBounds.contains([listing.lat, listing.lng])
+        );
+        setVisibleListings(nextVisible);
+        setHasPanned(false);
+    }, [currentBounds, allListings]);
+
     return (
-        <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{label}</label>
-            <div className="relative">
-                <select
-                    value={value}
-                    onChange={e => onChange(e.target.value)}
-                    disabled={disabled}
-                    className="w-full appearance-none bg-slate-50 dark:bg-slate-800 rounded-2xl py-3.5 px-4 font-bold text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-50"
-                >
-                    <option value="">All {label}s</option>
-                    {options.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-                <ChevronDown size={15} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        <div className="anylet-map-page fixed inset-0 z-10 bg-[#F9FAFB] md:relative md:inset-auto md:z-auto md:h-[calc(100vh-72px)]">
+            <div className="flex h-full w-full flex-col md:flex-row">
+                <section className="relative h-full w-full md:w-[58%]">
+                    <MapView
+                        allListings={allListings}
+                        listings={filteredVisibleListings}
+                        isLoading={isLoading}
+                        selectedListingId={selectedListingId}
+                        hoveredListingId={hoveredListingId}
+                        setSelectedListingId={setSelectedListingId}
+                        setVisibleListings={setVisibleListings}
+                        setHasPanned={setHasPanned}
+                        setCurrentBounds={setCurrentBounds}
+                        showToast={setToastMessage}
+                        activeLayer={activeLayer}
+                    >
+                        <FilterBar
+                            filters={filters}
+                            setFilters={setFilters}
+                            activeLayer={activeLayer}
+                            setActiveLayer={setActiveLayer}
+                            topOffset={hasPanned ? '4rem' : '1rem'}
+                        />
+                    </MapView>
+                </section>
+
+                <aside className="hidden h-full w-[42%] flex-col overflow-y-auto bg-[#F9FAFB] md:flex border-l border-slate-200">
+                    <div className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F9FAFB]/95 px-5 py-4 backdrop-blur flex flex-col gap-3">
+                        <div className="relative">
+                            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search specific location or property..."
+                                value={filters.searchTerm || ''}
+                                onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+                                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#1a227f] transition-all"
+                            />
+                        </div>
+                        <p className="text-sm font-semibold text-[#111827]">
+                            {filteredVisibleListings.length} properties in this area
+                        </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 p-4">
+                        {isLoading
+                            ? Array.from({ length: 6 }).map((_, index) => <ListingSkeleton key={index} />)
+                            : filteredVisibleListings.map((listing) => (
+                                <ListingCard
+                                    key={listing.id}
+                                    listing={listing}
+                                    compact={true}
+                                    isActive={hoveredListingId === listing.id || selectedListingId === listing.id}
+                                    onMouseEnter={() => setHoveredListingId(listing.id)}
+                                    onMouseLeave={() => setHoveredListingId(null)}
+                                />
+                            ))}
+                    </div>
+                </aside>
+
+                {/* Floating Button (Mobile Only) */}
+                <div className="fixed bottom-[calc(4.5rem+max(env(safe-area-inset-bottom),0.5rem))] left-4 z-[1000] md:hidden">
+                    <button
+                        onClick={() => setIsMobileModalOpen(true)}
+                        className="flex items-center gap-2 bg-primary px-6 py-3.5 rounded-2xl text-white font-black text-sm shadow-[0_8px_30px_rgb(26,34,127,0.3)] hover:scale-105 active:scale-95 transition-all"
+                    >
+                        <List size={18} />
+                        {filteredVisibleListings.length} available
+                    </button>
+                </div>
+
+                {/* Premium Listings Modal (Mobile Only) */}
+                <AnimatePresence>
+                    {isMobileModalOpen && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[2000] bg-slate-900/40 backdrop-blur-sm md:hidden"
+                            onClick={() => setIsMobileModalOpen(false)}
+                        >
+                            <motion.div
+                                initial={{ y: '100%' }}
+                                animate={{ y: 0 }}
+                                exit={{ y: '100%' }}
+                                transition={{ type: 'spring', damping: 26, stiffness: 220 }}
+                                className="absolute inset-x-0 bottom-0 top-16 flex flex-col overflow-hidden rounded-t-[32px] bg-[#F9FAFB] shadow-[0_-20px_40px_rgba(0,0,0,0.2)]"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F9FAFB]/95 px-5 py-4 backdrop-blur flex flex-col gap-4">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-lg font-black text-slate-900">
+                                            {filteredVisibleListings.length} properties
+                                        </h2>
+                                        <button
+                                            onClick={() => setIsMobileModalOpen(false)}
+                                            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-600 transition-colors hover:bg-slate-300 active:scale-95"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+                                    <div className="relative">
+                                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search specific location or property..."
+                                            value={filters.searchTerm || ''}
+                                            onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+                                            className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#1a227f] transition-all shadow-sm"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex-1 overflow-y-auto px-4 py-4 pb-8">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {isLoading
+                                            ? Array.from({ length: 6 }).map((_, index) => <ListingSkeleton key={index} />)
+                                            : filteredVisibleListings.map((listing) => (
+                                                <ListingCard
+                                                    key={listing.id}
+                                                    listing={listing}
+                                                    compact={true}
+                                                    isActive={hoveredListingId === listing.id || selectedListingId === listing.id}
+                                                    onMouseEnter={() => setHoveredListingId(listing.id)}
+                                                    onMouseLeave={() => setHoveredListingId(null)}
+                                                />
+                                            ))}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
+
+            <Toast message={toastMessage} onClose={() => setToastMessage('')} />
         </div>
     );
 }
