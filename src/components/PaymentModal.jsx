@@ -6,8 +6,8 @@ import { createPortal } from 'react-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import logger from '../utils/logger';
-import {
 import { getApiUrl } from '../utils/api';
+import {
     X, ArrowLeft, ArrowRight, CreditCard, Loader2, CheckCircle2,
     Clock, Shield, Copy, Smartphone, AlertTriangle, HelpCircle
 } from 'lucide-react';
