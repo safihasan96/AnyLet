@@ -5,6 +5,8 @@ import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } 
 import { getStorage } from "firebase/storage";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider, CustomProvider } from "firebase/app-check";
 
+import { Capacitor } from '@capacitor/core';
+
 // Your web app's Firebase configuration using Environment Variables
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -23,24 +25,30 @@ let analytics;
 if (typeof window !== "undefined") {
     analytics = getAnalytics(app);
 
-    const isDev = import.meta.env.DEV ||
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname.startsWith('192.168.');
+    const isNative = Capacitor.isNativePlatform();
+    
+    // Only initialize web-based AppCheck if we are NOT running as a native Capacitor app.
+    // ReCaptchaEnterprise does not work in Capacitor webviews and will cause the app to hang.
+    if (!isNative) {
+        const isDev = import.meta.env.DEV ||
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname.startsWith('192.168.');
 
-    if (isDev) {
-        // In development, we use a static debug token.
-        // IMPORTANT: You MUST register this exact token in your Firebase Console!
-        // Go to: Firebase Console -> App Check -> Apps -> Your Web App -> Manage Debug Tokens
-        // Add this token: c6b986b6-3a1e-450f-90db-3c4a96e62dc6
-        // eslint-disable-next-line no-restricted-globals
-        self.FIREBASE_APPCHECK_DEBUG_TOKEN = "c6b986b6-3a1e-450f-90db-3c4a96e62dc6";
+        if (isDev) {
+            // In development, we use a static debug token.
+            // IMPORTANT: You MUST register this exact token in your Firebase Console!
+            // Go to: Firebase Console -> App Check -> Apps -> Your Web App -> Manage Debug Tokens
+            // Add this token: c6b986b6-3a1e-450f-90db-3c4a96e62dc6
+            // eslint-disable-next-line no-restricted-globals
+            self.FIREBASE_APPCHECK_DEBUG_TOKEN = "c6b986b6-3a1e-450f-90db-3c4a96e62dc6";
+        }
+
+        initializeAppCheck(app, {
+            provider: new ReCaptchaEnterpriseProvider('6Lfs1zotAAAAAG5c73YvfdkwUFmJTIWWXMbkCQL_'),
+            isTokenAutoRefreshEnabled: true,
+        });
     }
-
-    initializeAppCheck(app, {
-        provider: new ReCaptchaEnterpriseProvider('6Lfs1zotAAAAAG5c73YvfdkwUFmJTIWWXMbkCQL_'),
-        isTokenAutoRefreshEnabled: true,
-    });
 }
 
 // Initialize Cloud Firestore
