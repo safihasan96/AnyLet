@@ -132,15 +132,8 @@ export default function Signup() {
                     setRefStatus(REF_STATUS.INVALID);
                     setRefName('');
                 }
-            } catch (err) {
-                logger.error("Referral check error:", err);
-                // If it's a permission/app-check error, don't falsely claim the code is invalid
-                if (err.code?.includes('permission-denied') || err.message?.includes('AppCheck')) {
-                    setRefStatus(REF_STATUS.IDLE);
-                    setError("Security verification failed. Please check your AppCheck configuration.");
-                } else {
-                    setRefStatus(REF_STATUS.INVALID);
-                }
+            } catch {
+                setRefStatus(REF_STATUS.INVALID);
             }
         }, 700);
         setRefDebounce(t);

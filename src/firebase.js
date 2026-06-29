@@ -3,9 +3,7 @@ import { getFirestore } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getStorage } from "firebase/storage";
-import { initializeAppCheck, ReCaptchaEnterpriseProvider, CustomProvider } from "firebase/app-check";
-
-import { Capacitor } from '@capacitor/core';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
 // Your web app's Firebase configuration using Environment Variables
 const firebaseConfig = {
@@ -21,12 +19,15 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 let analytics;
+let appCheck;
 
-// AppCheck has been completely removed as per request to fix native mobile support.
-// ReCaptcha Enterprise is fundamentally incompatible with Capacitor Android/iOS builds,
-// and without the native AppCheck plugins, it causes the app to hang and block all queries.
 if (typeof window !== "undefined") {
     analytics = getAnalytics(app);
+    // Initialize App Check for Bot Protection
+    appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider('6Lfs1zotAAAAAG5c73YvfdkwUFmJTIWWXMbkCQL_'),
+      isTokenAutoRefreshEnabled: true
+    });
 }
 
 // Initialize Cloud Firestore
@@ -42,4 +43,3 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 // Initialize Firebase Storage
 export const storage = getStorage(app);
-

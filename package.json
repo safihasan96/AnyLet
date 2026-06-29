@@ -1,7 +1,7 @@
 {
   "name": "rentalproject",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "concurrently -n API,VITE -c cyan,magenta \"node --env-file=.env.local dev-api-server.mjs\" \"vite\"",
