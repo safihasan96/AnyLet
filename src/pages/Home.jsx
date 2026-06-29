@@ -96,11 +96,14 @@ export default function Home() {
                         </div>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                     <Link to="/notifications" className="relative flex size-10 items-center justify-center rounded-xl bg-white dark:bg-[#1A1D24] text-slate-600 dark:text-slate-300 shadow-sm border border-slate-100 dark:border-white/[0.06] transition-transform active:scale-95">
                         <Bell size={20} />
                         {hasUnread && (
-                            <span className="absolute top-2 right-2 size-2 bg-rose-500 rounded-full border-2 border-white dark:border-[#1A1D24]" />
+                            <span className="absolute -top-1 -right-1 flex size-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                                <span className="relative inline-flex size-3 rounded-full bg-rose-500 border-2 border-white dark:border-[#1A1D24]" />
+                            </span>
                         )}
                     </Link>
                 </div>

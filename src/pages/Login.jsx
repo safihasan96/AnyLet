@@ -65,8 +65,18 @@ export default function Login() {
             const snap = await getDoc(doc(db, 'users', userCredential.user.uid));
             const data = snap.exists() ? snap.data() : {};
             navigate(getRedirect(data.role, data.onboardingStep), { replace: true });
-        } catch {
-            setError('Incorrect email or password. Please try again.');
+        } catch (err) {
+            logger.error('Login error:', err);
+            const code = err?.code || '';
+            if (code === 'auth/wrong-password' || code === 'auth/user-not-found' || code === 'auth/invalid-credential') {
+                setError('Incorrect email or password. Please try again.');
+            } else if (code === 'auth/too-many-requests') {
+                setError('Too many failed attempts. Please wait a few minutes or reset your password.');
+            } else if (code === 'auth/network-request-failed') {
+                setError('Network error. Please check your connection and try again.');
+            } else {
+                setError('Something went wrong. Please refresh and try again.');
+            }
             setLoading(false);
         }
     }
