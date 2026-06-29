@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import logger from '../utils/logger';
+import { getApiUrl } from '../utils/api';
 
 const STATUS_MAP = {
   pending: { label: 'Pending Review', icon: Clock },
@@ -61,7 +62,7 @@ export default function AdminKycTab({ openModal }) {
 
   async function reviewSubmission(submission, decision, reason = '') {
     const token = await currentUser.getIdToken();
-    const res = await fetch('/api/admin-review-kyc', {
+    const res = await fetch(getApiUrl('/api/admin-review-kyc'), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,

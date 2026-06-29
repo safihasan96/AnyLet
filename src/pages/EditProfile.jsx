@@ -7,6 +7,7 @@ import { updateProfile } from 'firebase/auth';
 import { ArrowLeft, Save, Plus, X, Camera, MapPin, MessageCircle } from 'lucide-react';
 import { EditProfileSkeleton } from '../components/Skeleton';
 import logger from '../utils/logger';
+import { getApiUrl } from '../utils/api';
 
 export default function EditProfile() {
     const { currentUser, refreshUser } = useAuth();
@@ -122,7 +123,7 @@ export default function EditProfile() {
         setSaving(true);
         setMessage({ type: '', text: '' });
         try {
-            const sigRes = await fetch('/api/cloudinary-sign', {
+            const sigRes = await fetch(getApiUrl('/api/cloudinary-sign'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

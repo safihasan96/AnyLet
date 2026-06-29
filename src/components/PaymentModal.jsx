@@ -7,6 +7,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import logger from '../utils/logger';
 import {
+import { getApiUrl } from '../utils/api';
     X, ArrowLeft, ArrowRight, CreditCard, Loader2, CheckCircle2,
     Clock, Shield, Copy, Smartphone, AlertTriangle, HelpCircle
 } from 'lucide-react';
@@ -153,7 +154,7 @@ export default function PaymentModal({
         }
 
         const token = await currentUser.getIdToken();
-        const response = await fetch('/api/create-payment-intent', {
+        const response = await fetch(getApiUrl('/api/create-payment-intent'), {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,

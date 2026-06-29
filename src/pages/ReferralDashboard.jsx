@@ -40,6 +40,7 @@ function relativeTime(ts) {
 // ─── Withdraw Modal ────────────────────────────────────────────────────────────
 
 import { createPortal } from 'react-dom';
+import { getApiUrl } from '../utils/api';
 
 function WithdrawModal({ available, onClose, uid }) {
     const [amount, setAmount]         = useState('');
@@ -72,7 +73,7 @@ function WithdrawModal({ available, onClose, uid }) {
             const idToken = await auth.currentUser?.getIdToken(true);
             if (!idToken) throw new Error('Not authenticated');
 
-            const response = await fetch('/api/request-withdrawal', {
+            const response = await fetch(getApiUrl('/api/request-withdrawal'), {
                 method:  'POST',
                 headers: {
                     'Content-Type':  'application/json',

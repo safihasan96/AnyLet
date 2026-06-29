@@ -22,6 +22,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
 import logger from '../utils/logger';
+import { getApiUrl } from '../utils/api';
 
 export default function AddProperty() {
     const { currentUser, userProfile } = useAuth();
@@ -204,7 +205,7 @@ export default function AddProperty() {
         const uploadedUrls = [];
 
         try {
-            const sigRes = await fetch('/api/cloudinary-sign', {
+            const sigRes = await fetch(getApiUrl('/api/cloudinary-sign'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
