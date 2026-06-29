@@ -214,6 +214,7 @@ export default function AddProperty() {
                 body: JSON.stringify({ isKyc: false })
             });
             const sigData = await sigRes.json();
+            if (!sigRes.ok) throw new Error(sigData.error || 'Failed to generate secure upload signature. Ensure backend API keys are configured.');
 
             for (const file of files) {
                 const data = new FormData();

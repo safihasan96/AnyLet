@@ -132,6 +132,7 @@ export default function EditProfile() {
                 body: JSON.stringify({ isKyc: false })
             });
             const sigData = await sigRes.json();
+            if (!sigRes.ok) throw new Error(sigData.error || 'Failed to generate secure upload signature. Ensure backend API keys are configured.');
             
             const data = new FormData();
             data.append('file', file);
