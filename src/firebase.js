@@ -29,24 +29,18 @@ if (typeof window !== "undefined") {
         window.location.hostname.startsWith('192.168.');
 
     if (isDev) {
-        // In development, use a debug token so AppCheck doesn't block Auth & Firestore.
-        // The debug token is set globally before initializeAppCheck is called.
-        // This never runs in production builds (import.meta.env.DEV is false after `vite build`).
+        // In development, we use a static debug token.
+        // IMPORTANT: You MUST register this exact token in your Firebase Console!
+        // Go to: Firebase Console -> App Check -> Apps -> Your Web App -> Manage Debug Tokens
+        // Add this token: c6b986b6-3a1e-450f-90db-3c4a96e62dc6
         // eslint-disable-next-line no-restricted-globals
-        self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-        initializeAppCheck(app, {
-            provider: new CustomProvider({
-                getToken: () => Promise.resolve({ token: 'debug-token', expireTimeMillis: Date.now() + 3600 * 1000 }),
-            }),
-            isTokenAutoRefreshEnabled: true,
-        });
-    } else {
-        // Production: use reCAPTCHA Enterprise for real bot protection
-        initializeAppCheck(app, {
-            provider: new ReCaptchaEnterpriseProvider('6Lfs1zotAAAAAG5c73YvfdkwUFmJTIWWXMbkCQL_'),
-            isTokenAutoRefreshEnabled: true,
-        });
+        self.FIREBASE_APPCHECK_DEBUG_TOKEN = "c6b986b6-3a1e-450f-90db-3c4a96e62dc6";
     }
+
+    initializeAppCheck(app, {
+        provider: new ReCaptchaEnterpriseProvider('6Lfs1zotAAAAAG5c73YvfdkwUFmJTIWWXMbkCQL_'),
+        isTokenAutoRefreshEnabled: true,
+    });
 }
 
 // Initialize Cloud Firestore
