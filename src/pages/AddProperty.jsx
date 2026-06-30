@@ -209,7 +209,7 @@ export default function AddProperty() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${await auth.currentUser.getIdToken()}`,
+                    Authorization: `Bearer ${await currentUser.getIdToken()}`,
                 },
                 body: JSON.stringify({ isKyc: false })
             });
