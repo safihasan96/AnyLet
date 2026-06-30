@@ -1,15 +1,4 @@
-import { db, auth, admin } from './firebase-admin.js';
-
-export function initAdmin() {
-  return admin.app();
-}
-
-export function adminAuth() {
-  return auth;
-}
-
-export function adminDb() {
-  return db;
-}
-
-export { db, auth, admin };
+// Thin compatibility re-export shim.
+// Everything is now in firebase-admin.js — this file exists so older imports
+// pointing to firebaseAdmin.js (capital A) continue to work without changes.
+export { db, auth, admin } from './firebase-admin.js';

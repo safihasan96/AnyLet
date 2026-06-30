@@ -141,8 +141,14 @@ async function attachAuth(req, res, requireAuth, requireAdmin) {
   }
 
   try {
+    if (!auth) {
+      console.error('[Middleware] Firebase Admin auth is not initialized (likely missing credentials).');
+      res.status(500).json({ error: 'Server configuration error: Auth not initialized.' });
+      return false;
+    }
     req.user = await auth.verifyIdToken(header.slice('Bearer '.length).trim());
-  } catch {
+  } catch (error) {
+    console.error('[Middleware] Token verification failed:', error);
     res.status(401).json({ error: 'Unauthorized' });
     return false;
   }

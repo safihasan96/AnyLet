@@ -1,5 +1,5 @@
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
 function normalizePrivateKey(value) {
@@ -33,13 +33,30 @@ function loadServiceAccount() {
   throw new Error('Missing Firebase Admin credentials');
 }
 
-if (!getApps().length) {
-  initializeApp({
-    credential: cert(loadServiceAccount()),
-  });
+let db = null;
+let auth = null;
+
+try {
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert(loadServiceAccount()),
+    });
+  }
+  db = getFirestore();
+  auth = getAuth();
+} catch (error) {
+  console.error('[Firebase Admin] Initialization Error:', error.message);
 }
 
-const db = getFirestore();
-const auth = getAuth();
+// ── admin namespace ──────────────────────────────────────────────────────────
+// Provides a drop-in compatibility shim so existing code using the
+// legacy `admin.firestore.Timestamp.now()` / `admin.firestore.FieldValue.*`
+// pattern continues to work without any changes to the calling files.
+const admin = {
+  firestore: {
+    Timestamp,
+    FieldValue,
+  },
+};
 
-export { db, auth };
+export { db, auth, admin };
