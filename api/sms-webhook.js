@@ -280,7 +280,7 @@ export default withMiddleware(async (req, res) => {
     return ok(res, 'unauthorized webhook request');
   }
 
-  const payload = extractSmsPayload(req.body || {});
+  const payload = extractSmsPayload(req.method === 'GET' ? req.query : (req.body || {}));
 
   if (payload.provider && !ALLOWED_PROVIDERS.has(payload.provider)) {
     return ok(res, 'unsupported provider');
@@ -334,7 +334,7 @@ export default withMiddleware(async (req, res) => {
     return ok(res, error.message);
   }
 }, {
-  methods: ['POST'],
+  methods: ['GET', 'POST'],
   requireAuth: false,
   requireAdmin: false,
   bodyLimit: '10kb',
