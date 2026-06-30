@@ -1,7 +1,6 @@
 import { auth } from './firebase-admin.js';
 import { Redis } from '@upstash/redis';
-import DOMPurify from 'dompurify';
-import { JSDOM } from 'jsdom';
+import sanitizeHtml from 'sanitize-html';
 
 // Initialize Redis if env vars exist, otherwise fallback to null
 const redis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)
@@ -10,10 +9,6 @@ const redis = (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_R
       token: process.env.UPSTASH_REDIS_REST_TOKEN,
     })
   : null;
-
-// Initialize Server-Side DOMPurify
-const window = new JSDOM('').window;
-const purify = DOMPurify(window);
 
 const memoryRateBuckets = new Map();
 
@@ -93,7 +88,7 @@ async function enforceRateLimit(req, res) {
 // Deeply sanitize strings in JSON body
 function sanitizePayload(obj) {
   if (typeof obj === 'string') {
-    return purify.sanitize(obj, { ALLOWED_TAGS: [] }); // Strip ALL HTML tags from API payloads
+    return sanitizeHtml(obj, { allowedTags: [], allowedAttributes: {} }); // Strip ALL HTML tags from API payloads
   }
   if (Array.isArray(obj)) {
     return obj.map(sanitizePayload);
