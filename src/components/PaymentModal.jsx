@@ -1,17 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { createPortal } from 'react-dom';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
 import logger from '../utils/logger';
 import { getApiUrl } from '../utils/api';
 import {
     X, ArrowLeft, ArrowRight, CreditCard, Loader2, CheckCircle2,
-    Clock, Shield, Copy, Smartphone, AlertTriangle, HelpCircle
+    XCircle, Shield, Copy, Smartphone, AlertTriangle, HelpCircle,
+    Receipt, Building2, Clock, Zap
 } from 'lucide-react';
 
+// ── Merchant number is hardcoded and immutable ────────────────────────────────
+// Cannot be changed via database, API, or any runtime mechanism.
+// The ONLY way to change this is a new code commit to GitHub.
 const MERCHANT_NUMBER = '01580632832';
 
 const PAYMENT_METHODS = [
@@ -20,9 +22,10 @@ const PAYMENT_METHODS = [
     { id: 'rocket', name: 'Rocket', color: '#8C3494', bgLight: 'bg-[#8C3494]/10', textColor: 'text-[#8C3494]', borderColor: 'border-[#8C3494]/30', logo: '🚀' },
 ];
 
-/* ═══════════════════════════════════════════════
-   VARIANTS — all decoupled from JSX (FM rule #1)
-═══════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════════════
+   FRAMER MOTION VARIANTS — all decoupled from JSX (FM Rule #1)
+   Only use transform/opacity properties for 60fps performance (FM Rule #2)
+════════════════════════════════════════════════════════════════════════════ */
 const backdropV = {
     hidden:  { opacity: 0 },
     visible: { opacity: 1, transition: { duration: 0.22 } },
@@ -46,14 +49,6 @@ const iconBounceV = {
     visible: { scale: 1, rotate: 0,   opacity: 1, transition: { type: 'spring', stiffness: 500, damping: 18, delay: 0.1 } },
 };
 
-const dotV = (i) => ({
-    hidden:  { opacity: 0, scale: 0 },
-    visible: {
-        opacity: [0.4, 1, 0.4], scale: 1,
-        transition: { delay: 0.25 + i * 0.08, duration: 2.4, repeat: Infinity, ease: 'easeInOut' },
-    },
-});
-
 const listItemV = {
     hidden:  { opacity: 0, x: -14 },
     visible: (i) => ({
@@ -62,10 +57,18 @@ const listItemV = {
     }),
 };
 
+const invoiceLineV = {
+    hidden:  { opacity: 0, y: 10 },
+    visible: (i) => ({
+        opacity: 1, y: 0,
+        transition: { type: 'spring', stiffness: 300, damping: 28, delay: 0.2 + i * 0.07 },
+    }),
+};
+
 const instructionRevealV = {
-    hidden:  { opacity: 0, height: 0, y: -8 },
-    visible: { opacity: 1, height: 'auto', y: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
-    exit:    { opacity: 0, height: 0,        y: -8, transition: { duration: 0.16 } },
+    hidden:  { opacity: 0, y: -8 },
+    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
+    exit:    { opacity: 0, y: -8, transition: { duration: 0.16 } },
 };
 
 const copyIconV = {
@@ -80,6 +83,17 @@ const backBtnV = {
     exit:    { opacity: 0, x: -10, transition: { duration: 0.1 } },
 };
 
+const dotV = (i) => ({
+    hidden:  { opacity: 0, scale: 0 },
+    visible: {
+        opacity: [0.4, 1, 0.4], scale: 1,
+        transition: { delay: 0.25 + i * 0.08, duration: 2.4, repeat: Infinity, ease: 'easeInOut' },
+    },
+});
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PAYMENT MODAL
+════════════════════════════════════════════════════════════════════════════ */
 export default function PaymentModal({
     isOpen, onClose,
     type = 'listing_fee',
@@ -98,152 +112,108 @@ export default function PaymentModal({
     const toast = useToast();
     const reduced = useReducedMotion();
 
-    const [step,             setStep]             = useState(0);
-    const [dir,              setDir]              = useState(1);
-    const [selectedMethod,   setSelectedMethod]   = useState(null);
-    const [txnId,            setTxnId]            = useState('');
-    const [loading,          setLoading]          = useState(false);
-    const [copied,           setCopied]           = useState(false);
-    const [paymentIntent,    setPaymentIntent]    = useState(null);
-    const [paymentConfirmed, setPaymentConfirmed] = useState(false);
-    const unsubscribeRef = useRef(null);
-
-    // ── Real-time payment confirmation listener ───────────────────────────────
-    // When step reaches 3 ("Under Verification") and we have a paymentIntentId,
-    // subscribe to the Firestore document. When the sms-webhook flips status to
-    // 'completed', auto-transition the UI to a ✅ confirmed state.
-    useEffect(() => {
-        const intentId = paymentIntent?.paymentIntentId || paymentIntent?.id;
-        if (step !== 3 || !intentId) return;
-
-        const unsub = onSnapshot(
-            doc(db, 'paymentIntents', intentId),
-            (snap) => {
-                if (snap.exists() && snap.data()?.status === 'completed') {
-                    setPaymentConfirmed(true);
-                    if (unsubscribeRef.current) {
-                        unsubscribeRef.current();
-                        unsubscribeRef.current = null;
-                    }
-                }
-            },
-            (err) => logger.error('[PaymentModal] onSnapshot error:', err)
-        );
-
-        unsubscribeRef.current = unsub;
-        return () => {
-            if (unsubscribeRef.current) {
-                unsubscribeRef.current();
-                unsubscribeRef.current = null;
-            }
-        };
-    }, [step, paymentIntent]);
+    // ── Step Machine ──────────────────────────────────────────────────────────
+    // 0 = Order Summary
+    // 1 = Choose Payment Method & Send Money
+    // 2 = Enter Transaction ID
+    // 3 = Verifying… (loading)
+    // 4 = Success Invoice
+    // 5 = Failed
+    const [step,            setStep]           = useState(0);
+    const [dir,             setDir]            = useState(1);
+    const [selectedMethod,  setSelectedMethod] = useState(null);
+    const [txnId,           setTxnId]          = useState('');
+    const [loading,         setLoading]        = useState(false);
+    const [copied,          setCopied]         = useState(false);
+    const [verifyResult,    setVerifyResult]   = useState(null); // { success, paymentId, amount, verifiedAt, message, error }
 
     const normalizedBookingType = bookingType || (
-        type === 'escrow_deposit' ? 'deposit' :
-        type === 'subscription' ? 'subscription' :
-        type === 'verification_fee' ? 'verification' :
-        type === 'listing_fee' ? 'listing' :
+        type === 'escrow_deposit'    ? 'deposit' :
+        type === 'subscription'      ? 'subscription' :
+        type === 'verification_fee'  ? 'verification' :
+        type === 'listing_fee'       ? 'listing' :
         'booking'
     );
 
-    const createPaymentIntent = async () => {
-        if (!currentUser) {
-            toast.warning('Please sign in to continue.');
-            return null;
-        }
+    // ── Navigation helpers ────────────────────────────────────────────────────
+    const goNext = useCallback(() => { setDir(1);  setStep(s => s + 1); }, []);
+    const goBack = useCallback(() => { setDir(-1); setStep(s => s - 1); }, []);
 
-        const token = await currentUser.getIdToken();
-        const response = await fetch(getApiUrl('/api/create-payment-intent'), {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                propertyId,
-                bookingType: normalizedBookingType,
-                months,
-                onsiteVerification: metadata?.onsiteVerification === true,
-            }),
-        });
-
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) {
-            throw new Error(data.error || 'Unable to create payment intent');
-        }
-
-        setPaymentIntent(data);
-        return data;
-    };
-
-    const proceedToMethods = async () => {
-        if (amount === 0) {
-            if (onPaymentSubmitted) await onPaymentSubmitted(null);
-            setDir(1);
-            setStep(3);
-            return;
-        }
-
-        setLoading(true);
-        try {
-            await createPaymentIntent();
-            setDir(1);
-            setStep(1);
-        } catch (err) {
-            logger.error('Payment intent creation error:', err);
-            toast.error(err.message || 'Failed to prepare secure payment.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const goNext = () => { setDir(1);  setStep(s => s + 1); };
-    const goBack = () => { setDir(-1); setStep(s => s - 1); };
-
-    const copyNumber = async () => {
-        try { await navigator.clipboard.writeText(MERCHANT_NUMBER); }
-        catch { /* fallback */ }
+    const copyNumber = useCallback(async () => {
+        try { await navigator.clipboard.writeText(MERCHANT_NUMBER); } catch { /* ignore */ }
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-    };
+    }, []);
 
-    const handleSubmitPayment = async () => {
-        const isFree = amount === 0;
-        if (!isFree && (!currentUser || !txnId.trim() || txnId.trim().length < 6)) {
-            toast.warning('Please enter a valid transaction ID (min 6 characters).');
+    // ── Secure Verification via /api/verify-payment ───────────────────────────
+    const handleVerifyPayment = useCallback(async () => {
+        if (!currentUser) { toast.warning('Please sign in to continue.'); return; }
+        const trimmedId = txnId.trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+        if (trimmedId.length < 6) {
+            toast.warning('Please enter a valid Transaction ID (min 6 characters).');
             return;
         }
-        setLoading(true);
-        try {
-            if (!isFree && !paymentIntent?.paymentIntentId) {
-                throw new Error('Payment intent is missing. Please restart the payment.');
-            }
-            if (onPaymentSubmitted) await onPaymentSubmitted(paymentIntent?.paymentIntentId || null);
-            setDir(1); setStep(3);
-        } catch (err) {
-            logger.error('Payment submission error:', err);
-            toast.error('Failed to submit payment. Please try again.');
-        } finally {
-            setLoading(false);
-        }
-    };
 
-    const handleClose = () => {
-        if (unsubscribeRef.current) {
-            unsubscribeRef.current();
-            unsubscribeRef.current = null;
+        setDir(1);
+        setStep(3); // → Verifying…
+
+        try {
+            const token = await currentUser.getIdToken(/* forceRefresh */ true);
+            const response = await fetch(getApiUrl('/api/verify-payment'), {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                // Only send what the server needs. Never send amount/price from frontend.
+                body: JSON.stringify({
+                    transactionId: trimmedId,
+                    bookingType: normalizedBookingType,
+                    propertyId: propertyId || undefined,
+                    months,
+                    onsiteVerification: metadata?.onsiteVerification === true,
+                }),
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (response.ok && data.success) {
+                setVerifyResult({ success: true, ...data });
+                if (onPaymentSubmitted) await onPaymentSubmitted(data.paymentId);
+                setDir(1);
+                setStep(4); // → Success Invoice
+            } else {
+                setVerifyResult({ success: false, error: data.error || 'Verification failed. Please try again.' });
+                setDir(1);
+                setStep(5); // → Failed
+                logger.error('[PaymentModal] Verification failed:', data.error);
+            }
+        } catch (err) {
+            logger.error('[PaymentModal] Network error during verification:', err);
+            setVerifyResult({ success: false, error: 'Network error. Please check your connection and try again.' });
+            setDir(1);
+            setStep(5); // → Failed
         }
+    }, [currentUser, txnId, normalizedBookingType, propertyId, months, metadata, onPaymentSubmitted, toast]);
+
+    // ── Reset & Close ─────────────────────────────────────────────────────────
+    const handleClose = useCallback(() => {
         setStep(0); setDir(1); setSelectedMethod(null);
-        setTxnId(''); setCopied(false); setPaymentIntent(null);
-        setPaymentConfirmed(false);
+        setTxnId(''); setCopied(false); setVerifyResult(null); setLoading(false);
         onClose();
-    };
+    }, [onClose]);
+
+    const handleRetry = useCallback(() => {
+        setVerifyResult(null);
+        setDir(-1);
+        setStep(2); // → Back to TxnID input
+    }, []);
 
     if (typeof document === 'undefined') return null;
 
     const method      = PAYMENT_METHODS.find(m => m.id === selectedMethod);
     const totalSteps  = 3;
+    const showProgress = step < 3;
     const progressPct = step < 3 ? `${((step + 1) / totalSteps) * 100}%` : '100%';
 
     /* Reduced-motion fallbacks */
@@ -264,7 +234,7 @@ export default function PaymentModal({
                     className="fixed inset-0 z-[80] flex items-center justify-center p-4"
                     onClick={step < 3 ? handleClose : undefined}
                 >
-                    {/* blurred scrim */}
+                    {/* Blurred scrim */}
                     <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-xl" />
 
                     <motion.div
@@ -288,13 +258,14 @@ export default function PaymentModal({
                                             onClick={goBack}
                                             className="size-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                             whileTap={{ scale: 0.82 }}
+                                            aria-label="Go back"
                                         >
                                             <ArrowLeft size={18} strokeWidth={2.5} />
                                         </motion.button>
                                     ) : <div className="size-9" />}
                                 </AnimatePresence>
 
-                                {step < 3 && (
+                                {showProgress && (
                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                                         Step {step + 1} of {totalSteps}
                                     </p>
@@ -306,13 +277,14 @@ export default function PaymentModal({
                                     whileHover={{ scale: 1.14, rotate: 90 }}
                                     whileTap={{ scale: 0.82 }}
                                     transition={{ type: 'spring', stiffness: 520, damping: 18 }}
+                                    aria-label="Close payment modal"
                                 >
                                     <X size={18} strokeWidth={2.5} />
                                 </motion.button>
                             </div>
 
                             {/* Progress bar */}
-                            {step < 3 && (
+                            {showProgress && (
                                 <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                                     <motion.div
                                         className="h-full bg-gradient-to-r from-primary to-indigo-500 rounded-full"
@@ -328,7 +300,7 @@ export default function PaymentModal({
                         <div className="overflow-hidden">
                             <AnimatePresence mode="wait" custom={dir}>
 
-                                {/* STEP 0 — Order Summary */}
+                                {/* ──────────────────── STEP 0: Order Summary ──────────────────── */}
                                 {step === 0 && (
                                     <motion.div
                                         key="pay-s0" custom={dir}
@@ -340,11 +312,10 @@ export default function PaymentModal({
                                             {subtitle && <p className="text-sm text-slate-500 font-medium">{subtitle}</p>}
                                         </motion.div>
 
-                                        {/* Breakdown card */}
+                                        {/* Breakdown */}
                                         <motion.div
                                             className="bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20 rounded-3xl p-6 mb-6"
-                                            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-                                            transition={{ delay: 0.1 }}
+                                            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                                         >
                                             <div className="flex items-center gap-2 mb-5">
                                                 <CreditCard size={15} className="text-primary dark:text-indigo-400" />
@@ -380,26 +351,23 @@ export default function PaymentModal({
                                         >
                                             <Shield size={20} className="text-primary dark:text-indigo-400 shrink-0" />
                                             <p className="text-xs font-bold text-primary dark:text-indigo-400 leading-relaxed">
-                                                Secured by Any-Let. Your payment is verified within 30 minutes.
+                                                Secured by AnyLet. Your payment is verified automatically via your Transaction ID.
                                             </p>
                                         </motion.div>
 
                                         <motion.button
-                                            onClick={proceedToMethods}
-                                            disabled={loading}
-                                            className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2 disabled:opacity-50"
+                                            onClick={amount === 0 ? handleClose : goNext}
+                                            className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2"
                                             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}
                                             whileHover={{ scale: 1.025, y: -2 }}
                                             whileTap={{ scale: 0.96 }}
                                         >
-                                            {loading ? <Loader2 size={18} className="animate-spin" />
-                                                : amount === 0 ? <>Claim Free Offer <ArrowRight size={18} /></>
-                                                : <>Choose Payment Method <ArrowRight size={18} /></>}
+                                            {amount === 0 ? <>Claim Free Offer <ArrowRight size={18} /></> : <>Choose Payment Method <ArrowRight size={18} /></>}
                                         </motion.button>
                                     </motion.div>
                                 )}
 
-                                {/* STEP 1 — Payment Method */}
+                                {/* ──────────────────── STEP 1: Payment Method + Send ──────────────────── */}
                                 {step === 1 && (
                                     <motion.div
                                         key="pay-s1" custom={dir}
@@ -408,7 +376,7 @@ export default function PaymentModal({
                                     >
                                         <div className="mb-6">
                                             <h2 className="text-xl font-black text-slate-900 dark:text-white mb-1">Payment Method</h2>
-                                            <p className="text-sm text-slate-500 font-medium">Select how you'd like to pay</p>
+                                            <p className="text-sm text-slate-500 font-medium">Select your MFS provider and send the exact amount</p>
                                         </div>
 
                                         <div className="space-y-3 mb-6">
@@ -425,18 +393,15 @@ export default function PaymentModal({
                                                             ? `${pm.bgLight} ${pm.borderColor}`
                                                             : 'bg-slate-50 dark:bg-slate-800 border-transparent'
                                                     }`}
+                                                    aria-pressed={selectedMethod === pm.id}
                                                 >
-                                                    <div
-                                                        className="size-12 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-lg"
-                                                        style={{ backgroundColor: pm.color }}
-                                                    >
+                                                    <div className="size-12 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-lg" style={{ backgroundColor: pm.color }}>
                                                         {pm.logo}
                                                     </div>
                                                     <div className="flex-1 text-left">
                                                         <p className="font-black text-slate-900 dark:text-white text-base">{pm.name}</p>
-                                                        <p className="text-xs font-medium text-slate-400">Mobile Banking</p>
+                                                        <p className="text-xs font-medium text-slate-400">Mobile Financial Service</p>
                                                     </div>
-                                                    {/* Animated radio */}
                                                     <motion.div
                                                         className="size-6 rounded-full border-2 border-slate-300 dark:border-slate-600 flex items-center justify-center"
                                                         animate={selectedMethod === pm.id
@@ -446,11 +411,7 @@ export default function PaymentModal({
                                                     >
                                                         <AnimatePresence>
                                                             {selectedMethod === pm.id && (
-                                                                <motion.div
-                                                                    key="tick"
-                                                                    initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}
-                                                                    transition={{ type: 'spring', stiffness: 600, damping: 18 }}
-                                                                >
+                                                                <motion.div key="tick" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ type: 'spring', stiffness: 600, damping: 18 }}>
                                                                     <CheckCircle2 size={16} className="text-white" strokeWidth={3} />
                                                                 </motion.div>
                                                             )}
@@ -460,14 +421,14 @@ export default function PaymentModal({
                                             ))}
                                         </div>
 
-                                        {/* Instruction panel — animates open when method picked */}
+                                        {/* Instructions panel */}
                                         <AnimatePresence>
                                             {selectedMethod && (
                                                 <motion.div
                                                     key="instr"
                                                     variants={instructionRevealV}
                                                     initial="hidden" animate="visible" exit="exit"
-                                                    className="mb-6 overflow-hidden"
+                                                    className="mb-6"
                                                 >
                                                     <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 space-y-4">
                                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">How to pay</p>
@@ -480,43 +441,31 @@ export default function PaymentModal({
                                                                 key={idx} custom={idx} variants={listItemV} initial="hidden" animate="visible"
                                                                 className="flex items-start gap-3"
                                                             >
-                                                                <div
-                                                                    className="size-6 rounded-full bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 text-[10px] font-black shrink-0 mt-0.5"
-                                                                >
+                                                                <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 text-[10px] font-black shrink-0 mt-0.5">
                                                                     {idx + 1}
                                                                 </div>
                                                                 {row.custom ? (
                                                                     <div className="text-sm text-slate-600 dark:text-slate-300 font-medium flex-1">
-                                                                        Send <span className="font-black text-slate-900 dark:text-white">৳{(paymentIntent?.expectedAmount || amount).toLocaleString()}</span> to:
+                                                                        Send <span className="font-black text-slate-900 dark:text-white">৳{amount.toLocaleString()}</span> to:
                                                                         <div className="flex items-center gap-2 mt-2 bg-white dark:bg-slate-900 rounded-xl px-4 py-3 border border-slate-200 dark:border-slate-700">
                                                                             <Smartphone size={16} className="text-slate-400" />
-                                                                            <span className="font-black text-lg text-slate-900 dark:text-white tracking-wider flex-1">
+                                                                            <span className="font-black text-lg text-slate-900 dark:text-white tracking-wider flex-1 select-all">
                                                                                 {MERCHANT_NUMBER}
                                                                             </span>
                                                                             <motion.button
                                                                                 onClick={copyNumber}
                                                                                 whileTap={{ scale: 0.78 }}
                                                                                 className="text-primary dark:text-indigo-400"
-                                                                                aria-label="Copy number"
+                                                                                aria-label="Copy merchant number"
                                                                             >
                                                                                 <AnimatePresence mode="wait">
                                                                                     {copied
-                                                                                        ? <motion.div key="ok" variants={copyIconV} initial="hidden" animate="visible" exit="exit">
-                                                                                            <CheckCircle2 size={16} className="text-emerald-500" />
-                                                                                          </motion.div>
-                                                                                        : <motion.div key="cp" variants={copyIconV} initial="hidden" animate="visible" exit="exit">
-                                                                                            <Copy size={16} />
-                                                                                          </motion.div>
+                                                                                        ? <motion.div key="ok" variants={copyIconV} initial="hidden" animate="visible" exit="exit"><CheckCircle2 size={16} className="text-emerald-500" /></motion.div>
+                                                                                        : <motion.div key="cp" variants={copyIconV} initial="hidden" animate="visible" exit="exit"><Copy size={16} /></motion.div>
                                                                                     }
                                                                                 </AnimatePresence>
                                                                             </motion.button>
                                                                         </div>
-                                                                        {paymentIntent?.referenceCode && (
-                                                                            <div className="mt-2 rounded-xl bg-primary/5 border border-primary/10 px-4 py-3">
-                                                                                <p className="text-[10px] font-black uppercase tracking-widest text-primary/70 mb-1">Payment Reference</p>
-                                                                                <p className="font-black text-primary dark:text-indigo-300 tracking-wider">{paymentIntent.referenceCode}</p>
-                                                                            </div>
-                                                                        )}
                                                                     </div>
                                                                 ) : (
                                                                     <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">{row.text}</p>
@@ -536,12 +485,12 @@ export default function PaymentModal({
                                             whileTap={selectedMethod ? { scale: 0.96 } : {}}
                                             transition={{ type: 'spring', stiffness: 460, damping: 22 }}
                                         >
-                                            I've Sent the Money <ArrowRight size={18} />
+                                            I&apos;ve Sent the Money <ArrowRight size={18} />
                                         </motion.button>
                                     </motion.div>
                                 )}
 
-                                {/* STEP 2 — Transaction ID */}
+                                {/* ──────────────────── STEP 2: Enter Transaction ID ──────────────────── */}
                                 {step === 2 && (
                                     <motion.div
                                         key="pay-s2" custom={dir}
@@ -561,8 +510,7 @@ export default function PaymentModal({
                                             initial={{ opacity: 0, scale: 0.75 }} animate={{ opacity: 1, scale: 1 }}
                                             transition={{ type: 'spring', stiffness: 440, damping: 22 }}
                                         >
-                                            <div className="size-5 rounded-full text-white text-[8px] font-black flex items-center justify-center"
-                                                style={{ backgroundColor: method?.color }}>{method?.logo}</div>
+                                            <div className="size-5 rounded-full text-white text-[8px] font-black flex items-center justify-center" style={{ backgroundColor: method?.color }}>{method?.logo}</div>
                                             <span className={`text-xs font-black ${method?.textColor}`}>{method?.name} Payment</span>
                                         </motion.div>
 
@@ -570,13 +518,17 @@ export default function PaymentModal({
                                         <div className="relative mb-2">
                                             <motion.input
                                                 type="text"
+                                                inputMode="text"
                                                 value={txnId}
                                                 onChange={e => setTxnId(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 20))}
                                                 placeholder="e.g. 9A7F3K2B1X"
                                                 autoFocus
+                                                autoComplete="off"
+                                                spellCheck={false}
                                                 className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-primary/50 rounded-2xl py-5 px-5 text-center text-xl font-black text-slate-900 dark:text-white tracking-[0.15em] uppercase placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:tracking-normal placeholder:text-base placeholder:normal-case outline-none transition-all"
                                                 animate={txnId.length >= 6 ? { borderColor: '#10b981' } : {}}
                                                 transition={{ duration: 0.2 }}
+                                                aria-label="Transaction ID"
                                             />
                                         </div>
                                         <p className={`text-xs font-bold mb-6 text-center transition-colors ${txnId.length > 0 && txnId.length < 6 ? 'text-amber-500' : 'text-slate-400'}`}>
@@ -592,55 +544,38 @@ export default function PaymentModal({
                                         >
                                             <AlertTriangle size={18} className="text-amber-500 shrink-0 mt-0.5" />
                                             <p className="text-xs font-bold text-amber-700 dark:text-amber-300 leading-relaxed">
-                                                Incorrect Transaction IDs will be rejected and may delay your submission.
+                                                Our system will instantly verify your Transaction ID against the actual payment received. Incorrect IDs will be rejected.
                                             </p>
                                         </motion.div>
 
                                         <motion.button
-                                            onClick={handleSubmitPayment}
-                                            disabled={loading || txnId.trim().length < 6}
+                                            onClick={handleVerifyPayment}
+                                            disabled={txnId.trim().length < 6}
                                             className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                                             whileHover={txnId.length >= 6 ? { scale: 1.025, y: -2 } : {}}
                                             whileTap={txnId.length >= 6 ? { scale: 0.96 } : {}}
                                             transition={{ type: 'spring', stiffness: 460, damping: 22 }}
                                         >
-                                            {loading
-                                                ? <><Loader2 size={20} className="animate-spin" /> Submitting…</>
-                                                : <>Submit for Verification <CheckCircle2 size={18} /></>}
+                                            <Zap size={18} /> Verify Payment
                                         </motion.button>
                                     </motion.div>
                                 )}
 
-                                {/* STEP 3 — Success / Real-time Verification */}
+                                {/* ──────────────────── STEP 3: Verifying… (Loading) ──────────────────── */}
                                 {step === 3 && (
                                     <motion.div
                                         key="pay-s3" custom={dir}
                                         variants={sV} initial="enter" animate="center" exit="exit"
                                         className="px-8 pb-10 pt-4 flex flex-col items-center text-center"
                                     >
-                                        {/* Animated icon — switches from Clock to CheckCircle on confirmation */}
-                                        <motion.div className="relative mb-8 transform-gpu" variants={iconBounceV} initial="hidden" animate="visible">
-                                            <AnimatePresence mode="wait">
-                                                {paymentConfirmed ? (
-                                                    <motion.div
-                                                        key="confirmed-icon"
-                                                        initial={{ scale: 0, rotate: -25, opacity: 0 }}
-                                                        animate={{ scale: 1, rotate: 0, opacity: 1 }}
-                                                        transition={{ type: 'spring', stiffness: 500, damping: 18 }}
-                                                        className="size-28 rounded-[32px] bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-2xl shadow-emerald-500/30"
-                                                    >
-                                                        <CheckCircle2 size={52} className="text-white drop-shadow-lg" />
-                                                    </motion.div>
-                                                ) : (
-                                                    <motion.div
-                                                        key="pending-icon"
-                                                        className="size-28 rounded-[32px] bg-gradient-to-br from-primary to-indigo-700 flex items-center justify-center shadow-2xl shadow-primary/30"
-                                                    >
-                                                        <Clock size={52} className="text-white drop-shadow-lg" />
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                            {!paymentConfirmed && [0, 72, 144, 216, 288].map((deg, i) => (
+                                        <motion.div
+                                            className="relative mb-8 transform-gpu"
+                                            variants={iconBounceV} initial="hidden" animate="visible"
+                                        >
+                                            <div className="size-28 rounded-[32px] bg-gradient-to-br from-primary to-indigo-700 flex items-center justify-center shadow-2xl shadow-primary/30">
+                                                <Loader2 size={52} className="text-white drop-shadow-lg animate-spin" />
+                                            </div>
+                                            {[0, 72, 144, 216, 288].map((deg, i) => (
                                                 <motion.div
                                                     key={i} variants={dotV(i)} initial="hidden" animate="visible"
                                                     className="absolute size-3 rounded-full bg-indigo-400"
@@ -649,58 +584,189 @@ export default function PaymentModal({
                                             ))}
                                         </motion.div>
 
-                                        <AnimatePresence mode="wait">
-                                            {paymentConfirmed ? (
+                                        <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary dark:text-indigo-400 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4">
+                                            <Clock size={12} strokeWidth={3} /> Verifying…
+                                        </div>
+                                        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3">Checking Payment</h2>
+                                        <p className="text-slate-500 dark:text-slate-400 font-medium text-sm max-w-xs mx-auto leading-relaxed">
+                                            Matching your Transaction ID against our secure payment records. This takes just a moment.
+                                        </p>
+                                    </motion.div>
+                                )}
+
+                                {/* ──────────────────── STEP 4: SUCCESS INVOICE ──────────────────── */}
+                                {step === 4 && (
+                                    <motion.div
+                                        key="pay-s4" custom={dir}
+                                        variants={sV} initial="enter" animate="center" exit="exit"
+                                        className="px-8 pb-10 pt-4"
+                                    >
+                                        {/* Success icon */}
+                                        <div className="flex flex-col items-center text-center mb-8">
+                                            <motion.div
+                                                className="relative mb-6 transform-gpu"
+                                                variants={iconBounceV} initial="hidden" animate="visible"
+                                            >
+                                                <div className="size-28 rounded-[32px] bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-2xl shadow-emerald-500/30">
+                                                    <CheckCircle2 size={52} className="text-white drop-shadow-lg" />
+                                                </div>
+                                            </motion.div>
+                                            <motion.div
+                                                className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-3"
+                                                initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
+                                            >
+                                                <CheckCircle2 size={12} strokeWidth={3} /> Payment Verified
+                                            </motion.div>
+                                            <motion.h2
+                                                className="text-2xl font-black text-slate-900 dark:text-white mb-2"
+                                                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+                                            >
+                                                {normalizedBookingType === 'listing' ? 'Listing Paid! Pending Approval' : 'Payment Confirmed! 🎉'}
+                                            </motion.h2>
+                                            <motion.p
+                                                className="text-slate-500 dark:text-slate-400 text-sm font-medium"
+                                                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+                                            >
+                                                {verifyResult?.message || 'Your payment has been verified and recorded.'}
+                                            </motion.p>
+                                        </div>
+
+                                        {/* Invoice Card */}
+                                        <motion.div
+                                            className="bg-slate-50 dark:bg-slate-800 rounded-3xl overflow-hidden mb-6"
+                                            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, type: 'spring', stiffness: 280, damping: 28 }}
+                                        >
+                                            {/* Invoice header */}
+                                            <div className="bg-gradient-to-r from-primary to-indigo-600 px-6 py-4 flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Receipt size={18} className="text-white" />
+                                                    <span className="text-white font-black text-sm uppercase tracking-wider">Payment Invoice</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 bg-white/20 rounded-full px-2.5 py-1">
+                                                    <div className="size-1.5 rounded-full bg-emerald-400" />
+                                                    <span className="text-white text-[10px] font-black uppercase tracking-widest">Verified</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Invoice body */}
+                                            <div className="px-6 py-5 space-y-3">
+                                                {[
+                                                    { label: 'Transaction ID', value: verifyResult?.transactionId || txnId, mono: true },
+                                                    { label: 'Payment Method', value: method?.name || 'Mobile Banking' },
+                                                    { label: 'Payment Type', value: (normalizedBookingType || 'listing').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) },
+                                                    propertyName ? { label: 'Property', value: propertyName } : null,
+                                                    { label: 'Date', value: new Date(verifyResult?.verifiedAt || Date.now()).toLocaleString('en-BD', { dateStyle: 'medium', timeStyle: 'short' }) },
+                                                ].filter(Boolean).map((row, i) => (
+                                                    <motion.div
+                                                        key={row.label} custom={i}
+                                                        variants={invoiceLineV} initial="hidden" animate="visible"
+                                                        className="flex items-center justify-between"
+                                                    >
+                                                        <span className="text-slate-500 dark:text-slate-400 text-sm">{row.label}</span>
+                                                        <span className={`text-slate-900 dark:text-white text-sm font-black ${row.mono ? 'font-mono tracking-wider' : ''}`}>
+                                                            {row.value}
+                                                        </span>
+                                                    </motion.div>
+                                                ))}
+
+                                                {/* Total divider */}
+                                                <div className="border-t border-slate-200 dark:border-slate-700 pt-3 mt-1 flex items-center justify-between">
+                                                    <span className="text-slate-900 dark:text-white font-black text-base">Amount Paid</span>
+                                                    <motion.span
+                                                        className="text-2xl font-black text-emerald-600 dark:text-emerald-400"
+                                                        initial={{ opacity: 0, scale: 0.6 }} animate={{ opacity: 1, scale: 1 }}
+                                                        transition={{ type: 'spring', stiffness: 460, damping: 20, delay: 0.6 }}
+                                                    >
+                                                        ৳{(verifyResult?.amount || amount).toLocaleString()}
+                                                    </motion.span>
+                                                </div>
+                                            </div>
+
+                                            {/* Admin approval notice for listings */}
+                                            {normalizedBookingType === 'listing' && (
                                                 <motion.div
-                                                    key="confirmed-text"
-                                                    initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+                                                    className="mx-6 mb-6 flex items-start gap-3 bg-primary/5 dark:bg-primary/10 border border-primary/15 rounded-2xl p-4"
+                                                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
                                                 >
-                                                    <div className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4">
-                                                        <CheckCircle2 size={12} strokeWidth={3} /> Payment Confirmed
-                                                    </div>
-                                                    <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3">You're all set! ✅</h2>
-                                                    <p className="text-slate-500 dark:text-slate-400 font-medium text-sm max-w-xs mx-auto leading-relaxed mb-8">
-                                                        Your {method?.name || 'mobile banking'} payment has been <span className="font-black text-emerald-600 dark:text-emerald-400">verified automatically</span>. Your booking is now confirmed.
-                                                    </p>
-                                                </motion.div>
-                                            ) : (
-                                                <motion.div key="pending-text" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
-                                                    <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary dark:text-indigo-400 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4">
-                                                        <Clock size={12} strokeWidth={3} /> Under Verification
-                                                    </div>
-                                                    <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3">Payment Submitted! 🎉</h2>
-                                                    <p className="text-slate-500 dark:text-slate-400 font-medium text-sm max-w-xs mx-auto leading-relaxed mb-2">
-                                                        Waiting for payment confirmation. This page will <span className="font-black text-slate-700 dark:text-slate-200">update automatically</span> once verified.
-                                                    </p>
-                                                    <p className="text-slate-400 font-medium text-xs mb-8">
-                                                        Transaction ID: <span className="font-black text-slate-600 dark:text-slate-300">{txnId || 'Pending'}</span>
+                                                    <Building2 size={18} className="text-primary dark:text-indigo-400 shrink-0 mt-0.5" />
+                                                    <p className="text-xs font-bold text-primary dark:text-indigo-400 leading-relaxed">
+                                                        Payment verified. Your listing is now in the review queue and will be published after admin approval — usually within 24 hours.
                                                     </p>
                                                 </motion.div>
                                             )}
-                                        </AnimatePresence>
+                                        </motion.div>
+
+                                        <motion.button
+                                            onClick={handleClose}
+                                            className="w-full py-5 bg-emerald-500 text-white font-black text-base rounded-[20px] shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2"
+                                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+                                            whileHover={{ scale: 1.025, y: -2 }}
+                                            whileTap={{ scale: 0.96 }}
+                                            transition={{ type: 'spring', stiffness: 460, damping: 22 }}
+                                        >
+                                            Done — Close <CheckCircle2 size={18} />
+                                        </motion.button>
+                                    </motion.div>
+                                )}
+
+                                {/* ──────────────────── STEP 5: FAILED ──────────────────── */}
+                                {step === 5 && (
+                                    <motion.div
+                                        key="pay-s5" custom={dir}
+                                        variants={sV} initial="enter" animate="center" exit="exit"
+                                        className="px-8 pb-10 pt-4 flex flex-col items-center text-center"
+                                    >
+                                        <motion.div
+                                            className="relative mb-8 transform-gpu"
+                                            variants={iconBounceV} initial="hidden" animate="visible"
+                                        >
+                                            <div className="size-28 rounded-[32px] bg-gradient-to-br from-rose-400 to-red-600 flex items-center justify-center shadow-2xl shadow-rose-500/30">
+                                                <XCircle size={52} className="text-white drop-shadow-lg" />
+                                            </div>
+                                        </motion.div>
+
+                                        <motion.div
+                                            className="inline-flex items-center gap-1.5 bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4"
+                                            initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3 }}
+                                        >
+                                            <XCircle size={12} strokeWidth={3} /> Verification Failed
+                                        </motion.div>
+
+                                        <motion.h2
+                                            className="text-2xl font-black text-slate-900 dark:text-white mb-3"
+                                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
+                                        >
+                                            Payment Not Found
+                                        </motion.h2>
+
+                                        <motion.div
+                                            className="bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-2xl p-4 mb-8 text-left w-full"
+                                            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <AlertTriangle size={18} className="text-rose-500 shrink-0 mt-0.5" />
+                                                <p className="text-sm font-bold text-rose-700 dark:text-rose-300 leading-relaxed">
+                                                    {verifyResult?.error || 'We could not verify your payment. Please check your Transaction ID and try again.'}
+                                                </p>
+                                            </div>
+                                        </motion.div>
 
                                         <motion.div
                                             className="w-full space-y-3"
-                                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.46 }}
+                                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
                                         >
                                             <motion.button
-                                                onClick={handleClose}
-                                                className={`w-full py-5 font-black rounded-[20px] shadow-xl text-white ${
-                                                    paymentConfirmed
-                                                        ? 'bg-emerald-500 shadow-emerald-500/25'
-                                                        : 'bg-primary shadow-primary/25'
-                                                }`}
-                                                whileHover={{ scale: 1.025, y: -2 }} whileTap={{ scale: 0.96 }}
+                                                onClick={handleRetry}
+                                                className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2"
+                                                whileHover={{ scale: 1.025, y: -2 }}
+                                                whileTap={{ scale: 0.96 }}
                                                 transition={{ type: 'spring', stiffness: 460, damping: 22 }}
                                             >
-                                                {paymentConfirmed ? 'View My Bookings →' : 'Done'}
+                                                Try Again
                                             </motion.button>
-                                            {!paymentConfirmed && (
-                                                <a href="/contact" className="w-full py-3 text-slate-400 hover:text-slate-600 font-bold text-sm flex items-center justify-center gap-2 transition-colors">
-                                                    <HelpCircle size={16} /> Need Help?
-                                                </a>
-                                            )}
+                                            <a href="/contact" className="w-full py-3 text-slate-400 hover:text-slate-600 font-bold text-sm flex items-center justify-center gap-2 transition-colors">
+                                                <HelpCircle size={16} /> Contact Support
+                                            </a>
                                         </motion.div>
                                     </motion.div>
                                 )}
