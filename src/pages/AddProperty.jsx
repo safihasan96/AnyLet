@@ -260,11 +260,10 @@ export default function AddProperty() {
             }
         } catch (error) {
             logger.error('Error during upload process:', error);
-            if (error.message?.includes('signature') || error.message?.includes('sign')) {
-                toast.error('Could not connect to upload server. Please check your internet connection and try again.');
-            } else if (error.message?.includes('abort') || error.name === 'AbortError') {
+            if (error.name === 'AbortError') {
                 toast.error('Upload timed out. Please check your connection and try again.');
-            } else {
+            } else if (!error.message?.includes('Upload failed')) {
+                // Only show toast if we haven't already shown one from the inner loop
                 toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
             }
         } finally {
