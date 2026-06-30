@@ -234,13 +234,12 @@ export default function PaymentModal({
                     className="fixed inset-0 z-[80] flex items-center justify-center p-4"
                     onClick={step < 3 ? handleClose : undefined}
                 >
-                    {/* Blurred scrim */}
-                    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-xl" />
+                    <div className="absolute inset-0 bg-slate-900/90" />
 
                     <motion.div
                         key="pay-card"
                         variants={cV} initial="hidden" animate="visible" exit="exit"
-                        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl max-h-[90dvh] overflow-y-auto transform-gpu will-change-transform"
+                        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl max-h-[90dvh] overflow-y-auto"
                         onClick={e => e.stopPropagation()}
                     >
                         {/* Accent stripe */}
@@ -575,13 +574,6 @@ export default function PaymentModal({
                                             <div className="size-28 rounded-[32px] bg-gradient-to-br from-primary to-indigo-700 flex items-center justify-center shadow-2xl shadow-primary/30">
                                                 <Loader2 size={52} className="text-white drop-shadow-lg animate-spin" />
                                             </div>
-                                            {[0, 72, 144, 216, 288].map((deg, i) => (
-                                                <motion.div
-                                                    key={i} variants={dotV(i)} initial="hidden" animate="visible"
-                                                    className="absolute size-3 rounded-full bg-indigo-400"
-                                                    style={{ top: '50%', left: '50%', transform: `rotate(${deg}deg) translateX(66px) translateY(-50%)` }}
-                                                />
-                                            ))}
                                         </motion.div>
 
                                         <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary dark:text-indigo-400 px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4">

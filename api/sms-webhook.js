@@ -134,7 +134,7 @@ export default withMiddleware(async (req, res) => {
   return res.status(200).json({ received: true });
 
 }, {
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH'],
   requireAuth: false,
   requireAdmin: false,
   bodyLimit: '10kb',
