@@ -9,8 +9,20 @@ const LanguageContext = createContext({ language: 'en', setLanguage: () => {} })
 
 export function LanguageProvider({ children }) {
     const [language, setLanguage] = useState('en');
+    // Dummy t function that just returns the key, avoiding 't is not a function' crashes
+    const t = (key) => {
+        // Simple mapping for common terms if needed, otherwise return key
+        const terms = {
+            'explore': 'Explore',
+            'messages': 'Messages',
+            'profile': 'Profile',
+            'search': 'Search'
+        };
+        return terms[key] || key;
+    };
+    
     return (
-        <LanguageContext.Provider value={{ language, setLanguage }}>
+        <LanguageContext.Provider value={{ language, setLanguage, t }}>
             {children}
         </LanguageContext.Provider>
     );
