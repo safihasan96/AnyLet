@@ -1,8 +1,12 @@
 import { db, admin } from './_lib/firebase-admin.js';
 import { withMiddleware } from './_lib/middleware.js';
+// ─── Single Source of Truth for fee limits ─────────────────────────────────
+// ⚠️  DISPLAY ONLY values in the frontend are never used here.
+import { getPlatformFees } from './_lib/feeCalculator.js';
 
-const MIN_WITHDRAWAL = 100;  // BDT
-const MAX_WITHDRAWAL = 50000; // BDT — anti-abuse cap per request
+// Fallback limits guard against Firestore being temporarily unavailable.
+// The live limits are always fetched from platformConfig/fees at request time.
+const LIMIT_FALLBACK = { min: 100, max: 50000 };
 
 function validateBankDetails(details) {
   if (!details || typeof details !== 'object') return 'bankDetails is required';
@@ -26,7 +30,19 @@ export default withMiddleware(async (req, res) => {
   const body   = req.body || {};
   const amount = Number(body.amount);
 
-  // ── 1. Input validation ─────────────────────────────────────────────────────
+  // ── 0. Fetch dynamic withdrawal limits from Firestore ──────────────────────
+  let MIN_WITHDRAWAL = LIMIT_FALLBACK.min;
+  let MAX_WITHDRAWAL = LIMIT_FALLBACK.max;
+  try {
+    const fees = await getPlatformFees();
+    MIN_WITHDRAWAL = Number(fees?.withdrawalLimits?.minAmount) || LIMIT_FALLBACK.min;
+    MAX_WITHDRAWAL = Number(fees?.withdrawalLimits?.maxAmount) || LIMIT_FALLBACK.max;
+  } catch (feeErr) {
+    // Non-fatal: fall back to hardcoded safe limits and log the error.
+    console.error('[request-withdrawal] Failed to fetch dynamic limits, using fallback:', feeErr.message);
+  }
+
+  // ── 1. Input validation ─────────────────────────────────────────────────────────────
   if (!Number.isFinite(amount) || amount < MIN_WITHDRAWAL) {
     return res.status(400).json({ error: `Minimum withdrawal amount is ৳${MIN_WITHDRAWAL}` });
   }

@@ -2,14 +2,12 @@ import crypto from 'crypto';
 import { db } from './_lib/firebase-admin.js';
 import { Timestamp } from 'firebase-admin/firestore';
 import { withMiddleware } from './_lib/middleware.js';
+// ─── Single Source of Truth for fee calculation ────────────────────────────
+// ⚠️  Do NOT add fee constants here. All amounts come from feeCalculator.js.
+import { computeExpectedAmount } from './_lib/feeCalculator.js';
 
-const BOOKING_TYPES = new Set(['booking', 'subscription', 'deposit', 'listing', 'verification']);
-const DEPOSIT_SERVICE_FEE = 99;
-const SUBSCRIPTION_MONTHLY_PRICE = 999;
-const LISTING_FEE = 49;
-const ONSITE_VERIFICATION_FEE = 299;
-const STANDALONE_VERIFICATION_FEE = 199;
-const INTENT_TTL_MS = 30 * 60 * 1000;
+const BOOKING_TYPES  = new Set(['booking', 'subscription', 'deposit', 'listing', 'verification']);
+const INTENT_TTL_MS  = 30 * 60 * 1000; // 30-minute window to complete payment
 
 function rejectClientControlledFields(body) {
   const blocked = ['amount', 'expectedAmount', 'status', 'used', 'verifiedAt', 'verifiedBy'];
@@ -24,92 +22,7 @@ function positiveInteger(value, fallback = 1) {
 
 function buildReferenceCode() {
   // crypto.randomBytes is cryptographically secure — Math.random() is NOT
-  // and could theoretically be predicted or seeded by an attacker.
   return `ANYLET-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
-}
-
-async function calculateExpectedAmount({ bookingType, propertyId, months, onsiteVerification, uid }) {
-  if (!BOOKING_TYPES.has(bookingType)) {
-    const allowed = Array.from(BOOKING_TYPES).join(', ');
-    const error = new Error(`bookingType must be one of: ${allowed}`);
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (bookingType === 'subscription') {
-    return {
-      expectedAmount: SUBSCRIPTION_MONTHLY_PRICE * months,
-      propertySnapshot: null,
-    };
-  }
-
-  if (bookingType === 'listing') {
-    return {
-      expectedAmount: LISTING_FEE + (onsiteVerification ? ONSITE_VERIFICATION_FEE : 0),
-      propertySnapshot: null,
-    };
-  }
-
-  if (!propertyId || typeof propertyId !== 'string') {
-    const error = new Error('propertyId is required for this payment type');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  const propertyRef = db.collection('properties').doc(propertyId);
-  const propertySnap = await propertyRef.get();
-
-  if (!propertySnap.exists) {
-    const error = new Error('Property not found');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  const property = propertySnap.data();
-  if (bookingType === 'verification' && (property.ownerId || property.userId) !== uid) {
-    const error = new Error('Only the property owner can request verification');
-    error.statusCode = 403;
-    throw error;
-  }
-  const securityDeposit = Number(property.securityDeposit || 0);
-  const rent = Number(property.rent || 0);
-
-  if (bookingType === 'verification') {
-    return {
-      expectedAmount: STANDALONE_VERIFICATION_FEE,
-      propertySnapshot: {
-        id: propertyId,
-        title: property.title || propertyNameFallback(propertyId),
-        ownerId: property.ownerId || property.userId || null,
-        rent,
-        securityDeposit,
-      },
-    };
-  }
-
-  if (bookingType === 'deposit') {
-    return {
-      expectedAmount: Math.max(0, securityDeposit) + DEPOSIT_SERVICE_FEE,
-      propertySnapshot: {
-        id: propertyId,
-        title: property.title || propertyNameFallback(propertyId),
-        ownerId: property.ownerId || property.userId || null,
-        rent,
-        securityDeposit,
-      },
-    };
-  }
-
-  return {
-    expectedAmount: Math.max(0, rent),
-    propertySnapshot: {
-      id: propertyId,
-      title: property.title || propertyNameFallback(propertyId),
-      ownerId: property.ownerId || property.userId || null,
-      rent,
-      securityDeposit,
-    },
-  };
 }
 
 function propertyNameFallback(propertyId) {
@@ -118,47 +31,58 @@ function propertyNameFallback(propertyId) {
 
 export default withMiddleware(async (req, res) => {
   const body = req.body || {};
-  const rejected = rejectClientControlledFields(body);
 
+  // ── 1. Reject forbidden client-controlled fields ──────────────────────────
+  const rejected = rejectClientControlledFields(body);
   if (rejected.length > 0) {
     return res.status(400).json({ error: `Client-controlled fields rejected: ${rejected.join(', ')}` });
   }
 
-  const propertyId = typeof body.propertyId === 'string' ? body.propertyId.trim() : null;
-  const bookingType = typeof body.bookingType === 'string' ? body.bookingType.trim() : '';
-  const months = positiveInteger(body.months, 1);
+  const propertyId         = typeof body.propertyId === 'string' ? body.propertyId.trim() : null;
+  const bookingType        = typeof body.bookingType === 'string' ? body.bookingType.trim() : '';
+  const months             = positiveInteger(body.months, 1);
   const onsiteVerification = body.onsiteVerification === true;
-  const uid = req.user.uid;
+  const uid                = req.user.uid;
 
+  // ── 2. Compute expected amount server-side (via shared feeCalculator) ──────
+  // DISPLAY ONLY values in the frontend are never used here.
+  let expectedAmount, propertySnapshot;
   try {
-    const { expectedAmount, propertySnapshot } = await calculateExpectedAmount({
+    ({ expectedAmount, propertySnapshot } = await computeExpectedAmount({
       bookingType,
       propertyId,
       months,
       onsiteVerification,
       uid,
-    });
+    }));
+  } catch (error) {
+    const statusCode = error.statusCode || 400;
+    if (statusCode >= 500) console.error('[create-payment-intent] Fee computation failed:', error);
+    return res.status(statusCode).json({ error: error.message });
+  }
 
-    if (!Number.isFinite(expectedAmount) || expectedAmount <= 0) {
-      return res.status(400).json({ error: 'Unable to calculate a valid payment amount' });
-    }
+  if (!Number.isFinite(expectedAmount) || expectedAmount <= 0) {
+    return res.status(400).json({ error: 'Unable to calculate a valid payment amount' });
+  }
 
+  // ── 3. Store the payment intent in Firestore ──────────────────────────────
+  try {
     const paymentIntentRef = db.collection('paymentIntents').doc();
-    const now = Timestamp.now();
-    const expiresAt = Timestamp.fromMillis(Date.now() + INTENT_TTL_MS);
-    const referenceCode = buildReferenceCode();
+    const now              = Timestamp.now();
+    const expiresAt        = Timestamp.fromMillis(Date.now() + INTENT_TTL_MS);
+    const referenceCode    = buildReferenceCode();
 
     await paymentIntentRef.set({
       uid,
-      propertyId: propertyId || null,
+      propertyId:         propertyId || null,
       expectedAmount,
       bookingType,
       months,
       onsiteVerification,
-      status: 'pending',
-      createdAt: now,
+      status:             'pending',
+      createdAt:          now,
       expiresAt,
-      used: false,
+      used:               false,
       referenceCode,
       propertySnapshot,
     });
@@ -170,15 +94,12 @@ export default withMiddleware(async (req, res) => {
       expiresAt: expiresAt.toDate().toISOString(),
     });
   } catch (error) {
-    const statusCode = error.statusCode || 500;
-    if (statusCode >= 500) console.error('[create-payment-intent] Failed:', error);
-    return res.status(statusCode).json({
-      error: statusCode >= 500 ? 'Unable to create payment intent' : error.message,
-    });
+    console.error('[create-payment-intent] Firestore write failed:', error);
+    return res.status(500).json({ error: 'Unable to create payment intent' });
   }
 }, {
-  methods: ['POST'],
-  requireAuth: true,
+  methods:      ['POST'],
+  requireAuth:  true,
   requireAdmin: false,
-  bodyLimit: '10kb',
+  bodyLimit:    '10kb',
 });

@@ -31,7 +31,7 @@ function FilterPill({ active, label, onClick }) {
     );
 }
 
-export default function FilterBar({ filters, setFilters, activeLayer, setActiveLayer, topOffset = '1rem' }) {
+export default function FilterBar({ filters, setFilters, activeLayer, setActiveLayer, topOffsetClass = 'top-4' }) {
     const [openMenu, setOpenMenu] = useState(null);
     const hasPrice = Boolean(filters.minPrice || filters.maxPrice);
     const hasBeds = filters.beds !== 0;
@@ -48,8 +48,7 @@ export default function FilterBar({ filters, setFilters, activeLayer, setActiveL
 
     return (
         <div
-            className="pointer-events-none absolute left-1/2 z-[999] flex w-[calc(100vw-1.5rem)] max-w-[760px] -translate-x-1/2 flex-col items-center gap-2 md:w-auto"
-            style={{ top: topOffset }}
+            className={`pointer-events-none absolute left-1/2 z-[999] flex w-[calc(100vw-1.5rem)] max-w-[760px] -translate-x-1/2 flex-col items-center gap-2 md:w-auto ${topOffsetClass}`}
         >
             <div className="pointer-events-auto flex max-w-full gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <FilterPill

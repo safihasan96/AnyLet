@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import logger from '../utils/logger';
 import { getApiUrl } from '../utils/api';
 import {
@@ -107,10 +108,12 @@ export default function PaymentModal({
     propertyName = '',
     metadata = {},
     onPaymentSubmitted,
+    onSuccess,
 }) {
     const { currentUser } = useAuth();
     const toast = useToast();
     const reduced = useReducedMotion();
+    const navigate = useNavigate();
 
     // ── Step Machine ──────────────────────────────────────────────────────────
     // 0 = Order Summary
@@ -169,6 +172,7 @@ export default function PaymentModal({
                 body: JSON.stringify({
                     transactionId: trimmedId,
                     bookingType: normalizedBookingType,
+                    provider: selectedMethod || undefined,
                     propertyId: propertyId || undefined,
                     months,
                     onsiteVerification: metadata?.onsiteVerification === true,
@@ -194,7 +198,7 @@ export default function PaymentModal({
             setDir(1);
             setStep(5); // → Failed
         }
-    }, [currentUser, txnId, normalizedBookingType, propertyId, months, metadata, onPaymentSubmitted, toast]);
+    }, [currentUser, txnId, normalizedBookingType, selectedMethod, propertyId, months, metadata, onPaymentSubmitted, toast]);
 
     // ── Reset & Close ─────────────────────────────────────────────────────────
     const handleClose = useCallback(() => {
@@ -202,6 +206,18 @@ export default function PaymentModal({
         setTxnId(''); setCopied(false); setVerifyResult(null); setLoading(false);
         onClose();
     }, [onClose]);
+
+    // ── Success Done handler ──────────────────────────────────────────────────
+    // For listing payments: navigate to /my-listings so user can see their ad.
+    // For all other payment types: just close.
+    const handleSuccessDone = useCallback(() => {
+        handleClose();
+        if (onSuccess) {
+            onSuccess();
+        } else if (normalizedBookingType === 'listing') {
+            navigate('/my-listings');
+        }
+    }, [handleClose, onSuccess, normalizedBookingType, navigate]);
 
     const handleRetry = useCallback(() => {
         setVerifyResult(null);
@@ -689,14 +705,14 @@ export default function PaymentModal({
                                         </motion.div>
 
                                         <motion.button
-                                            onClick={handleClose}
+                                            onClick={handleSuccessDone}
                                             className="w-full py-5 bg-emerald-500 text-white font-black text-base rounded-[20px] shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2"
-                                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+                                            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                                             whileHover={{ scale: 1.025, y: -2 }}
                                             whileTap={{ scale: 0.96 }}
-                                            transition={{ type: 'spring', stiffness: 460, damping: 22 }}
+                                            transition={{ type: 'spring', stiffness: 460, damping: 22, delay: 0.5 }}
                                         >
-                                            Done — Close <CheckCircle2 size={18} />
+                                            {normalizedBookingType === 'listing' ? 'View My Listings →' : 'Done'} <CheckCircle2 size={18} />
                                         </motion.button>
                                     </motion.div>
                                 )}

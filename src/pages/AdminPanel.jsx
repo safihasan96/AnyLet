@@ -6,7 +6,7 @@ import {
     LogOut, UserCheck, UserMinus, Trash2, TrendingUp, ShieldCheck,
     Bell, ChevronRight, ChevronLeft, Activity, Database, Lock,
     Menu, CheckCircle, Clock, Building2, MessageSquare, Flag, AlertCircle,
-    CreditCard, Banknote, HelpCircle, Star, FileCheck
+    CreditCard, Banknote, HelpCircle, Star, FileCheck, Receipt
 } from 'lucide-react';
 import { collection, onSnapshot, updateDoc, deleteDoc, doc, getDoc, getDocs, addDoc, serverTimestamp, setDoc, query, where, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -15,9 +15,11 @@ import QUERY_LIMITS from '../config/queryLimits';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
+import { getApiUrl } from '../utils/api';
 import AdminReviewsTab from '../components/AdminReviewsTab';
 import AdminKycTab from '../components/AdminKycTab';
 import AdminClaimsTab from '../components/AdminClaimsTab';
+import AdminFeesTab from '../components/AdminFeesTab';
 import '../index.css';
 import logger from '../utils/logger';
 
@@ -30,12 +32,14 @@ const NAV_ITEMS = [
     { path: '/admin/properties', icon: Building2, label: 'Properties' },
     { path: '/admin/requests', icon: ClipboardList, label: 'Live Pipeline' },
     { path: '/admin/payments', icon: CreditCard, label: 'Payments & Escrow' },
+    { path: '/admin/payment-details', icon: Receipt, label: 'Payment Details' },
     { path: '/admin/enquiries', icon: MessageSquare, label: 'Enquiries' },
     { path: '/admin/reviews', icon: Star, label: 'Reviews' },
     { path: '/admin/kyc', icon: FileCheck, label: 'KYC Verification' },
     { path: '/admin/reports', icon: Flag, label: 'Reports' },
     { path: '/admin/claims', icon: Lock, label: 'Admin Access' },
     { path: '/admin/settings', icon: Settings, label: 'System Health' },
+    { path: '/admin/fees', icon: Banknote, label: 'Fees Config' },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -172,6 +176,7 @@ export default function AdminPanel() {
     const [enquiries, setEnquiries] = useState([]);
     const [reports, setReports] = useState([]);
     const [payments, setPayments] = useState([]);
+    const [webhookTxns, setWebhookTxns] = useState([]);
     const [escrowDeposits, setEscrowDeposits] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(true);
     const [loadingStats, setLoadingStats] = useState(true);
@@ -266,7 +271,15 @@ export default function AdminPanel() {
             setEscrowDeposits(list);
         });
 
-        return () => { unsubUsers(); unsubLeads(); unsubEnquiries(); unsubReports(); unsubPayments(); unsubEscrow(); };
+        // Webhook Txns
+        const unsubWebhookTxns = onSnapshot(
+            query(collection(db, 'unclaimed_transactions'), orderBy('receivedAt', 'desc'), limit(QUERY_LIMITS.ADMIN_PAYMENTS || 100)),
+            snap => {
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            setWebhookTxns(list);
+        });
+
+        return () => { unsubUsers(); unsubLeads(); unsubEnquiries(); unsubReports(); unsubPayments(); unsubEscrow(); unsubWebhookTxns(); };
     }, []);
 
     useEffect(() => {
@@ -723,6 +736,40 @@ export default function AdminPanel() {
                     logger.error(e);
                     setModal(p => ({ ...p, isLoading: false, isOpen: false }));
                     toast.error("Error releasing funds.");
+                }
+            }
+        });
+    };
+
+    const handleApproveWebhookTxn = async (txn) => {
+        showModal({
+            title: 'Manually Approve Webhook Transaction',
+            message: `This will mark transaction ${txn.transactionId} as claimed by an admin. Users will no longer be able to use this transaction to verify payments. Proceed?`,
+            confirmText: 'Approve Transaction',
+            confirmColor: '#10b981',
+            onConfirm: async () => {
+                setModal(p => ({ ...p, isLoading: true }));
+                try {
+                    const token = await currentUser.getIdToken(true);
+                    const response = await fetch(getApiUrl('/api/admin-claim-webhook-transaction'), {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ transactionId: txn.transactionId || txn.id }),
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.error || 'Unable to mark transaction as claimed.');
+                    }
+                    setModal(p => ({ ...p, isLoading: false, isSuccess: true }));
+                    setTimeout(closeModal, 1500);
+                    toast.success('Webhook transaction marked as claimed!');
+                } catch (e) {
+                    logger.error(e);
+                    setModal(p => ({ ...p, isLoading: false, isOpen: false }));
+                    toast.error("Error approving transaction.");
                 }
             }
         });
@@ -1367,6 +1414,185 @@ export default function AdminPanel() {
                                                                     <div className="flex justify-center">
                                                                         <button onClick={() => handleReleaseEscrow(escrow.id)} className="px-4 py-2 bg-emerald-500 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20">
                                                                             Release Funds
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
+                                        <div className="px-8 py-8 border-b border-zinc-50">
+                                            <h3 className="text-2xl font-black text-zinc-950">Webhook SMS Transactions</h3>
+                                            <p className="text-sm text-zinc-400 font-bold mt-1">
+                                                {webhookTxns.filter(t => t.status === 'unclaimed').length} unclaimed transactions
+                                            </p>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="text-zinc-400 text-[10px] font-black uppercase tracking-widest border-b border-zinc-50">
+                                                        <th className="px-8 py-5">Transaction ID</th>
+                                                        <th className="px-8 py-5">Amount & Provider</th>
+                                                        <th className="px-8 py-5">Sender Number</th>
+                                                        <th className="px-8 py-5">Date & Time</th>
+                                                        <th className="px-8 py-5 text-center">Status</th>
+                                                        <th className="px-8 py-5 text-center">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-zinc-50">
+                                                    {webhookTxns.length === 0 ? (
+                                                        <tr><td colSpan="6" className="text-center py-8 text-zinc-400">No webhook transactions.</td></tr>
+                                                    ) : webhookTxns.map(txn => (
+                                                        <tr key={txn.id} className="group hover:bg-zinc-50/50 transition-colors">
+                                                            <td className="px-8 py-6">
+                                                                <p className="text-sm font-bold text-zinc-950 tracking-wider font-mono">{txn.transactionId}</p>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                <span className="font-black text-emerald-600">৳{txn.amount?.toLocaleString()}</span>
+                                                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">{txn.provider || 'Unknown'}</p>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                <p className="text-sm font-bold text-zinc-950 tracking-tight">{txn.senderNumber || 'N/A'}</p>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                <p className="text-xs font-bold text-zinc-500">
+                                                                    {txn.receivedAt?.toDate ? txn.receivedAt.toDate().toLocaleString() : 'N/A'}
+                                                                </p>
+                                                            </td>
+                                                            <td className="px-8 py-6 text-center">
+                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${txn.status === 'claimed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                                                                    {txn.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                {txn.status === 'unclaimed' && (
+                                                                    <div className="flex justify-center">
+                                                                        <button onClick={() => handleApproveWebhookTxn(txn)} className="px-4 py-2 bg-emerald-50 text-emerald-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-emerald-500 hover:text-white transition-colors">
+                                                                            Approve
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            } />
+
+                            {/* ── Payment Details (SMS Webhook) ── */}
+                            <Route path="payment-details" element={
+                                <div className="space-y-8">
+                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
+                                        <div className="px-8 py-8 border-b border-zinc-50">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h3 className="text-2xl font-black text-zinc-950">SMS Webhook Payment Details</h3>
+                                                    <p className="text-sm text-zinc-400 font-bold mt-1">
+                                                        {webhookTxns.filter(t => t.status === 'unclaimed').length} unclaimed · {webhookTxns.filter(t => t.status === 'claimed').length} claimed
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl">
+                                                    <div className={`w-2 h-2 rounded-full ${webhookTxns.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-300'}`} />
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">{webhookTxns.length > 0 ? 'Live' : 'Waiting'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="text-zinc-400 text-[10px] font-black uppercase tracking-widest border-b border-zinc-50">
+                                                        <th className="px-8 py-5">Provider</th>
+                                                        <th className="px-8 py-5">Sender Number</th>
+                                                        <th className="px-8 py-5">Transaction ID</th>
+                                                        <th className="px-8 py-5">Amount</th>
+                                                        <th className="px-8 py-5">Date & Time</th>
+                                                        <th className="px-8 py-5 text-center">Status</th>
+                                                        <th className="px-8 py-5 text-center">Claimed By</th>
+                                                        <th className="px-8 py-5 text-center">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-zinc-50">
+                                                    {webhookTxns.length === 0 ? (
+                                                        <tr><td colSpan="8" className="text-center py-16 text-zinc-400">
+                                                            <div className="flex flex-col items-center gap-3">
+                                                                <Receipt size={32} className="text-zinc-300" />
+                                                                <span className="font-bold">No webhook transactions yet.</span>
+                                                                <span className="text-xs text-zinc-400">SMS payments will appear here automatically.</span>
+                                                            </div>
+                                                        </td></tr>
+                                                    ) : webhookTxns.map(txn => (
+                                                        <tr key={txn.id} className="group hover:bg-zinc-50/50 transition-colors">
+                                                            <td className="px-8 py-6">
+                                                                {txn.provider ? (
+                                                                    <span className={`text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${
+                                                                        txn.provider === 'bkash' ? 'bg-pink-50 text-pink-600' :
+                                                                        txn.provider === 'nagad' ? 'bg-orange-50 text-orange-600' :
+                                                                        txn.provider === 'rocket' ? 'bg-purple-50 text-purple-600' :
+                                                                        'bg-zinc-50 text-zinc-500'
+                                                                    }`}>
+                                                                        {txn.provider}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Unknown</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                <p className="text-sm font-bold text-zinc-950 tracking-tight">{txn.senderNumber || 'N/A'}</p>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                <p className="text-sm font-bold text-zinc-950 tracking-wider font-mono">{txn.transactionId}</p>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                <span className="font-black text-emerald-600">৳{txn.amount?.toLocaleString()}</span>
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                <p className="text-xs font-bold text-zinc-500">
+                                                                    {txn.receivedAt?.toDate ? txn.receivedAt.toDate().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}
+                                                                </p>
+                                                            </td>
+                                                            <td className="px-8 py-6 text-center">
+                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
+                                                                    txn.status === 'claimed' ? 'bg-emerald-50 text-emerald-600' :
+                                                                    txn.status === 'unclaimed' ? 'bg-amber-50 text-amber-600' :
+                                                                    'bg-zinc-50 text-zinc-500'
+                                                                }`}>
+                                                                    {txn.status}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-8 py-6 text-center">
+                                                                {txn.claimedBy ? (
+                                                                    <div className="flex flex-col gap-1 items-center">
+                                                                        <span className="text-[10px] font-bold text-zinc-600">{txn.claimedBy?.slice(0,8)}...</span>
+                                                                        {txn.claimedAt?.toDate && (
+                                                                            <span className="text-[9px] text-zinc-400 font-medium">
+                                                                                {txn.claimedAt.toDate().toLocaleDateString('en-GB')}
+                                                                            </span>
+                                                                        )}
+                                                                        {txn.bookingType && (
+                                                                            <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">{txn.bookingType}</span>
+                                                                        )}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">—</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-8 py-6">
+                                                                {txn.status === 'unclaimed' && (
+                                                                    <div className="flex justify-center">
+                                                                        <button
+                                                                            onClick={() => handleApproveWebhookTxn(txn)}
+                                                                            className="px-3 py-2 bg-amber-50 text-amber-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-amber-500 hover:text-white transition-colors shadow-sm"
+                                                                            title="Manually claim this transaction"
+                                                                        >
+                                                                            Mark Claimed
                                                                         </button>
                                                                     </div>
                                                                 )}

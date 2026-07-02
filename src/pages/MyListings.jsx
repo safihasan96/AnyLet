@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, onSnapshot, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, MoreHorizontal, MapPin, ChevronRight, Home as HomeIcon, Trash2, RefreshCcw, Info, RefreshCw, Shield, CheckCircle2, Search, SlidersHorizontal, Eye, Edit, Activity, DoorOpen } from 'lucide-react';
@@ -9,18 +9,20 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import PaymentModal from '../components/PaymentModal';
 import { sendListingExpiryEmail } from '../utils/emailService';
 import { useToast } from '../contexts/ToastContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation, useMotionValue } from 'framer-motion';
 import logger from '../utils/logger';
+import { useFees } from '../hooks/useFees';
 
 export default function MyListings() {
     const { currentUser: user } = useAuth();
     const navigate = useNavigate();
     const toast = useToast();
+    const { fees } = useFees();
 
     const [listings, setListings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeFilter, setActiveFilter] = useState('All'); // All, Active, Pending
+    const [activeFilter, setActiveFilter] = useState('All'); // All, Active, Pending, Drafts
 
     // Bottom sheet state
     const [bottomSheet, setBottomSheet] = useState({ isOpen: false, property: null });
@@ -43,7 +45,10 @@ export default function MyListings() {
             return;
         }
 
-        const listingsQuery = query(collection(db, 'properties'));
+        const listingsQuery = query(
+            collection(db, 'properties'),
+            where('ownerId', '==', user.uid)
+        );
         const unsubscribe = onSnapshot(listingsQuery, (snapshot) => {
             const userListings = snapshot.docs
                 .map(doc => {
@@ -54,12 +59,6 @@ export default function MyListings() {
                         image: data.image || data.imageUrl || (data.images && data.images[0])
                     };
                 })
-                .filter(item => (
-                    item.ownerId === user.uid ||
-                    item.landlordId === user.uid ||
-                    item.userId === user.uid ||
-                    item.creatorId === user.uid
-                ))
                 .sort((a, b) => {
                     const timeA = a.createdAt?.seconds ? a.createdAt.seconds * 1000 : new Date(a.createdAt).getTime();
                     const timeB = b.createdAt?.seconds ? b.createdAt.seconds * 1000 : new Date(b.createdAt).getTime();
@@ -67,10 +66,14 @@ export default function MyListings() {
                 });
             setListings(userListings);
             setLoading(false);
+        }, (error) => {
+            logger.error('Error fetching listings:', error);
+            toast.error('Failed to load listings.');
+            setLoading(false);
         });
 
         return () => unsubscribe();
-    }, [user, navigate]);
+    }, [user, navigate, toast]);
 
     useEffect(() => {
         if (!listings.length || !user) return;
@@ -169,16 +172,31 @@ export default function MyListings() {
                               (item.area || item.upazila || item.district || '').toLowerCase().includes(searchQuery.toLowerCase());
         
         if (!matchesSearch) return false;
-        if (activeFilter === 'All') return true;
-        if (activeFilter === 'Active') return item.isApproved && item.status === 'Available';
-        if (activeFilter === 'Pending') return !item.isApproved || item.status !== 'Available';
+        
+        // 'draft' and 'pending_payment' are true drafts (incomplete, no payment)
+        const isDraftType = item.status === 'draft' || item.status === 'pending_payment';
+        // 'Pending' = paid, awaiting admin approval
+        const isPendingApproval = !isDraftType && (item.status === 'Pending' || (!item.isApproved && item.status !== 'draft' && item.status !== 'pending_payment'));
+        // Active = approved and Available
+        const isActive = item.isApproved && item.status === 'Available';
+        // Rejected
+        const isRejected = item.isRejected === true;
+        
+        if (activeFilter === 'Drafts') return isDraftType;
+        if (activeFilter === 'Pending') return isPendingApproval;
+        if (activeFilter === 'Active') return isActive;
+        if (activeFilter === 'Rejected') return isRejected;
+        // 'All' shows everything except raw drafts
+        if (activeFilter === 'All') return !isDraftType;
         return true;
     });
 
     const metrics = {
-        total: listings.length,
+        total: listings.filter(l => l.status !== 'draft' && l.status !== 'pending_payment').length,
         active: listings.filter(l => l.isApproved && l.status === 'Available').length,
-        pending: listings.filter(l => !l.isApproved || l.status !== 'Available').length
+        pending: listings.filter(l => !l.isApproved && l.status !== 'draft' && l.status !== 'pending_payment').length,
+        drafts: listings.filter(l => l.status === 'draft' || l.status === 'pending_payment').length,
+        rejected: listings.filter(l => l.isRejected === true).length,
     };
 
     const handleActionClick = (property) => {
@@ -206,7 +224,7 @@ export default function MyListings() {
                 <div className="flex gap-3 overflow-x-auto pb-2 mb-4 scrollbar-hide no-scrollbar">
                     <MetricCard title="Total Listings" count={metrics.total} bg="bg-primary/10 dark:bg-indigo-500/10" color="text-primary dark:text-indigo-400" />
                     <MetricCard title="Active" count={metrics.active} bg="bg-blue-50 dark:bg-blue-500/10" color="text-blue-600 dark:text-blue-400" />
-                    <MetricCard title="Pending" count={metrics.pending} bg="bg-white dark:bg-[#1A1D24]" color="text-slate-700 dark:text-slate-300" border="border-slate-200 dark:border-slate-800" />
+                    <MetricCard title="Drafts" count={metrics.drafts} bg="bg-amber-50 dark:bg-amber-500/10" color="text-amber-600 dark:text-amber-400" border="border-amber-200 dark:border-amber-800" />
                 </div>
 
                 {/* Search Bar */}
@@ -228,7 +246,7 @@ export default function MyListings() {
 
                 {/* Filter Chips */}
                 <div className="flex gap-2 mb-6 overflow-x-auto pb-1 no-scrollbar">
-                    {['All', 'Active', 'Pending'].map(filter => (
+                    {['All', 'Active', 'Pending', 'Rejected', 'Drafts'].map(filter => (
                         <button
                             key={filter}
                             onClick={() => setActiveFilter(filter)}
@@ -238,7 +256,10 @@ export default function MyListings() {
                                     : 'bg-white dark:bg-[#1A1D24] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800'
                             }`}
                         >
-                            {filter}
+                            {filter === 'Drafts' && metrics.drafts > 0 ? `Drafts (${metrics.drafts})` :
+                             filter === 'Pending' && metrics.pending > 0 ? `Pending (${metrics.pending})` :
+                             filter === 'Rejected' && metrics.rejected > 0 ? `Rejected (${metrics.rejected})` :
+                             filter}
                         </button>
                     ))}
                 </div>
@@ -259,10 +280,21 @@ export default function MyListings() {
                             >
                                 <ListingCard 
                                     property={property} 
-                                    onClick={() => navigate(`/property/${property.id}`)}
+                                    onClick={() => {
+                                        if (property.status === 'draft') {
+                                            navigate(`/post-ad?draftId=${property.id}&step=2`);
+                                        } else if (property.status === 'pending_payment') {
+                                            navigate(`/post-ad?draftId=${property.id}&step=3`);
+                                        } else {
+                                            navigate(`/property/${property.id}`);
+                                        }
+                                    }}
                                     onActionClick={(e) => {
                                         e.stopPropagation();
                                         handleActionClick(property);
+                                    }}
+                                    onDeleteRequest={() => {
+                                        setDeleteModal({ isOpen: true, id: property.id, title: property.title });
                                     }}
                                 />
                             </motion.div>
@@ -421,11 +453,11 @@ export default function MyListings() {
                 onClose={() => setVerifyModal({ isOpen: false, id: null, title: '' })}
                 type="verification_fee"
                 bookingType="verification"
-                amount={199}
+                amount={Number(fees?.standaloneVerificationFee?.value) || 199}
                 title="Onsite Verification"
                 subtitle={`Verify: ${verifyModal.title}`}
                 breakdownItems={[
-                    { label: 'Agent Visit & Verification Fee', amount: 199 },
+                    { label: 'Agent Visit & Verification Fee', amount: Number(fees?.standaloneVerificationFee?.value) || 199 },
                 ]}
                 propertyId={verifyModal.id}
                 propertyName={verifyModal.title}
@@ -464,17 +496,51 @@ function ActionItem({ icon, label, danger, onClick }) {
     );
 }
 
-function ListingCard({ property, onClick, onActionClick }) {
+function ListingCard({ property, onClick, onActionClick, onDeleteRequest }) {
     const { title, rent, area, district, upazila, image, status } = property;
     const [copied, setCopied] = useState(false);
+
+    const x = useMotionValue(0);
+    const controls = useAnimation();
 
     const displayRent = rent || property.price || 0;
     const displayImage = image || 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80';
     const displayLocation = upazila || area || district || 'City Area';
-    const currentStatus = status || 'Available';
-    const isAvailable = currentStatus === 'Available' && property.isApproved;
-    const badgeText = !property.isApproved ? (property.isRejected ? 'Rejected' : 'Pending Approval') : (isAvailable ? 'Active' : currentStatus);
-    const isPendingOrRejected = !property.isApproved;
+    const isDraftType = status === 'draft' || status === 'pending_payment';
+
+    // ── Compute status info with dot color ─────────────────────────────────
+    let statusDotColor = '';  // '' means no dot (draft)
+    let badgeText = '';
+    let badgeBg = '';
+    let badgeTextColor = '';
+
+    if (isDraftType) {
+        badgeText = status === 'pending_payment' ? 'Pending Payment' : 'Draft';
+        badgeBg = 'bg-amber-500/90';
+        badgeTextColor = 'text-white';
+    } else if (property.isRejected) {
+        statusDotColor = 'bg-red-500';   // 🔴 rejected
+        badgeText = 'Rejected';
+        badgeBg = 'bg-red-500/90';
+        badgeTextColor = 'text-white';
+    } else if (!property.isApproved) {
+        statusDotColor = 'bg-yellow-400'; // 🟡 pending
+        badgeText = 'Pending Approval';
+        badgeBg = 'bg-yellow-400/90';
+        badgeTextColor = 'text-slate-900';
+    } else if (property.isApproved && status === 'Available') {
+        statusDotColor = 'bg-emerald-500'; // 🟢 active
+        badgeText = 'Active';
+        badgeBg = 'bg-emerald-500/90';
+        badgeTextColor = 'text-white';
+    } else {
+        statusDotColor = 'bg-slate-400';
+        badgeText = status || 'Active';
+        badgeBg = 'bg-slate-700/80';
+        badgeTextColor = 'text-white';
+    }
+
+    const isPendingOrRejected = !isDraftType && (!property.isApproved || property.isRejected);
 
     const shortId = property.id ? property.id.slice(0, 8).toUpperCase() : '';
 
@@ -486,57 +552,112 @@ function ListingCard({ property, onClick, onActionClick }) {
         });
     };
 
+    const handleDragEnd = (event, info) => {
+        if (info.offset.x < -60) {
+            controls.start({ x: -80 });
+        } else {
+            controls.start({ x: 0 });
+        }
+    };
+
+    const handleClick = (e) => {
+        // If swiped open, close it instead of navigating
+        if (x.get() < -10) {
+            e.stopPropagation();
+            controls.start({ x: 0 });
+            return;
+        }
+        onClick();
+    };
+
     return (
-        <div 
-            onClick={onClick}
-            className="group w-full bg-white dark:bg-[#1A1D24] rounded-[24px] overflow-hidden p-3 flex gap-4 cursor-pointer active:scale-[0.98] transition-transform border border-slate-100 dark:border-slate-800/70 shadow-sm"
-        >
-            <div className="w-[100px] h-[100px] shrink-0 overflow-hidden rounded-[16px] relative">
-                <img loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" src={displayImage} alt={title || 'Listing'} />
-                <div className={`absolute top-2 left-2 px-2 py-1 rounded-full text-[10px] font-black shadow-sm backdrop-blur-md ${isPendingOrRejected ? 'bg-amber-500/90 text-white' : (isAvailable ? 'bg-white/90 text-slate-900' : 'bg-slate-900/80 text-white')}`}>
-                    {badgeText}
-                </div>
+        <div className="relative w-full rounded-[24px] overflow-hidden mb-1">
+            {/* Background Delete Button */}
+            <div className="absolute right-0 top-0 bottom-0 w-[100px] bg-rose-500 flex items-center justify-end pr-6 rounded-[24px]">
+                <button 
+                    onClick={(e) => { e.stopPropagation(); controls.start({ x: 0 }); onDeleteRequest(); }} 
+                    className="text-white flex flex-col items-center gap-1 active:scale-90 transition-transform"
+                >
+                    <Trash2 size={24} />
+                    <span className="text-[10px] font-black uppercase tracking-wider">Delete</span>
+                </button>
             </div>
 
-            <div className="flex-1 min-w-0 flex flex-col justify-center py-1 relative">
-                <button 
-                    onClick={onActionClick}
-                    className="absolute top-0 right-0 p-2 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-90 transition-all z-10 text-slate-500 dark:text-slate-400"
-                >
-                    <MoreHorizontal size={20} />
-                </button>
-
-                <h4 className="font-black text-[16px] leading-tight mb-1 truncate pr-8 text-slate-900 dark:text-white">
-                    {title || 'Property Title'}
-                </h4>
-
-                <div className="flex items-center gap-1 mb-2 truncate text-slate-500 dark:text-slate-400">
-                    <MapPin size={13} className="shrink-0" />
-                    <span className="text-[13px] font-bold truncate">{displayLocation}</span>
+            {/* Foreground Card */}
+            <motion.div 
+                drag="x"
+                dragConstraints={{ left: -80, right: 0 }}
+                dragElastic={0.1}
+                onDragEnd={handleDragEnd}
+                animate={controls}
+                style={{ x }}
+                onClick={handleClick}
+                className="relative z-10 w-full bg-white dark:bg-[#1A1D24] rounded-[24px] overflow-hidden p-3 flex gap-4 cursor-pointer active:scale-[0.99] transition-transform border border-slate-100 dark:border-slate-800/70 shadow-sm"
+            >
+                <div className="w-[100px] h-[100px] shrink-0 overflow-hidden rounded-[16px] relative">
+                    <img loading="lazy" className="w-full h-full object-cover" src={displayImage} alt={title || 'Listing'} />
+                    <div className={`absolute top-2 left-2 flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black shadow-sm backdrop-blur-md ${badgeBg} ${badgeTextColor}`}>
+                        {statusDotColor && (
+                            <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${statusDotColor}`} />
+                        )}
+                        {badgeText}
+                    </div>
                 </div>
 
-                <div className="flex items-center justify-between mt-auto">
-                    <div className="flex items-baseline gap-1">
-                        <span className="font-black text-[18px] text-primary dark:text-indigo-400">
-                            ৳{displayRent.toLocaleString()}
-                        </span>
-                        <span className="text-[12px] font-bold text-slate-400 dark:text-slate-500">
-                            / month
-                        </span>
+                <div className="flex-1 min-w-0 flex flex-col justify-center py-1 relative">
+                    {!isDraftType && (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onActionClick(e); }}
+                            className="absolute top-0 right-0 p-2 rounded-full hover:bg-slate-50 dark:hover:bg-slate-800 active:scale-90 transition-all z-10 text-slate-500 dark:text-slate-400"
+                        >
+                            <MoreHorizontal size={20} />
+                        </button>
+                    )}
+
+                    <h4 className="font-black text-[16px] leading-tight mb-1 truncate pr-8 text-slate-900 dark:text-white">
+                        {title || 'Untitled Draft'}
+                    </h4>
+
+                    <div className="flex items-center gap-1 mb-2 truncate text-slate-500 dark:text-slate-400">
+                        <MapPin size={13} className="shrink-0" />
+                        <span className="text-[13px] font-bold truncate">{displayLocation}</span>
                     </div>
 
-                    {/* Listing ID badge — owner-only */}
-                    <button
-                        onClick={handleCopyId}
-                        title={copied ? 'Copied!' : `Copy full ID: ${property.id}`}
-                        className={`flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all active:scale-90 border ${copied ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}
-                    >
-                        <span className="text-[10px] font-black tracking-widest uppercase font-mono">
-                            {copied ? '✓ Copied' : `#${shortId}`}
-                        </span>
-                    </button>
+                    <div className="flex items-center justify-between mt-auto">
+                        <div className="flex items-baseline gap-1">
+                            {displayRent > 0 ? (
+                                <>
+                                    <span className="font-black text-[18px] text-primary dark:text-indigo-400">
+                                        ৳{displayRent.toLocaleString()}
+                                    </span>
+                                    <span className="text-[12px] font-bold text-slate-400 dark:text-slate-500">
+                                        / month
+                                    </span>
+                                </>
+                            ) : (
+                                <span className="font-black text-[14px] text-amber-500">Draft Incomplete</span>
+                            )}
+                        </div>
+
+                        {!isDraftType && (
+                            <button
+                                onClick={handleCopyId}
+                                title={copied ? 'Copied!' : `Copy full ID: ${property.id}`}
+                                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all active:scale-90 border ${copied ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'}`}
+                            >
+                                <span className="text-[10px] font-black tracking-widest uppercase font-mono">
+                                    {copied ? '✓ Copied' : `#${shortId}`}
+                                </span>
+                            </button>
+                        )}
+                        {isDraftType && (
+                            <span className="text-[11px] font-black text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-wider">
+                                {status === 'draft' ? 'Continue' : 'Pay Now'}
+                            </span>
+                        )}
+                    </div>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }

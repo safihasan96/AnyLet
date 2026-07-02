@@ -1,0 +1,13 @@
+{
+  "showUnsupportedFiles": false,
+  "userIgnoreFilters": [
+    "node_modules/",
+    "src/",
+    "api/",
+    "android/",
+    "ios/",
+    "public/",
+    "dist/",
+    "graphify-out/"
+  ]
+}

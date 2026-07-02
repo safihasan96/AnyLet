@@ -11,6 +11,7 @@ import {
   Smartphone, Calendar, Hash, Shield, ExternalLink
 } from 'lucide-react';
 import InvoiceModal from '../components/InvoiceModal';
+import { useFees } from '../hooks/useFees';
 
 /* ─────────────────────────────────────────────────────────────
    VARIANTS — decoupled from JSX (FM rule #1)
@@ -257,6 +258,17 @@ function PaymentDetailSheet({ payment, isOpen, onClose, onViewInvoice }) {
                     View & Download Invoice
                   </motion.button>
                 )}
+                {payment.isDraftPayment && status === 'pending' && (
+                  <motion.button
+                    onClick={() => { onClose(); window.location.href = `/post-ad?draftId=${payment.id}&step=3`; }}
+                    whileHover={{ scale: 1.01, y: -1 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full flex items-center justify-center gap-2.5 py-4 bg-primary text-white rounded-2xl font-black text-sm shadow-xl shadow-primary/25"
+                  >
+                    <CreditCard size={17} strokeWidth={2.5} />
+                    Proceed to Payment
+                  </motion.button>
+                )}
                 <button
                   onClick={onClose}
                   className="w-full py-3.5 text-slate-400 font-bold text-sm text-center hover:text-slate-600 transition-colors"
@@ -357,6 +369,18 @@ function PaymentCard({ payment, onViewDetails, onViewInvoice, index }) {
                 Invoice
               </motion.button>
             )}
+            {payment.isDraftPayment && status === 'pending' && (
+              <motion.button
+                onClick={(e) => { e.stopPropagation(); window.location.href = `/post-ad?draftId=${payment.id}&step=3`; }}
+                whileHover={reduced ? {} : { scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-xl font-black text-[11px] shadow-md shadow-primary/20"
+                aria-label="Pay Now"
+              >
+                <CreditCard size={13} strokeWidth={2.5} />
+                Pay Now
+              </motion.button>
+            )}
             <motion.button
               onClick={() => onViewDetails(payment)}
               whileHover={reduced ? {} : { scale: 1.05 }}
@@ -432,6 +456,7 @@ export default function MyPayments() {
   const { currentUser, userData } = useAuth();
   const navigate = useNavigate();
   const reduced = useReducedMotion();
+  const { fees } = useFees();
 
   const [payments, setPayments]           = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -448,8 +473,9 @@ export default function MyPayments() {
       const uid = currentUser.uid;
 
       // 1. Completed payments from 'payments' collection
+      // NOTE: api/verify-payment.js writes the document with field 'uid', NOT 'userId'.
       const pSnap = await getDocs(
-        query(collection(db, 'payments'), where('userId', '==', uid), limit(QUERY_LIMIT))
+        query(collection(db, 'payments'), where('uid', '==', uid), limit(QUERY_LIMIT))
       );
       const completedPayments = pSnap.docs.map(d => ({
         id: d.id,
@@ -482,8 +508,36 @@ export default function MyPayments() {
         };
       });
 
+      // 3. Draft properties pending payment
+      const pDraftSnap = await getDocs(
+        query(
+          collection(db, 'properties'),
+          where('ownerId', '==', uid),
+          where('status', '==', 'pending_payment'),
+          limit(QUERY_LIMIT)
+        )
+      );
+      const pendingDrafts = pDraftSnap.docs.map(d => {
+        const data = d.data();
+        // amount displayed is the LISTING FEE, not the property rent.
+        const LISTING_FEE = Number(fees.listingFee.value);
+        const onsiteRequested = !!data.onsiteVerificationRequested;
+        const displayAmount = LISTING_FEE + (onsiteRequested ? Number(fees.onsiteVerificationFee.value) : 0);
+        return {
+          id: d.id,
+          ...data,
+          type: 'listing',
+          bookingType: 'listing',
+          amount: displayAmount,
+          propertyName: data.title,
+          _source: 'properties',
+          status: 'pending',
+          isDraftPayment: true,
+        };
+      });
+
       // Merge & sort by createdAt desc
-      const merged = [...completedPayments, ...pendingPayments].sort((a, b) => {
+      const merged = [...completedPayments, ...pendingPayments, ...pendingDrafts].sort((a, b) => {
         const aTime = a.createdAt?.toMillis?.() || new Date(a.createdAt).getTime() || 0;
         const bTime = b.createdAt?.toMillis?.() || new Date(b.createdAt).getTime() || 0;
         return bTime - aTime;

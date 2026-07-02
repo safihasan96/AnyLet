@@ -3,13 +3,14 @@ import { collection, getDocs, limit, orderBy, query, where } from 'firebase/fire
 import { db } from '../firebase';
 import { Search, X, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getPropertyCoords } from '../data/locationCoords';
 import MapView from '../components/map/MapView';
 import FilterBar from '../components/map/FilterBar';
 import ListingCard from '../components/listings/ListingCard';
 import ListingSkeleton from '../components/listings/ListingSkeleton';
 import Toast from '../components/ui/Toast';
 import logger from '../utils/logger';
+import MapSearchBar from '../components/map/MapSearchBar';
+import MobileMapTopBar from '../components/map/MobileMapTopBar';
 
 const INITIAL_FILTERS = {
     type: 'all',
@@ -23,17 +24,16 @@ function normalizeListing(doc) {
     const data = doc.data();
     const directLat = Number(data.lat ?? data.latitude);
     const directLng = Number(data.lng ?? data.longitude);
-    const fallbackCoords = Number.isFinite(directLat) && Number.isFinite(directLng)
-        ? { lat: directLat, lng: directLng }
-        : getPropertyCoords(data);
 
-    if (!fallbackCoords) return null;
+    if (!Number.isFinite(directLat) || !Number.isFinite(directLng)) {
+        return null;
+    }
 
     return {
         id: doc.id,
         ...data,
-        lat: Number(fallbackCoords.lat),
-        lng: Number(fallbackCoords.lng),
+        lat: directLat,
+        lng: directLng,
     };
 }
 
@@ -56,7 +56,11 @@ function filterListings(listings, filters) {
         if (filters.searchTerm) {
             const term = filters.searchTerm.toLowerCase().trim();
             const matchesSearch = listing.title?.toLowerCase().includes(term) || 
-                                  listing.addressDetails?.toLowerCase().includes(term);
+                                  listing.addressDetails?.toLowerCase().includes(term) ||
+                                  listing.district?.toLowerCase().includes(term) ||
+                                  listing.division?.toLowerCase().includes(term) ||
+                                  listing.upazila?.toLowerCase().includes(term) ||
+                                  listing.city?.toLowerCase().includes(term);
             if (!matchesSearch) return false;
         }
 
@@ -76,6 +80,7 @@ export default function MapPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [toastMessage, setToastMessage] = useState('');
     const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
+    const [flyToTarget, setFlyToTarget] = useState(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -85,7 +90,7 @@ export default function MapPage() {
                 setIsLoading(true);
                 const listingsQuery = query(
                     collection(db, 'properties'),
-                    where('status', '==', 'Available'),
+                    where('isApproved', '==', true),
                     limit(200)
                 );
                 const snapshot = await getDocs(listingsQuery);
@@ -135,6 +140,16 @@ export default function MapPage() {
         <div className="anylet-map-page fixed inset-0 z-10 bg-[#F9FAFB] md:relative md:inset-auto md:z-auto md:h-[calc(100vh-72px)]">
             <div className="flex h-full w-full flex-col md:flex-row">
                 <section className="relative h-full w-full md:w-[58%]">
+                    {/* Premium unified top bar — mobile only */}
+                    <MobileMapTopBar
+                        value={filters.searchTerm}
+                        onChange={(val) => setFilters({ ...filters, searchTerm: val })}
+                        onLocationSelect={(coords) => setFlyToTarget(coords)}
+                        filters={filters}
+                        setFilters={setFilters}
+                        activeLayer={activeLayer}
+                        setActiveLayer={setActiveLayer}
+                    />
                     <MapView
                         allListings={allListings}
                         listings={filteredVisibleListings}
@@ -147,29 +162,28 @@ export default function MapPage() {
                         setCurrentBounds={setCurrentBounds}
                         showToast={setToastMessage}
                         activeLayer={activeLayer}
+                        flyToTarget={flyToTarget}
                     >
-                        <FilterBar
-                            filters={filters}
-                            setFilters={setFilters}
-                            activeLayer={activeLayer}
-                            setActiveLayer={setActiveLayer}
-                            topOffset={hasPanned ? '4rem' : '1rem'}
-                        />
+                        {/* Desktop-only filter pills inside map overlay */}
+                        <div className="hidden md:block">
+                            <FilterBar
+                                filters={filters}
+                                setFilters={setFilters}
+                                activeLayer={activeLayer}
+                                setActiveLayer={setActiveLayer}
+                                topOffsetClass="top-4"
+                            />
+                        </div>
                     </MapView>
                 </section>
 
                 <aside className="hidden h-full w-[42%] flex-col overflow-y-auto bg-[#F9FAFB] md:flex border-l border-slate-200">
                     <div className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F9FAFB]/95 px-5 py-4 backdrop-blur flex flex-col gap-3">
-                        <div className="relative">
-                            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Search specific location or property..."
-                                value={filters.searchTerm || ''}
-                                onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
-                                className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#1a227f] transition-all"
-                            />
-                        </div>
+                        <MapSearchBar 
+                            value={filters.searchTerm} 
+                            onChange={(val) => setFilters({ ...filters, searchTerm: val })}
+                            onLocationSelect={(coords) => setFlyToTarget(coords)}
+                        />
                         <p className="text-sm font-semibold text-[#111827]">
                             {filteredVisibleListings.length} properties in this area
                         </p>
@@ -231,16 +245,14 @@ export default function MapPage() {
                                             <X size={18} />
                                         </button>
                                     </div>
-                                    <div className="relative">
-                                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        <input
-                                            type="text"
-                                            placeholder="Search specific location or property..."
-                                            value={filters.searchTerm || ''}
-                                            onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
-                                            className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#1a227f] transition-all shadow-sm"
-                                        />
-                                    </div>
+                                    <MapSearchBar 
+                                        value={filters.searchTerm} 
+                                        onChange={(val) => setFilters({ ...filters, searchTerm: val })}
+                                        onLocationSelect={(coords) => {
+                                            setFlyToTarget(coords);
+                                            setIsMobileModalOpen(false);
+                                        }}
+                                    />
                                 </div>
                                 <div className="flex-1 overflow-y-auto px-4 py-4 pb-8">
                                     <div className="grid grid-cols-2 gap-3">

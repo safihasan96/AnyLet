@@ -3,7 +3,12 @@ import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 
 function normalizePrivateKey(value) {
-  return typeof value === 'string' ? value.replace(/\\n/g, '\n') : value;
+  if (typeof value !== 'string') return value;
+  let clean = value;
+  if (clean.startsWith('"') && clean.endsWith('"')) {
+    clean = clean.slice(1, -1);
+  }
+  return clean.replace(/\\n/g, '\n');
 }
 
 function loadServiceAccount() {
@@ -33,8 +38,8 @@ function loadServiceAccount() {
   throw new Error('Missing Firebase Admin credentials');
 }
 
-let db = null;
-let auth = null;
+let db;
+let auth;
 
 try {
   if (!getApps().length) {
@@ -45,7 +50,11 @@ try {
   db = getFirestore();
   auth = getAuth();
 } catch (error) {
-  console.error('[Firebase Admin] Initialization Error:', error.message);
+  // Rethrow so any API route that imports this module will fail at startup
+  // with a clear message, instead of crashing at runtime with "Cannot call
+  // .collection() on null".
+  console.error('[Firebase Admin] FATAL — could not initialize:', error.message);
+  throw new Error(`[Firebase Admin] Initialization failed: ${error.message}`);
 }
 
 // ── admin namespace ──────────────────────────────────────────────────────────

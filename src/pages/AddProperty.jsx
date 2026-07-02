@@ -23,11 +23,13 @@ import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
 import logger from '../utils/logger';
 import { getApiUrl } from '../utils/api';
+import { useFees } from '../hooks/useFees';
 
 export default function AddProperty() {
     const { currentUser, userProfile } = useAuth();
     const navigate = useNavigate();
     const toast = useToast();
+    const { fees, loading: feesLoading } = useFees();
 
     useEffect(() => {
         // Wait until auth and profile are fully loaded
@@ -63,8 +65,8 @@ export default function AddProperty() {
     );
 
     // Pricing constants
-    const LISTING_FEE = hasActiveSubscription ? 0 : 49;  // Free for subscribers
-    const ONSITE_FEE = 299;
+    const LISTING_FEE = hasActiveSubscription ? 0 : Number(fees.listingFee.value);
+    const ONSITE_FEE = Number(fees.onsiteVerificationFee.value);
     const totalAmount = LISTING_FEE + (wantOnsiteVerify ? ONSITE_FEE : 0);
 
     const [step, setStep] = useState(1);
@@ -378,6 +380,14 @@ export default function AddProperty() {
     const handleProceedToPayment = () => {
         setPublishConfirmOpen(true);
     };
+
+    if (feesLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#F8F9FA] dark:bg-[#0F1117]">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col min-h-screen bg-[#F8F9FA] dark:bg-[#0F1117] pb-32 text-slate-900 dark:text-slate-100">

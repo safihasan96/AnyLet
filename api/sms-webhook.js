@@ -16,6 +16,13 @@ if (!WEBHOOK_SECRET || WEBHOOK_SECRET.trim().length < 16) {
 
 const ALLOWED_PROVIDERS = new Set(['bkash', 'nagad', 'rocket']);
 
+// Sanity bounds: amounts outside this window are stored as 'suspicious' and
+// will never be auto-claimed — they require admin review before processing.
+// This does NOT reject the webhook call (always 200) so the SMS watcher app
+// does not retry. It only affects the stored document's status.
+const SANITY_MIN =      1; // ৳1  — no legit AnyLet fee is below this
+const SANITY_MAX = 100000; // ৳1 lakh — no legit AnyLet transaction exceeds this
+
 // Constant-time string comparison — prevents timing attacks on the secret key.
 function safeCompare(a, b) {
   const left  = Buffer.from(String(a || ''), 'utf8');
@@ -54,10 +61,13 @@ function extractSmsPayload(body) {
     text.match(/(?:tk|bdt|৳)\s*([0-9,]+(?:\.\d+)?)/i)?.[1] ??
     text.match(/([0-9,]+(?:\.\d+)?)\s*(?:tk|bdt|৳)/i)?.[1];
 
+  const senderNumber = String(body.sender || body.number || body.from || 'Unknown').trim();
+
   return {
     transactionId: sanitizeTransactionId(transactionId),
     amount: parseAmount(amount),
     provider: String(body.provider || '').toLowerCase().trim(),
+    senderNumber: senderNumber,
   };
 }
 
@@ -116,11 +126,19 @@ export default withMiddleware(async (req, res) => {
         return;
       }
       tx.create(txRef, {
-        transactionId: payload.transactionId,
-        amount: payload.amount,
-        provider: payload.provider || null,
-        status: 'unclaimed',
-        receivedAt: Timestamp.now(),
+        transactionId:   payload.transactionId,
+        amount:          payload.amount,
+        provider:        payload.provider || null,
+        senderNumber:    payload.senderNumber,
+        // Sanity check: flag amounts outside expected range for admin review.
+        // verify-payment.js will reject 'suspicious' transactions at claim time.
+        status:          (payload.amount < SANITY_MIN || payload.amount > SANITY_MAX)
+          ? 'suspicious'
+          : 'unclaimed',
+        suspiciousReason: (payload.amount < SANITY_MIN || payload.amount > SANITY_MAX)
+          ? `Amount ৳${payload.amount} is outside expected range [৳${SANITY_MIN}, ৳${SANITY_MAX}]`
+          : null,
+        receivedAt:      Timestamp.now(),
       });
     });
   } catch (err) {

@@ -11,6 +11,7 @@ import createPricePin from './PricePin';
 import createClusterIcon from './ClusterIcon';
 import ListingPreviewCard from './ListingPreviewCard';
 import NearMeButton from './NearMeButton';
+import MapRecenter from './MapRecenter';
 
 const BANGLADESH_BOUNDS = [[20.3756, 88.0075], [26.6382, 92.6804]];
 const BANGLADESH_CENTER = [23.6850, 90.3563];
@@ -78,6 +79,7 @@ export default function MapView({
     setCurrentBounds,
     showToast,
     activeLayer = 'street',
+    flyToTarget,
     children,
 }) {
     const skeletonIcon = useMemo(() => createSkeletonIcon(), []);
@@ -137,6 +139,7 @@ export default function MapView({
                     setHasPanned={setHasPanned}
                     setCurrentBounds={setCurrentBounds}
                 />
+                <MapRecenter targetLocation={flyToTarget} />
                 <ZoomControl position="bottomright" />
                 <NearMeButton showToast={showToast} />
 

@@ -2,11 +2,14 @@ import { CheckCircle2, Star, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import PaymentModal from '../components/PaymentModal';
+import { useFees } from '../hooks/useFees';
 
 export default function Pricing() {
     const navigate = useNavigate();
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState(null);
+    const { fees } = useFees();
+    const premiumPrice = Number(fees?.subscriptionMonthlyPrice?.value) || 999;
 
     const handlePlanSelect = (planName, amount) => {
         setSelectedPlan({ name: planName, amount });
@@ -46,7 +49,7 @@ export default function Pricing() {
                         </div>
                         <div className="mb-6">
                             <span className="text-xs font-black uppercase tracking-widest text-primary dark:text-indigo-400-200 text-white/70">Premium</span>
-                            <div className="text-4xl font-black text-white mt-2">৳999 
+                            <div className="text-4xl font-black text-white mt-2">৳{premiumPrice} 
                                 <span className="text-lg text-white/70 font-bold">/mo</span>
                             </div>
                             <p className="text-white/80 text-sm mt-2">Maximize your reach instantly</p>
@@ -64,7 +67,7 @@ export default function Pricing() {
                                 </li>
                             ))}
                         </ul>
-                        <button onClick={() => handlePlanSelect('Premium', 999)} className="w-full py-4 rounded-2xl bg-white text-primary dark:text-indigo-400 font-black hover:scale-[1.02] active:scale-95 transition-transform shadow-xl">Upgrade with bKash</button>
+                        <button onClick={() => handlePlanSelect('Premium', premiumPrice)} className="w-full py-4 rounded-2xl bg-white text-primary dark:text-indigo-400 font-black hover:scale-[1.02] active:scale-95 transition-transform shadow-xl">Upgrade with bKash</button>
                     </div>
 
                     {/* Agent Plan */}
