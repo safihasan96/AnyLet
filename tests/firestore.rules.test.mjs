@@ -167,6 +167,80 @@ async function test4_adminReadsCommissionsAndWithdrawals() {
   }
 }
 
+// ── TEST 5: Notification abuse — extra fields / oversized payload ─────────────
+async function test5_notificationAbuseDenied() {
+  const label = 'TEST 5 — Malformed/oversized notification for another user → DENIED';
+  try {
+    const attacker = testEnv.authenticatedContext('attacker-uid');
+    const db = attacker.firestore();
+
+    // a) Unexpected extra field (schema lock via hasOnly)
+    await assertFails(
+      setDoc(doc(db, 'notifications', 'evil-1'), {
+        userId: 'victim-uid',
+        type: 'system',
+        title: 'Hi',
+        isRead: false,
+        payloadExploit: 'arbitrary',
+      })
+    );
+
+    // b) Oversized title (phishing/spam payload bound)
+    await assertFails(
+      setDoc(doc(db, 'notifications', 'evil-2'), {
+        userId: 'victim-uid',
+        type: 'system',
+        title: 'x'.repeat(500),
+        isRead: false,
+      })
+    );
+
+    // c) isRead pre-set to true (must start unread)
+    await assertFails(
+      setDoc(doc(db, 'notifications', 'evil-3'), {
+        userId: 'victim-uid',
+        type: 'system',
+        title: 'Hi',
+        isRead: true,
+      })
+    );
+
+    log('✅', label, true);
+    return true;
+  } catch (e) {
+    log('❌', label, false);
+    console.error('    Error:', e.message);
+    return false;
+  }
+}
+
+// ── TEST 6: Legitimate cross-user notification still works ────────────────────
+async function test6_legitNotificationAllowed() {
+  const label = 'TEST 6 — Well-formed notification for another user → ALLOWED';
+  try {
+    const user = testEnv.authenticatedContext('sender-uid');
+    const db = user.firestore();
+
+    await assertSucceeds(
+      setDoc(doc(db, 'notifications', 'legit-1'), {
+        userId: 'owner-uid',
+        type: 'request_received',
+        title: 'New viewing request',
+        message: 'A tenant requested to view your property.',
+        link: '/enquiry',
+        isRead: false,
+        metadata: { propertyId: 'p-1' },
+      })
+    );
+    log('✅', label, true);
+    return true;
+  } catch (e) {
+    log('❌', label, false);
+    console.error('    Error:', e.message);
+    return false;
+  }
+}
+
 // ── Main runner ───────────────────────────────────────────────────────────────
 async function run() {
   console.log('\n\x1b[1m🔥 AnyLet – Firestore Security Rules Test Suite\x1b[0m');
@@ -183,6 +257,8 @@ async function run() {
       test2_userReadsOwnPaymentIntent(),
       test3_unauthenticatedUserDenied(),
       test4_adminReadsCommissionsAndWithdrawals(),
+      test5_notificationAbuseDenied(),
+      test6_legitNotificationAllowed(),
     ]);
 
     const passed = results.filter(Boolean).length;

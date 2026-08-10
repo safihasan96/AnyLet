@@ -289,8 +289,29 @@ service cloud.firestore {
       // Allow any signed-in user to create a notification FOR another user
       // (e.g., tenant sends viewing request → notify the owner).
       // The recipient is resource.data.userId, not the sender.
+      //
+      // Hardening: the client write path (utils/notificationService.js) always
+      // produces exactly this shape. Locking the schema + bounding the visible
+      // strings limits notification spam and in-app phishing (arbitrary title/
+      // message/link) without breaking the legitimate cross-user flow. Trusted
+      // server notifications are written via the Admin SDK and bypass these rules.
       allow create: if isSignedIn()
-                    && request.resource.data.userId != request.auth.uid;
+                    && request.resource.data.userId is string
+                    && request.resource.data.userId != request.auth.uid
+                    && request.resource.data.keys().hasOnly(
+                         ['userId', 'type', 'title', 'message', 'link', 'isRead', 'createdAt', 'metadata'])
+                    && request.resource.data.keys().hasAll(['userId', 'type', 'title'])
+                    && request.resource.data.isRead == false
+                    && request.resource.data.type is string
+                    && request.resource.data.type.size() <= 64
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() <= 140
+                    && (!('message' in request.resource.data)
+                        || (request.resource.data.message is string
+                            && request.resource.data.message.size() <= 1000))
+                    && (!('link' in request.resource.data)
+                        || (request.resource.data.link is string
+                            && request.resource.data.link.size() <= 512));
       allow delete: if isAdmin();
     }
 
