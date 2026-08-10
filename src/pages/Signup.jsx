@@ -105,7 +105,7 @@ export default function Signup() {
             const snap = await getDocs(query(collection(db, 'users'), where('referralCode', '==', urlRefCode)));
             if (!snap.empty) setReferrerBannerName(snap.docs[0].data().fullName || snap.docs[0].data().displayName || 'a friend');
         };
-        lookupRef().catch(console.error);
+        lookupRef().catch((e) => logger.error('referral lookup failed', e));
     }, [urlRefCode]);
 
     // ── Debounced referral code validation ────────────────────────────────────

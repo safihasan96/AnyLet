@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import logger from '../utils/logger';
 
 // Default fallback fees matching the seed config to avoid UI flashes
 const DEFAULT_FEES = {
@@ -53,7 +54,7 @@ export function useFees() {
         settle();
       },
       (err) => {
-        console.error('Error fetching fees:', err);
+        logger.error('Error fetching fees', err);
         clearTimeout(timer);
         settle();
       }

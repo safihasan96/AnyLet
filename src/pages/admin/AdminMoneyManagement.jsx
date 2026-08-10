@@ -4,6 +4,7 @@ import { collection, onSnapshot, query, orderBy, getDocs, updateDoc, doc, server
 import { db, auth } from '../../firebase';
 import { AlertTriangle, Clock, ArrowUpRight, ArrowDownRight, Search, Activity, RefreshCw, XCircle, CheckCircle2, MessageSquare } from 'lucide-react';
 import { getApiUrl } from '../../utils/api';
+import logger from '../../utils/logger';
 
 export default function AdminMoneyManagement() {
     const navigate = useNavigate();
@@ -129,7 +130,7 @@ export default function AdminMoneyManagement() {
             
             alert(`Successfully forced ${action}.`);
         } catch (e) {
-            console.error(`Failed to ${action}:`, e);
+            logger.error(`Failed to ${action}`, e);
             alert(`Failed to ${action} funds: ${e.message}`);
         } finally {
             setActionLoading(false);

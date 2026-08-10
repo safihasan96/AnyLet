@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import './AdminDesignSystem.css';
+import logger from '../../utils/logger';
 
 const NAV_ITEMS = [
     { path: '/admin', icon: LayoutDashboard, label: 'Overview', end: true },
@@ -28,7 +29,7 @@ export default function AdminLayout() {
             await logout();
             navigate('/login');
         } catch (e) {
-            console.error(e);
+            logger.error('AdminLayout error', e);
         }
     };
 

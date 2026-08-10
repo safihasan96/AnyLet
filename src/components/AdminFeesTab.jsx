@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { Banknote, Save, History, RefreshCw, AlertCircle, Percent, Hash } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
+import logger from '../utils/logger';
 
 const FLAT_MAX = 10000;
 const PERCENT_MAX = 100;
@@ -53,7 +54,7 @@ export default function AdminFeesTab() {
       const hData = hSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       setHistory(hData);
     } catch (err) {
-      console.error(err);
+      logger.error('AdminFeesTab error', err);
       toast.error('Failed to load fees configuration');
     } finally {
       setLoading(false);
@@ -138,7 +139,7 @@ export default function AdminFeesTab() {
       toast.success('Fees updated successfully');
       fetchConfig();
     } catch (err) {
-      console.error(err);
+      logger.error('AdminFeesTab error', err);
       toast.error('Failed to update fees');
     } finally {
       setSaving(false);

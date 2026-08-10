@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import InvoiceModal from '../components/InvoiceModal';
 import { useFees } from '../hooks/useFees';
+import logger from '../utils/logger';
 
 /* ─────────────────────────────────────────────────────────────
    VARIANTS — decoupled from JSX (FM rule #1)
@@ -545,7 +546,7 @@ export default function MyPayments() {
 
       setPayments(merged);
     } catch (err) {
-      console.error('[MyPayments] fetch error:', err);
+      logger.error('[MyPayments] fetch error', err);
       setError('Could not load payments. Please try again.');
     } finally {
       setLoading(false);

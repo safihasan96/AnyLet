@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, MapPin, History, X } from 'lucide-react';
 import { upazilaCoords, districtCoords, divisionCoords } from '../../data/locationCoords';
 import { motion, AnimatePresence } from 'framer-motion';
+import logger from '../../utils/logger';
 
 // Aggregate all searchable locations
 const ALL_LOCATIONS = [
@@ -24,7 +25,7 @@ export default function MapSearchBar({ value, onChange, onLocationSelect }) {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) setHistory(JSON.parse(saved));
         } catch (e) {
-            console.error('Failed to load search history', e);
+            logger.error('Failed to load search history', e);
         }
     }, []);
 

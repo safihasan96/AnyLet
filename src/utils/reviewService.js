@@ -139,7 +139,7 @@ export const toggleHelpfulVote = async (collectionName, reviewId, userId) => {
                          'Helpful Review',
                          `Someone found your review helpful!`,
                          collectionName === 'propertyReviews' ? `/property/${reviewData.propertyId}` : `/owner/${reviewData.ownerId}`
-                     ).catch(console.error);
+                     ).catch((e) => logger.error('review notification failed', e));
                 }
             }
         });
