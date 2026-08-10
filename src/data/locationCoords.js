@@ -78,7 +78,6 @@ export const districtCoords = {
     "Mymensingh":     { lat: 24.7471, lng: 90.4203 },
     "Jamalpur":       { lat: 24.9045, lng: 89.9375 },
     "Sherpur":        { lat: 25.0194, lng: 90.0152 },
-    "Netrokona":      { lat: 24.8698, lng: 90.7279 },
 };
 
 export const upazilaCoords = {

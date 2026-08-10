@@ -35,7 +35,7 @@ export async function safeDocs(q, explicitLimit) {
 
   if (!hasLimit) {
     // Developer forgot to add a limit. Apply the hard cap and warn loudly.
-    if (process.env.DEV) {
+    if (import.meta.env.DEV) {
       logger.warn(
         '[safeQuery] ⚠️  F-08 GUARD: A query was executed without a .limit() clause. ' +
         `HARD_CAP (${QUERY_LIMITS.HARD_CAP}) has been applied automatically. ` +
@@ -50,7 +50,7 @@ export async function safeDocs(q, explicitLimit) {
   // Query already has a limit. Check it does not exceed HARD_CAP.
   const existingLimit = q._query._limit;
   if (existingLimit > QUERY_LIMITS.HARD_CAP) {
-    if (process.env.DEV) {
+    if (import.meta.env.DEV) {
       logger.error(
         `[safeQuery] ❌ F-08 GUARD: Query limit ${existingLimit} exceeds HARD_CAP ` +
         `(${QUERY_LIMITS.HARD_CAP}). Capping to HARD_CAP.`

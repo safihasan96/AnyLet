@@ -38,4 +38,18 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    // Server-side code and build tooling run on Node, not in the browser.
+    files: [
+      'api/**/*.js',
+      'scripts/**/*.js',
+      'dev-api-server.mjs',
+      'seed_fees.js',
+      '*.config.js',
+      'eslint.config.js',
+    ],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])
