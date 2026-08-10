@@ -349,7 +349,10 @@ service cloud.firestore {
                     && request.resource.data.reviewerId == request.auth.uid
                     // Rating must be 1–5
                     && request.resource.data.rating >= 1
-                    && request.resource.data.rating <= 5;
+                    && request.resource.data.rating <= 5
+                    // Deterministic id ties the review to the author and enforces
+                    // exactly one review per user per property (matches reviewService).
+                    && reviewId == request.auth.uid + '_' + request.resource.data.propertyId;
       allow update: if isAdmin()
                     || (isSignedIn()
                         && resource.data.reviewerId == request.auth.uid
@@ -368,7 +371,9 @@ service cloud.firestore {
       allow create: if isSignedIn()
                     && request.resource.data.reviewerId == request.auth.uid
                     && request.resource.data.rating >= 1
-                    && request.resource.data.rating <= 5;
+                    && request.resource.data.rating <= 5
+                    // Deterministic id enforces one review per user per owner.
+                    && reviewId == request.auth.uid + '_' + request.resource.data.ownerId;
       allow update: if isAdmin()
                     || (isSignedIn()
                         && resource.data.reviewerId == request.auth.uid

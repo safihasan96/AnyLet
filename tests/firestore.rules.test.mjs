@@ -53,6 +53,10 @@ async function setup() {
     },
   });
 
+  // Start from a clean slate so re-runs don't collide with docs from a prior
+  // run (a persisted doc would turn a 'create' assertion into an 'update').
+  await testEnv.clearFirestore();
+
   // Seed a paymentIntent document as if written by backend (no rules — direct admin write)
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
@@ -241,6 +245,53 @@ async function test6_legitNotificationAllowed() {
   }
 }
 
+// ── TEST 7: Review spam — arbitrary doc id / duplicate reviews denied ─────────
+async function test7_reviewSpamDenied() {
+  const label = 'TEST 7 — propertyReview at non-deterministic id → DENIED';
+  try {
+    const user = testEnv.authenticatedContext('reviewer-uid');
+    const db = user.firestore();
+
+    // Wrong doc id (not `${uid}_${propertyId}`) — blocks bypassing one-per-user.
+    await assertFails(
+      setDoc(doc(db, 'propertyReviews', 'random-spam-id'), {
+        reviewerId: 'reviewer-uid',
+        propertyId: 'prop-1',
+        rating: 5,
+      })
+    );
+    log('✅', label, true);
+    return true;
+  } catch (e) {
+    log('❌', label, false);
+    console.error('    Error:', e.message);
+    return false;
+  }
+}
+
+// ── TEST 8: Legitimate review at the deterministic id is allowed ──────────────
+async function test8_legitReviewAllowed() {
+  const label = 'TEST 8 — propertyReview at `${uid}_${propertyId}` → ALLOWED';
+  try {
+    const user = testEnv.authenticatedContext('reviewer-uid');
+    const db = user.firestore();
+
+    await assertSucceeds(
+      setDoc(doc(db, 'propertyReviews', 'reviewer-uid_prop-1'), {
+        reviewerId: 'reviewer-uid',
+        propertyId: 'prop-1',
+        rating: 4,
+      })
+    );
+    log('✅', label, true);
+    return true;
+  } catch (e) {
+    log('❌', label, false);
+    console.error('    Error:', e.message);
+    return false;
+  }
+}
+
 // ── Main runner ───────────────────────────────────────────────────────────────
 async function run() {
   console.log('\n\x1b[1m🔥 AnyLet – Firestore Security Rules Test Suite\x1b[0m');
@@ -259,6 +310,8 @@ async function run() {
       test4_adminReadsCommissionsAndWithdrawals(),
       test5_notificationAbuseDenied(),
       test6_legitNotificationAllowed(),
+      test7_reviewSpamDenied(),
+      test8_legitReviewAllowed(),
     ]);
 
     const passed = results.filter(Boolean).length;
