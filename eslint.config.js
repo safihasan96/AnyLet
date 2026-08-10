@@ -5,7 +5,19 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // Only lint first-party app code (src, api) and root tooling config.
+  // Everything below is generated, vendored, or a separate platform/project.
+  globalIgnores([
+    'dist',
+    'android',
+    'ios',
+    'mobile',
+    'graphify-out',
+    'zip',
+    'AnyLet',
+    '.obsidian',
+    '.vercel',
+  ]),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

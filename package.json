@@ -60,8 +60,7 @@
     "vite": "^7.3.1",
     "vite-plugin-pwa": "^1.2.0"
   },
-  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
-  "main": "diagnose.js",
+  "description": "AnyLet — rental/property marketplace web app (React + Vite) with Vercel serverless API and Firebase backend.",
   "repository": {
     "type": "git",
     "url": "https://github.com/safihasan96/AnyLet.git"
