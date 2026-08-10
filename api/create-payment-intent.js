@@ -6,7 +6,6 @@ import { withMiddleware } from './_lib/middleware.js';
 // ⚠️  Do NOT add fee constants here. All amounts come from feeCalculator.js.
 import { computeExpectedAmount } from './_lib/feeCalculator.js';
 
-const BOOKING_TYPES  = new Set(['booking', 'subscription', 'deposit', 'listing', 'verification']);
 const INTENT_TTL_MS  = 30 * 60 * 1000; // 30-minute window to complete payment
 
 function rejectClientControlledFields(body) {

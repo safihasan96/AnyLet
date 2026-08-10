@@ -12,8 +12,6 @@ import { computeExpectedAmount, getPlatformFees } from './_lib/feeCalculator.js'
 const AMOUNT_TOLERANCE  = 1;   // ±1 BDT
 const REVIEW_THRESHOLD  = 50;  // ±50 BDT
 
-const BOOKING_TYPES = new Set(['booking', 'subscription', 'deposit', 'listing', 'verification']);
-
 // ─── Rejects any fields the client should never be allowed to set ──────────
 function rejectClientControlledFields(body) {
   const blocked = ['amount', 'expectedAmount', 'status', 'verified', 'verifiedAt', 'verifiedBy'];
