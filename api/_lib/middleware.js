@@ -167,9 +167,19 @@ export function withMiddleware(handler, options = {}) {
   return async function wrappedHandler(req, res) {
     // ── CORS Configuration ──
     // Allow anylet.com in production, allow localhost in dev.
-    const allowedOrigins = ['https://anylet.com', 'https://www.anylet.com', 'http://localhost:5174', 'http://localhost:5173', 'http://localhost:3000', 'http://localhost:3001'];
+    const allowedOrigins = [
+      'https://anylet.com',
+      'https://www.anylet.com',
+      'https://any-let.vercel.app',
+      'http://localhost:5174',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://localhost:3001',
+    ];
     const origin = req.headers.origin;
-    if (origin && allowedOrigins.includes(origin)) {
+    // Also allow all Vercel preview deployments for this project
+    const isVercelPreview = origin && /^https:\/\/any-[a-z0-9]+-safihasan96-9332s-projects\.vercel\.app$/.test(origin);
+    if (origin && (allowedOrigins.includes(origin) || isVercelPreview)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
     }
     res.setHeader('Access-Control-Allow-Methods', methods.join(', ') + ', OPTIONS');

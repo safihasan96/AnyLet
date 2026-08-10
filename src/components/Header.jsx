@@ -185,6 +185,7 @@ export default function Header() {
               <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-2 p-1.5 pr-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 hover:border-primary/40 transition-all"
+                aria-label="User menu"
               >
                 <div className="relative size-10 rounded-xl bg-primary text-white flex items-center justify-center font-black text-sm">
                   {currentUser.email?.charAt(0).toUpperCase()}

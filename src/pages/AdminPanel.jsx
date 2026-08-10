@@ -6,7 +6,7 @@ import {
     LogOut, UserCheck, UserMinus, Trash2, TrendingUp, ShieldCheck,
     Bell, ChevronRight, ChevronLeft, Activity, Database, Lock,
     Menu, CheckCircle, Clock, Building2, MessageSquare, Flag, AlertCircle,
-    CreditCard, Banknote, HelpCircle, Star, FileCheck, Receipt
+    CreditCard, Banknote, HelpCircle, Star, FileCheck, Receipt, X
 } from 'lucide-react';
 import { collection, onSnapshot, updateDoc, deleteDoc, doc, getDoc, getDocs, addDoc, serverTimestamp, setDoc, query, where, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -37,6 +37,7 @@ const NAV_ITEMS = [
     { path: '/admin/reviews', icon: Star, label: 'Reviews' },
     { path: '/admin/kyc', icon: FileCheck, label: 'KYC Verification' },
     { path: '/admin/reports', icon: Flag, label: 'Reports' },
+    { path: '/admin/chat-review', icon: Search, label: 'Chat Review' },
     { path: '/admin/claims', icon: Lock, label: 'Admin Access' },
     { path: '/admin/settings', icon: Settings, label: 'System Health' },
     { path: '/admin/fees', icon: Banknote, label: 'Fees Config' },

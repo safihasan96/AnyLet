@@ -8,6 +8,7 @@ import PropertyCard from '../components/PropertyCard';
 import { PropertyCardSkeleton } from '../components/Skeleton';
 import useSavedProperties from '../hooks/useSavedProperties';
 import logger from '../utils/logger';
+import { Helmet } from 'react-helmet-async';
 
 // ✅ F-08: max 10 per 'in' batch (Firestore limit) × up to 10 batches = 100 max favorites
 const FAVORITES_BATCH_SIZE = 10;
@@ -81,6 +82,7 @@ export default function Favorites() {
 
     return (
         <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark pb-32">
+            <Helmet><title>Saved Properties | Any-Let</title></Helmet>
             <header className="p-6 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center">
                 <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Saved Properties</h1>
             </header>

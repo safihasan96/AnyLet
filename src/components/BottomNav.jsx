@@ -55,6 +55,7 @@ export default function BottomNav() {
                         <Link
                             to="/post-ad"
                             className="flex items-center justify-center size-[56px] sm:size-[60px] rounded-full bg-primary text-white shadow-xl shadow-primary/30 border-[4px] sm:border-[6px] border-[#F8F9FA] dark:border-[#0F1117]"
+                            aria-label="Post Ad"
                         >
                             <motion.div
                                 animate={{ rotate: isActive('/post-ad') ? 45 : 0 }}

@@ -78,6 +78,9 @@ export default function HorizontalPropertyCard({ property }) {
                     )}
                     <div className="absolute top-2 right-2">
                         <motion.button
+                            type="button"
+                            aria-label={isSaved ? 'Remove from saved' : 'Save property'}
+                            aria-pressed={isSaved}
                             animate={isSaved ? 'saved' : 'unsaved'}
                             variants={heartVariants}
                             whileHover={{ scale: 1.15 }}

@@ -1,5 +1,6 @@
 import { Calendar, Clock, ChevronRight, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 
 const MOCK_POSTS = [
     {
@@ -37,6 +38,7 @@ const MOCK_POSTS = [
 export default function Blog() {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-16">
+            <Helmet><title>Blog — Renting Tips & Guides | Any-Let</title></Helmet>
             <div className="max-w-7xl mx-auto px-6">
                 <header className="text-center mb-16">
                     <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-4">Any-Let Blog & Guides</h1>

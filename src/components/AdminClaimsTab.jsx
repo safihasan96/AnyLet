@@ -20,7 +20,7 @@ export default function AdminClaimsTab() {
         setLoading(true);
         try {
             const idToken = await currentUser.getIdToken();
-            const response = await fetch(getApiUrl('/api/set-admin-claim'), {
+            const response = await fetch(getApiUrl('/api/admin?action=set-claim'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

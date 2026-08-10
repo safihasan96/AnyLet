@@ -1,17 +1,19 @@
 import { MapPin, Phone, Mail, Send, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../contexts/ToastContext';
+import { Helmet } from 'react-helmet-async';
 
 export default function Contact() {
     const navigate = useNavigate();
     const toast = useToast();
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10">
+            <Helmet><title>Contact Support | Any-Let</title></Helmet>
             <div className="max-w-6xl mx-auto px-6">
                 <div className="flex justify-start mb-8">
                     <button 
                         onClick={() => navigate(-1)} 
-                        className="flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 font-bold transition-colors"
+                        className="hidden md:flex items-center gap-2 text-slate-500 hover:text-primary dark:text-indigo-400 font-bold transition-colors"
                     >
                         <ArrowLeft size={20} /> Back to previous
                     </button>

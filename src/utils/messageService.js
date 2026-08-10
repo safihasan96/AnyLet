@@ -35,7 +35,29 @@ export async function getOrCreateConversation({
       const p = data.participants || [];
       return p.includes(ownerId) && p.includes(tenantId) && data.propertyId === propertyId;
   });
-  if (existing) return existing.id;
+  if (existing) {
+      if (requestId) {
+          const convRef = doc(db, 'conversations', existing.id);
+          await updateDoc(convRef, {
+              requestId: requestId,
+              lastMessage: '📋 Sent a viewing request',
+              lastMessageAt: serverTimestamp(),
+              [`unreadCount.${ownerId}`]: increment(initialOwnerUnread),
+              archivedBy: arrayRemove(ownerId, tenantId),
+              deletedBy: arrayRemove(ownerId, tenantId),
+          });
+          
+          // Also add a message to the subcollection so it appears in the chat history
+          await addDoc(collection(db, 'conversations', existing.id, 'messages'), {
+              senderId: tenantId,
+              text: '📋 I have sent a viewing request for this property.',
+              createdAt: serverTimestamp(),
+              readBy: [tenantId],
+              deletedFor: []
+          });
+      }
+      return existing.id;
+  }
 
   // Create new
   const ref = await addDoc(collection(db, 'conversations'), {
@@ -55,6 +77,17 @@ export async function getOrCreateConversation({
     unreadCount: { [ownerId]: initialOwnerUnread, [tenantId]: 0 },
     createdAt: serverTimestamp(),
   });
+
+  if (requestId) {
+      await addDoc(collection(db, 'conversations', ref.id, 'messages'), {
+          senderId: tenantId,
+          text: '📋 I have sent a viewing request for this property.',
+          createdAt: serverTimestamp(),
+          readBy: [tenantId],
+          deletedFor: []
+      });
+  }
+
   return ref.id;
 }
 

@@ -1,10 +1,15 @@
 import { Users, Target, Clock, ShieldCheck, MapPin, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 
 export default function AboutUs() {
     const navigate = useNavigate();
     return (
         <div className="bg-slate-50 dark:bg-slate-950 min-h-screen py-10">
+            <Helmet>
+                <title>About Us | Any-Let</title>
+                <meta name="description" content="Learn about Any-Let and our mission to reimagine property rentals in Bangladesh." />
+            </Helmet>
             <div className="max-w-4xl mx-auto px-6">
                 {/* Back button handled by MobileNavBar */}
                 <header className="text-center mb-16">

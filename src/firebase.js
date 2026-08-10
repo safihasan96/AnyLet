@@ -23,6 +23,11 @@ let appCheck;
 
 if (typeof window !== "undefined") {
     analytics = getAnalytics(app);
+    
+    if (import.meta.env.DEV) {
+        self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    }
+    
     // Initialize App Check for Bot Protection
     appCheck = initializeAppCheck(app, {
       provider: new ReCaptchaEnterpriseProvider('6Lfs1zotAAAAAG5c73YvfdkwUFmJTIWWXMbkCQL_'),

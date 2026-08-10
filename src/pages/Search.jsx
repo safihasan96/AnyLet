@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { collection, getDocs, query, limit, where, orderBy, startAfter } from 'firebase/firestore';
+import { collection, getDocs, query, limit, where, startAfter } from 'firebase/firestore';
 import { db } from '../firebase';
 import { 
   Search as SearchIcon, 
@@ -80,7 +80,7 @@ export default function Search() {
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState(location.state?.searchTerm || '');
     const [searchHistory, setSearchHistory] = useState(loadHistory);
     const [inputFocused, setInputFocused] = useState(false);
     const isDesktop = useIsDesktop();
@@ -150,20 +150,21 @@ export default function Search() {
     };
 
     const buildServerQuery = useCallback((filters) => {
-        // Push the most selective, equality-based filters to Firestore.
-        // These must match composite indexes in firestore.indexes.json.
-        // Client-side filtering handles the rest (utilities, features, searchTerm)
-        // which cannot be expressed as simple compound Firestore queries.
+        // Equality-only server filters. Firestore serves multiple `==` filters
+        // from single-field indexes (no composite index needed). We deliberately
+        // do NOT add a server-side orderBy: pairing orderBy('updatedAt') with the
+        // equality filters requires composite indexes AND silently drops any doc
+        // that lacks an `updatedAt` field. Results are sorted client-side instead
+        // (see filteredProperties), mirroring the home page (FeaturedListings).
         const constraints = [
             where('isApproved', '==', true),
-            orderBy('updatedAt', 'desc'),
         ];
         // Only add where() clauses for filters that are actively set
         if (filters.district) constraints.push(where('district', '==', filters.district));
         else if (filters.division) constraints.push(where('division', '==', filters.division));
         if (filters.type) constraints.push(where('type', '==', filters.type));
         if (filters.upazila) constraints.push(where('upazila', '==', filters.upazila));
-        constraints.push(limit(60)); // Server page size: fetch 60 at a time
+        constraints.push(limit(200)); // Fetch the full approved set, then sort/paginate client-side
         return constraints;
     }, []);
 
@@ -202,10 +203,12 @@ export default function Search() {
         
         return properties.filter(p => {
             // isApproved is already guaranteed by the Firestore query
-            
-            const propDate = p.updatedAt?.toDate() || p.createdAt?.toDate() || new Date(0);
-            if (propDate < yearAgo) return false;
-            
+
+            const propDate = p.updatedAt?.toDate() || p.createdAt?.toDate() || null;
+            // Only exclude listings that are demonstrably older than a year.
+            // Listings with no timestamp at all are kept (were previously dropped).
+            if (propDate && propDate < yearAgo) return false;
+
             if (filterState.division && p.division !== filterState.division) return false;
             if (filterState.district && p.district !== filterState.district) return false;
             if (filterState.upazila && p.upazila !== filterState.upazila) return false;
@@ -228,6 +231,11 @@ export default function Search() {
                 if (!matchesSearch) return false;
             }
             return true;
+        }).sort((a, b) => {
+            // Newest first — mirrors the home page ordering (updatedAt, then createdAt).
+            const da = a.updatedAt?.toDate() || a.createdAt?.toDate() || new Date(0);
+            const dbb = b.updatedAt?.toDate() || b.createdAt?.toDate() || new Date(0);
+            return dbb - da;
         });
     }, [properties, filterState, searchTerm]);
 

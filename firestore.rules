@@ -52,7 +52,7 @@ service cloud.firestore {
     // USERS
     // ══════════════════════════════════════════════════════════════════════════
     match /users/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
+      allow read: if true;
 
       allow create: if isOwner(uid)
                     // New accounts must NOT self-grant admin or premium roles.
@@ -286,7 +286,12 @@ service cloud.firestore {
       allow update: if isOwner(resource.data.userId)
                     // Only allow toggling 'isRead'. Nothing else.
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-      allow create, delete: if isAdmin();
+      // Allow any signed-in user to create a notification FOR another user
+      // (e.g., tenant sends viewing request → notify the owner).
+      // The recipient is resource.data.userId, not the sender.
+      allow create: if isSignedIn()
+                    && request.resource.data.userId != request.auth.uid;
+      allow delete: if isAdmin();
     }
 
     // ══════════════════════════════════════════════════════════════════════════

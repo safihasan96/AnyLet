@@ -64,8 +64,8 @@ export default function AddProperty() {
         new Date(subscriptionExpiry?.toDate ? subscriptionExpiry.toDate() : subscriptionExpiry) > new Date()
     );
 
-    // Pricing constants
-    const LISTING_FEE = hasActiveSubscription ? 0 : Number(fees.listingFee.value);
+    const RAW_LISTING_FEE = Number(fees.listingFee.value);
+    const LISTING_FEE = hasActiveSubscription ? 0 : RAW_LISTING_FEE;
     const ONSITE_FEE = Number(fees.onsiteVerificationFee.value);
     const totalAmount = LISTING_FEE + (wantOnsiteVerify ? ONSITE_FEE : 0);
 
@@ -285,7 +285,6 @@ export default function AddProperty() {
         });
     };
 
-    // Called by PaymentModal after user submits transaction ID
     const handlePaymentSubmitted = async (paymentDocId) => {
         if (!currentUser) return;
         
@@ -323,6 +322,10 @@ export default function AddProperty() {
                 securityDeposit,
                 utilitiesCost,
                 ownerId: currentUser.uid,
+                // Denormalized owner info so listings can show the owner's name/photo
+                // without a per-viewer users/{uid} read (which rules/App Check may block).
+                ownerName: userProfile?.displayName || userProfile?.name || currentUser.displayName || '',
+                ownerPhotoURL: userProfile?.photoURL || currentUser.photoURL || '',
                 isApproved: false,
                 listingPaymentId: paymentDocId,
                 // If user requested onsite verification, mark it as pending
@@ -819,7 +822,6 @@ export default function AddProperty() {
                             </div>
                         </Section>
 
-                        {/* Active Subscription Banner */}
                         {hasActiveSubscription && (
                             <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 mb-3">
                                 <CheckCircle size={20} className="text-emerald-600 shrink-0" />
@@ -830,7 +832,6 @@ export default function AddProperty() {
                             </div>
                         )}
 
-                        {/* On-Site Verification Add-On */}
                         <div
                             onClick={() => setWantOnsiteVerify(v => !v)}
                             className={`flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all mb-3 ${

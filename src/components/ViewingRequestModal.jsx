@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Calendar, Users, Briefcase, Mail, Phone, User } from 'lucide-react';
+import { X, Calendar, Users, Briefcase, Mail, Phone, User, Heart } from 'lucide-react';
 import Modal3D from './Modal3D';
 
 export default function ViewingRequestModal({ isOpen, onClose, onSubmit, propertyTitle }) {
@@ -10,7 +10,8 @@ export default function ViewingRequestModal({ isOpen, onClose, onSubmit, propert
         profession: '',
         numberOfOccupants: 1,
         preferredDate: '',
-        message: ''
+        message: '',
+        maritalStatus: ''
     });
 
     const handleSubmit = (e) => {
@@ -96,14 +97,24 @@ export default function ViewingRequestModal({ isOpen, onClose, onSubmit, propert
                                 />
                             </div>
 
-                            <FormInput
-                                icon={<Calendar size={18} />}
-                                label="Preferred Move-in Date"
-                                type="date"
-                                required
-                                value={formData.preferredDate}
-                                onChange={e => setFormData({ ...formData, preferredDate: e.target.value })}
-                            />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                <FormInput
+                                    icon={<Calendar size={18} />}
+                                    label="Preferred Move-in Date"
+                                    type="date"
+                                    required
+                                    value={formData.preferredDate}
+                                    onChange={e => setFormData({ ...formData, preferredDate: e.target.value })}
+                                />
+                                <FormSelect
+                                    icon={<Heart size={18} />}
+                                    label="Marital Status"
+                                    required
+                                    value={formData.maritalStatus}
+                                    onChange={e => setFormData({ ...formData, maritalStatus: e.target.value })}
+                                    options={['Married', 'Unmarried', 'Prefer not to say']}
+                                />
+                            </div>
                         </div>
 
                         <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -155,6 +166,32 @@ function FormInput({ icon, label, type, required, value, onChange, placeholder, 
                     placeholder={placeholder}
                     className="w-full bg-transparent border-none focus:ring-0 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 ml-2"
                 />
+            </div>
+        </div>
+    );
+}
+
+function FormSelect({ icon, label, required, value, onChange, options }) {
+    return (
+        <div className="space-y-1.5 flex-1">
+            <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 ml-1">
+                {label} {required && <span className="text-rose-500">*</span>}
+            </label>
+            <div className="flex items-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3 border border-slate-200 dark:border-slate-700 focus-within:ring-2 focus-within:ring-[#3E2B88] focus-within:border-transparent transition-all overflow-hidden group">
+                <div className="text-slate-400 group-focus-within:text-[#3E2B88] transition-colors shrink-0">
+                    {icon}
+                </div>
+                <select
+                    required={required}
+                    value={value}
+                    onChange={onChange}
+                    className="w-full bg-transparent border-none focus:ring-0 text-sm text-slate-900 dark:text-white ml-2 outline-none"
+                >
+                    <option value="" disabled hidden>Select an option</option>
+                    {options.map(opt => (
+                        <option key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</option>
+                    ))}
+                </select>
             </div>
         </div>
     );

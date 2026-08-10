@@ -715,8 +715,10 @@ export default function Profile() {
             onClick={() => navigate('/favorites')} />
           <MenuItem icon={Star} label="My Reviews" sub="Reviews you've written"
             onClick={() => navigate('/my-reviews')} />
-          <MenuItem icon={Briefcase} label="Booking Escrow" sub="Track deposits & move-ins"
+          <MenuItem icon={Briefcase} label="My Bookings (Tenant)" sub="Properties you have booked"
             onClick={() => navigate('/my-bookings')} />
+          <MenuItem icon={CheckCircle2} label="Guest Bookings (Owner)" sub="Confirm move-ins & escrows"
+            onClick={() => navigate('/owner-bookings')} />
         </AccordionSection>
 
         {/* ── Referrals ── */}

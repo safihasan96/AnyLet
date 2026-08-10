@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+.admin-datahub {
+    font-family: 'Inter', sans-serif;
+    --surface: 222 47% 11%;
+    --surface-dim: 222 47% 11%;
+    --surface-bright: 223 23% 25%;
+    --surface-container: 223 38% 15%;
+    --surface-container-high: 222 28% 19%;
+    --surface-container-highest: 223 23% 24%;
+    
+    --on-surface: 225 100% 92%;
+    --on-surface-variant: 226 21% 80%;
+    
+    --primary: 222 100% 83%;
+    --on-primary: 213 100% 21%;
+    --primary-container: 218 100% 65%;
+    --on-primary-container: 214 100% 18%;
+
+    --success: 155 69% 59%; /* Emerald/Secondary in the design */
+    --on-success: 156 100% 11%;
+    
+    --warning: 34 100% 69%; /* Amber/Tertiary */
+    --on-warning: 34 100% 14%;
+    
+    --error: 5 100% 83%;
+    --on-error: 357 100% 21%;
+
+    --border: 223 9% 60%;
+    --border-subtle: 221 13% 29%;
+    
+    /* Typography */
+    --font-sans: 'Inter', sans-serif;
+    
+    /* Spacing */
+    --unit: 4px;
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    
+    background-color: hsl(var(--surface));
+    color: hsl(var(--on-surface));
+    min-height: 100vh;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+    background: hsla(var(--surface-container), 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid hsla(0, 0%, 100%, 0.08);
+    border-radius: 16px;
+}
+
+.glass-panel-interactive {
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.glass-panel-interactive:hover {
+    background: hsla(var(--surface-container-high), 0.7);
+    border: 1px solid hsla(var(--primary), 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px hsla(0, 0%, 0%, 0.2);
+}
+
+.glass-glow {
+    box-shadow: 0 0 8px hsla(var(--primary), 0.3);
+    border: 1px solid hsl(var(--primary));
+}
+
+.glass-input {
+    background: hsla(var(--surface-container-highest), 0.8);
+    border: 1px solid transparent;
+    color: hsl(var(--on-surface));
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.glass-input:focus {
+    border: 1px solid hsl(var(--primary));
+    box-shadow: 0 0 0 4px hsla(var(--primary), 0.15);
+    outline: none;
+}
+
+.glass-button-primary {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--on-primary));
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.glass-button-primary:hover {
+    background-color: hsl(var(--primary-container));
+    transform: translateY(-1px) scale(0.98);
+}
+
+.glass-button-primary:active {
+    transform: scale(0.95);
+}
+
+.glass-button-ghost {
+    background: transparent;
+    color: hsl(var(--primary));
+    border: 1px solid hsla(var(--primary), 0.3);
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.glass-button-ghost:hover {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 8px hsla(var(--primary), 0.2);
+}
+
+/* Typography Classes */
+.text-metric-xl {
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 56px;
+    letter-spacing: -0.02em;
+}
+
+.text-metric-lg {
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 40px;
+    letter-spacing: -0.01em;
+}
+
+.text-label-caps {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* Scrollbar styling for dark theme */
+.admin-datahub ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+.admin-datahub ::-webkit-scrollbar-track {
+    background: transparent;
+}
+.admin-datahub ::-webkit-scrollbar-thumb {
+    background: hsla(226, 21%, 80%, 0.2);
+    border-radius: 4px;
+}
+.admin-datahub ::-webkit-scrollbar-thumb:hover {
+    background: hsla(226, 21%, 80%, 0.3);
+}
+
+/* Status Pills */
+.status-pill {
+    padding: 2px 8px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+}
+
+.status-pill.success {
+    background: hsla(var(--success), 0.15);
+    color: hsl(var(--success));
+}
+
+.status-pill.warning {
+    background: hsla(var(--warning), 0.15);
+    color: hsl(var(--warning));
+}
+
+.status-pill.error {
+    background: hsla(var(--error), 0.15);
+    color: hsl(var(--error));
+}
+
+.status-pill.neutral {
+    background: hsla(var(--on-surface), 0.1);
+    color: hsl(var(--on-surface-variant));
+}

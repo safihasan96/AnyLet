@@ -91,8 +91,11 @@ export default function Home() {
         return () => unsubscribe();
     }, [currentUser]);
 
-    const handleSearch = () => {
-        navigate('/search', { state: { division: selectedDivision } });
+    const [searchTerm, setSearchTerm] = useState('');
+    
+    const handleSearch = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        navigate('/search', { state: { division: selectedDivision, searchTerm } });
     };
 
     return (
@@ -145,16 +148,21 @@ export default function Home() {
                         style={{ top: isDesktop ? '80px' : 'env(safe-area-inset-top, 0px)' }}
                     >
                         <div className="max-w-[1400px] mx-auto px-4 lg:px-16 py-2.5">
-                            <div 
-                                onClick={handleSearch}
-                                className="flex w-full items-center rounded-2xl h-12 bg-white dark:bg-[#1A1D24] shadow-md border border-slate-100 dark:border-white/[0.06] overflow-hidden cursor-pointer hover:border-primary/30 dark:hover:border-indigo-500/30 transition-colors group"
+                            <form 
+                                onSubmit={handleSearch}
+                                className="flex w-full items-center rounded-2xl h-12 bg-white dark:bg-[#1A1D24] shadow-md border border-slate-100 dark:border-white/[0.06] overflow-hidden group focus-within:border-primary/30 dark:focus-within:border-indigo-500/30 transition-colors"
                             >
-                                <div className="text-slate-400 flex items-center justify-center pl-4 group-hover:text-primary dark:group-hover:text-indigo-400 transition-colors">
+                                <div className="text-slate-400 flex items-center justify-center pl-4 group-focus-within:text-primary dark:group-focus-within:text-indigo-400 transition-colors">
                                     <Search size={20} />
                                 </div>
-                                <div className="flex-1 flex items-center px-3 text-sm font-semibold text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors truncate">
-                                    {t('search_placeholder')}
-                                </div>
+                                <input
+                                    type="text"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder={t('search_placeholder')}
+                                    className="flex-1 bg-transparent px-3 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none truncate"
+                                    aria-label={t('search_placeholder')}
+                                />
                                 {/* Desktop: show location chip inside the sticky bar */}
                                 <div className="hidden md:flex items-center gap-1.5 pr-2">
                                     <MapPin size={14} className="text-primary dark:text-indigo-400" />
@@ -162,13 +170,14 @@ export default function Home() {
                                 </div>
                                 <div className="flex items-center pr-2">
                                     <button 
-                                        onClick={(e) => { e.stopPropagation(); handleSearch(); }}
+                                        type="submit"
                                         className="bg-primary text-white h-9 px-4 rounded-xl flex items-center justify-center shadow-md shadow-primary/20 hover:scale-105 transition-transform"
+                                        aria-label="Search"
                                     >
                                         <SlidersHorizontal size={16} />
                                     </button>
                                 </div>
-                            </div>
+                            </form>
                         </div>
                     </motion.div>
                 )}
@@ -203,6 +212,7 @@ export default function Home() {
                                             value={selectedDivision}
                                             onChange={(e) => setSelectedDivision(e.target.value)}
                                             className="appearance-none bg-transparent text-slate-900 dark:text-white font-bold outline-none cursor-pointer pr-6"
+                                            aria-label="Location"
                                         >
                                             <option value="">Anywhere</option>
                                             {Object.keys(bdLocations).map(div => (
@@ -211,21 +221,29 @@ export default function Home() {
                                         </select>
                                         <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                     </div>
-                                    <div 
-                                        onClick={handleSearch}
-                                        className="flex-1 flex items-stretch cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
+                                    <form 
+                                        onSubmit={handleSearch}
+                                        className="flex-1 flex items-stretch transition-colors"
                                     >
-                                        <div className="text-slate-400 flex items-center justify-center pl-6 group-hover:text-primary dark:text-indigo-400 transition-colors">
+                                        <div className="text-slate-400 flex items-center justify-center pl-6 group-focus-within:text-primary dark:text-indigo-400 transition-colors">
                                             <Search size={26} />
                                         </div>
-                                        <div className="flex items-center w-full px-4 text-lg font-semibold text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-                                            {t('search_placeholder')}
-                                        </div>
-                                    </div>
+                                        <input
+                                            type="text"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(e); }}
+                                            placeholder={t('search_placeholder')}
+                                            className="w-full bg-transparent px-4 text-lg font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none"
+                                            aria-label={t('search_placeholder')}
+                                        />
+                                    </form>
                                     <div className="flex items-center pr-3">
-                                        <button 
+                                        <button
+                                            type="button"
                                             onClick={handleSearch}
                                             className="bg-primary text-white h-12 md:h-14 px-6 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 hover:scale-105 transition-transform"
+                                            aria-label="Search"
                                         >
                                             <span className="hidden md:inline mr-2 font-bold">{t('search')}</span>
                                             <SlidersHorizontal size={20} />

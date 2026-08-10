@@ -256,6 +256,7 @@ export default function PaymentModal({
                         key="pay-card"
                         variants={cV} initial="hidden" animate="visible" exit="exit"
                         className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl max-h-[90dvh] overflow-y-auto"
+                        style={{ willChange: 'transform', isolation: 'isolate' }}
                         onClick={e => e.stopPropagation()}
                     >
                         {/* Accent stripe */}
@@ -372,9 +373,8 @@ export default function PaymentModal({
 
                                         <motion.button
                                             onClick={amount === 0 ? handleClose : goNext}
-                                            className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2"
+                                            className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2 touch-manipulation"
                                             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}
-                                            whileHover={{ scale: 1.025, y: -2 }}
                                             whileTap={{ scale: 0.96 }}
                                         >
                                             {amount === 0 ? <>Claim Free Offer <ArrowRight size={18} /></> : <>Choose Payment Method <ArrowRight size={18} /></>}
@@ -495,8 +495,7 @@ export default function PaymentModal({
                                         <motion.button
                                             onClick={goNext}
                                             disabled={!selectedMethod}
-                                            className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                                            whileHover={selectedMethod ? { scale: 1.025, y: -2 } : {}}
+                                            className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
                                             whileTap={selectedMethod ? { scale: 0.96 } : {}}
                                             transition={{ type: 'spring', stiffness: 460, damping: 22 }}
                                         >
@@ -537,7 +536,8 @@ export default function PaymentModal({
                                                 value={txnId}
                                                 onChange={e => setTxnId(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 20))}
                                                 placeholder="e.g. 9A7F3K2B1X"
-                                                autoFocus
+                                                autoFocus={false}
+                                                ref={el => { if (el) setTimeout(() => el.focus(), 350); }}
                                                 autoComplete="off"
                                                 spellCheck={false}
                                                 className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-transparent focus:border-primary/50 rounded-2xl py-5 px-5 text-center text-xl font-black text-slate-900 dark:text-white tracking-[0.15em] uppercase placeholder:text-slate-300 dark:placeholder:text-slate-600 placeholder:tracking-normal placeholder:text-base placeholder:normal-case outline-none transition-all"
@@ -566,8 +566,7 @@ export default function PaymentModal({
                                         <motion.button
                                             onClick={handleVerifyPayment}
                                             disabled={txnId.trim().length < 6}
-                                            className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                                            whileHover={txnId.length >= 6 ? { scale: 1.025, y: -2 } : {}}
+                                            className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation"
                                             whileTap={txnId.length >= 6 ? { scale: 0.96 } : {}}
                                             transition={{ type: 'spring', stiffness: 460, damping: 22 }}
                                         >
@@ -706,9 +705,8 @@ export default function PaymentModal({
 
                                         <motion.button
                                             onClick={handleSuccessDone}
-                                            className="w-full py-5 bg-emerald-500 text-white font-black text-base rounded-[20px] shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2"
+                                            className="w-full py-5 bg-emerald-500 text-white font-black text-base rounded-[20px] shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 touch-manipulation"
                                             initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-                                            whileHover={{ scale: 1.025, y: -2 }}
                                             whileTap={{ scale: 0.96 }}
                                             transition={{ type: 'spring', stiffness: 460, damping: 22, delay: 0.5 }}
                                         >
@@ -765,8 +763,7 @@ export default function PaymentModal({
                                         >
                                             <motion.button
                                                 onClick={handleRetry}
-                                                className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2"
-                                                whileHover={{ scale: 1.025, y: -2 }}
+                                                className="w-full py-5 bg-primary text-white font-black text-base rounded-[20px] shadow-xl shadow-primary/25 flex items-center justify-center gap-2 touch-manipulation"
                                                 whileTap={{ scale: 0.96 }}
                                                 transition={{ type: 'spring', stiffness: 460, damping: 22 }}
                                             >

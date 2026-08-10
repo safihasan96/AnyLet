@@ -136,7 +136,7 @@ function RequestCard({ request, isOwner, actioning, onAccept, onReject }) {
       {/* Tenant details (owner-only view) */}
       {isOwner && request.tenantDetails && (
         <div className="bg-white/60 dark:bg-slate-900/40 rounded-xl p-3 text-xs space-y-1 mb-3 backdrop-blur-sm" style={{ translateZ: 4 }}>
-          {[['Name', request.tenantDetails.name], ['Phone', request.tenantDetails.phone], ['Profession', request.tenantDetails.profession], ['Occupants', request.tenantDetails.numberOfOccupants], ['Date', request.tenantDetails.preferredDate]]
+          {[['Name', request.tenantDetails.name], ['Phone', request.tenantDetails.phone], ['Profession', request.tenantDetails.profession], ['Marital Status', request.tenantDetails.maritalStatus], ['Occupants', request.tenantDetails.numberOfOccupants], ['Date', request.tenantDetails.preferredDate]]
             .filter(([, v]) => v)
             .map(([label, val]) => (
               <div key={label} className="flex gap-2">

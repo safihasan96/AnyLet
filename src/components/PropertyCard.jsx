@@ -115,13 +115,17 @@ export default function PropertyCard({ property }) {
                     {hasMultipleImages && (
                         <>
                             <button
+                                type="button"
                                 onClick={prevImage}
+                                aria-label="Previous photo"
                                 className="absolute left-2 top-1/2 -translate-y-1/2 size-8 rounded-full bg-white/70 backdrop-blur-sm text-slate-700 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity hover:bg-white shadow-sm z-20"
                             >
                                 <ChevronLeft size={18} />
                             </button>
                             <button
+                                type="button"
                                 onClick={nextImage}
+                                aria-label="Next photo"
                                 className="absolute right-2 top-1/2 -translate-y-1/2 size-8 rounded-full bg-white/70 backdrop-blur-sm text-slate-700 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity hover:bg-white shadow-sm z-20"
                             >
                                 <ChevronRight size={18} />
@@ -143,6 +147,9 @@ export default function PropertyCard({ property }) {
                     {/* Heart button */}
                     <div className="absolute top-4 right-4 z-20">
                         <motion.button
+                            type="button"
+                            aria-label={isSaved ? 'Remove from saved' : 'Save property'}
+                            aria-pressed={isSaved}
                             animate={isSaved ? 'saved' : 'unsaved'}
                             variants={heartVariants}
                             whileHover={{ scale: 1.15 }}

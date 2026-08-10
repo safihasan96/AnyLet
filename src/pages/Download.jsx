@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Download as DownloadIcon, Smartphone, Apple, Chrome, Share2, PlusSquare, CheckCircle, ArrowRight, Globe } from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
 
 const STEPS_ANDROID = [
   { icon: Chrome, title: "Open in Chrome", desc: "Visit any-let.indevs.in in Chrome browser on your Android device." },
@@ -43,6 +44,7 @@ export default function Download() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-primary/5 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900 pb-20">
+      <Helmet><title>Download the App | Any-Let</title></Helmet>
       {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />

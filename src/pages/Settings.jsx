@@ -47,6 +47,7 @@ export default function Settings() {
                             <button 
                                 onClick={toggleTheme}
                                 className={`w-12 h-6 rounded-full p-1 transition-colors ${isDark ? 'bg-[#3E2B88]' : 'bg-slate-200 dark:bg-slate-700'}`}
+                                aria-label="Toggle dark mode"
                             >
                                 <div className={`size-4 bg-white rounded-full shadow-sm transform transition-transform ${isDark ? 'translate-x-6' : 'translate-x-0'}`} />
                             </button>
@@ -79,6 +80,7 @@ export default function Settings() {
                             <button 
                                 onClick={() => setNotificationsEnabled(!notificationsEnabled)}
                                 className={`w-12 h-6 rounded-full p-1 transition-colors ${notificationsEnabled ? 'bg-[#3E2B88]' : 'bg-slate-200 dark:bg-slate-700'}`}
+                                aria-label="Toggle notifications"
                             >
                                 <div className={`size-4 bg-white rounded-full shadow-sm transform transition-transform ${notificationsEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
                             </button>

@@ -85,6 +85,7 @@ import BookPropertyModal from '../components/BookPropertyModal';
 import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
 import { getOptimizedImageUrl } from '../utils/imageUtils';
+import { Helmet } from 'react-helmet-async';
 
 const sliderVariants = {
     enter: (direction) => ({
@@ -132,11 +133,19 @@ export default function PropertyDetails() {
                     setProperty(propData);
 
                     // Fetch actual owner
+                    // NOTE: Firestore rules restrict users/{uid} reads to the
+                    // document owner. A tenant viewing someone else's property
+                    // will get permission-denied here — that's expected.
                     const ownerIdToFetch = propData.ownerId || propData.userId;
                     if (ownerIdToFetch) {
-                        const ownerDoc = await getDoc(doc(db, 'users', ownerIdToFetch));
-                        if (ownerDoc.exists()) {
-                            setOwner({ id: ownerDoc.id, ...ownerDoc.data() });
+                        try {
+                            const ownerDoc = await getDoc(doc(db, 'users', ownerIdToFetch));
+                            if (ownerDoc.exists()) {
+                                setOwner({ id: ownerDoc.id, ...ownerDoc.data() });
+                            }
+                        } catch (ownerErr) {
+                            // Permission denied — tenant can't read owner's user doc
+                            logger.warn('Could not read owner user doc on page load.', ownerErr);
                         }
                     }
 
@@ -269,6 +278,7 @@ export default function PropertyDetails() {
                   email:              formData.email,
                   phone:              formData.phone,
                   profession:         formData.profession,
+                  maritalStatus:      formData.maritalStatus || 'Prefer not to say',
                   numberOfOccupants:  Number(formData.numberOfOccupants || 1),
                   preferredDate:      formData.preferredDate || '',
                   message:            formData.message || '',
@@ -276,8 +286,19 @@ export default function PropertyDetails() {
             });
 
             // Fetch owner info to create conversation properly
-            const ownerDoc = await getDoc(doc(db, 'users', targetOwnerId));
-            const ownerData = ownerDoc.exists() ? ownerDoc.data() : {};
+            // NOTE: Firestore rules restrict users/{uid} reads to the owner only.
+            // A tenant cannot read the owner's user doc, so we wrap this in
+            // try/catch and fall back to sensible defaults if the read is denied.
+            let ownerData = {};
+            try {
+                const ownerDoc = await getDoc(doc(db, 'users', targetOwnerId));
+                if (ownerDoc.exists()) {
+                    ownerData = ownerDoc.data();
+                }
+            } catch (ownerReadErr) {
+                // Expected when Firestore rules deny cross-user reads
+                logger.warn('Could not read owner user doc (permission denied). Using fallback.', ownerReadErr);
+            }
 
             const convId = await getOrCreateConversation({
                 ownerId: targetOwnerId,
@@ -295,16 +316,20 @@ export default function PropertyDetails() {
             // Link conversation to request
             await updateDoc(reqRef, { conversationId: convId });
 
-            // Notify Owner
+            // Notify Owner (non-blocking — should not fail the request if notification write is denied)
             if (targetOwnerId) {
-                await createNotification(
-                    targetOwnerId,
-                    'request_received',
-                    'New Viewing Request',
-                    `${formData.name} wants to view ${property.title}`,
-                    `/messages/${convId}`, // Directly to conversation
-                    { propertyId: id }
-                );
+                try {
+                    await createNotification(
+                        targetOwnerId,
+                        'request_received',
+                        'New Viewing Request',
+                        `${formData.name} wants to view ${property.title}`,
+                        `/messages/${convId}`,
+                        { propertyId: id }
+                    );
+                } catch (notifErr) {
+                    logger.warn('Could not create notification (permission denied). Request still succeeded.', notifErr);
+                }
             }
 
             setRequestSent(true);
@@ -357,6 +382,10 @@ export default function PropertyDetails() {
 
     return (
         <div className="min-h-screen bg-[#F8F9FA] dark:bg-[#0F1117] pb-32 lg:pb-12">
+        <Helmet>
+            <title>{`${property.title || 'Property'} — ${[property.upazila, property.district].filter(Boolean).join(', ') || 'Bangladesh'} | Any-Let`}</title>
+            <meta name="description" content={`${property.title || 'Rental property'} for ৳${property.rent || ''}/${property.billingCycle || 'month'} in ${[property.upazila, property.district, property.division].filter(Boolean).join(', ')}. View details on Any-Let.`} />
+        </Helmet>
         <div className="max-w-7xl mx-auto px-0 md:px-6 py-4 md:py-8 lg:max-w-[1400px] lg:px-12 lg:py-10">
                 {/* Navigation Row with Back and Share (Desktop Only) */}
                 <div className="hidden md:flex items-center justify-between px-4 md:px-0 mb-4 md:mb-6">
@@ -372,7 +401,7 @@ export default function PropertyDetails() {
                     </button>
                 </div>
 
-                <div className="flex flex-col lg:flex-row gap-6 md:gap-10">
+                <div className="flex flex-col lg:flex-row lg:justify-center gap-6 md:gap-10">
                     {/* Left: Content (Gallery + Details) */}
                     <div className="flex-1 lg:max-w-[750px]">
                         {/* Image Gallery */}
@@ -582,13 +611,10 @@ export default function PropertyDetails() {
                                 <Building2 size={24} className="text-primary dark:text-indigo-400" /> Property Specifications
                             </h2>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
-                                <SpecItem icon={<DoorOpen />} label="Verandas" value={property.verandas || '0'} />
-                                <SpecItem icon={<Droplets />} label="Water Source" value={property.waterSource || 'WASA'} />
                                 <SpecItem icon={<ArrowRight className="-rotate-45" />} label="Floor" value={property.floorNumber || 'Not Specified'} />
-                                <SpecItem icon={<Car />} label="Parking" value={property.parkingType || 'None'} />
-                                <SpecItem icon={<Home />} label="Pet Policy" value={property.petPolicy || 'Not Allowed'} />
-                                <SpecItem icon={<UserX />} label="Bachelor Policy" value={property.bachelorPolicy || 'Not Allowed'} />
-                                <SpecItem icon={<Users />} label="Family Policy" value={property.familyPolicy || 'Any'} />
+                                <SpecItem icon={<DoorOpen />} label="Verandas" value={property.verandas || '0'} />
+                                <SpecItem icon={<Bed />} label="Rooms" value={property.beds || '0'} />
+                                <SpecItem icon={<Bath />} label="Baths" value={property.baths || '0'} />
                             </div>
                             
                             {property.distances && (property.distances.mosque || property.distances.school || property.distances.market) && (
@@ -604,34 +630,57 @@ export default function PropertyDetails() {
                         </motion.section>
 
                         {/* Features & Amenities */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-10">
-                            <section className="bg-white dark:bg-[#1A1D24] p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800/70">
-                                <h3 className="text-lg md:text-xl font-black mb-4 md:mb-6 flex items-center gap-3">
-                                    <Zap size={20} className="text-primary dark:text-indigo-400 md:w-6 md:h-6" /> {t('amenities')}
-                                </h3>
-                                <div className="grid grid-cols-1 gap-4">
-                                    {property.features?.length > 0 ? property.features.map(f => (
-                                        <div key={f} className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold text-sm">
-                                            <div className="size-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 shrink-0"><CheckCircle2 size={14} /></div>
-                                            {f}
+                        {(() => {
+                            const processedFeatures = new Set(property.features || []);
+                            if (property.parkingType && property.parkingType !== 'None') {
+                                processedFeatures.delete('Car Parking');
+                                processedFeatures.add(`Car Parking (${property.parkingType})`);
+                            }
+                            if (property.petPolicy && property.petPolicy !== 'Not Allowed') processedFeatures.add(`Pet Policy (${property.petPolicy})`);
+                            if (property.bachelorPolicy && property.bachelorPolicy !== 'Not Allowed') processedFeatures.add(`Bachelor Policy (${property.bachelorPolicy})`);
+                            if (property.familyPolicy && property.familyPolicy !== 'Any') processedFeatures.add(`Family Policy (${property.familyPolicy})`);
+                            
+                            const processedUtilities = new Set(property.utilities || []);
+                            ['Prepaid Gas', 'Line Gas', 'Prepaid Electricity', 'Postpaid Electricity', 'Water (WASA)', 'Deep Tube-well Water'].forEach(u => processedUtilities.delete(u));
+                            
+                            if (property.waterSource) processedUtilities.add(`Water (${property.waterSource})`);
+                            if (property.gasSupply) processedUtilities.add(`Gas (${property.gasSupply})`);
+                            if (property.electricityBilling && property.electricityBilling !== 'Excluded') processedUtilities.add(`Electricity (${property.electricityBilling})`);
+                            
+                            const displayFeatures = Array.from(processedFeatures);
+                            const displayUtilities = Array.from(processedUtilities);
+
+                            return (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-10">
+                                    <section className="bg-white dark:bg-[#1A1D24] p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800/70">
+                                        <h3 className="text-lg md:text-xl font-black mb-4 md:mb-6 flex items-center gap-3">
+                                            <Zap size={20} className="text-primary dark:text-indigo-400 md:w-6 md:h-6" /> {t('amenities')}
+                                        </h3>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {displayFeatures.length > 0 ? displayFeatures.map(f => (
+                                                <div key={f} className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold text-sm">
+                                                    <div className="size-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary dark:text-indigo-400 shrink-0"><CheckCircle2 size={14} /></div>
+                                                    {f}
+                                                </div>
+                                            )) : <div className="text-sm text-slate-400">None specified</div>}
                                         </div>
-                                    )) : <div className="text-sm text-slate-400">None specified</div>}
-                                </div>
-                            </section>
-                            <section className="bg-white dark:bg-[#1A1D24] p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800/70">
-                                <h3 className="text-lg md:text-xl font-black mb-4 md:mb-6 flex items-center gap-3">
-                                    <Info size={20} className="text-primary dark:text-indigo-400 md:w-6 md:h-6" /> {t('inclusions')}
-                                </h3>
-                                <div className="grid grid-cols-1 gap-4">
-                                    {property.utilities?.length > 0 ? property.utilities.map(u => (
-                                        <div key={u} className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold text-sm">
-                                            <div className="size-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0"><CheckCircle2 size={14} /></div>
-                                            {u}
+                                    </section>
+                                    <section className="bg-white dark:bg-[#1A1D24] p-6 md:p-8 md:rounded-[40px] border-y md:border border-slate-100 dark:border-slate-800/70">
+                                        <h3 className="text-lg md:text-xl font-black mb-4 md:mb-6 flex items-center gap-3">
+                                            <Info size={20} className="text-primary dark:text-indigo-400 md:w-6 md:h-6" /> {t('inclusions')}
+                                        </h3>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {displayUtilities.length > 0 ? displayUtilities.map(u => (
+                                                <div key={u} className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold text-sm">
+                                                    <div className="size-6 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0"><CheckCircle2 size={14} /></div>
+                                                    {u}
+                                                </div>
+                                            )) : <div className="text-sm text-slate-400">None specified</div>}
                                         </div>
-                                    )) : <div className="text-sm text-slate-400">None specified</div>}
+                                    </section>
                                 </div>
-                            </section>
-                        </div>
+                            );
+                        })()}
                     </div>
 
                     {/* Right: Sidebar (Sticky) */}
@@ -644,12 +693,40 @@ export default function PropertyDetails() {
                                     
                                     {property.status !== 'Let Agreed' && property.status !== 'Booked' ? (
                                         <>
-                                            {property.instantBooking && (
+                                            {property.instantBooking && property.securityDeposit > 0 && (
+                                                <div className="mb-4 p-4 rounded-2xl bg-gradient-to-br from-primary to-indigo-900 text-white relative overflow-hidden">
+                                                    <div className="absolute -top-6 -right-6 opacity-10 pointer-events-none">
+                                                        <Shield size={80} />
+                                                    </div>
+                                                    <div className="relative z-10">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <Lock size={16} className="text-white/80" />
+                                                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-100">Escrow Booking</span>
+                                                        </div>
+                                                        <p className="text-xs text-indigo-100 font-medium mb-3 leading-relaxed">
+                                                            Pay ৳{property.securityDeposit?.toLocaleString()} deposit. <span className="text-white font-black">100% refundable</span> if you don't move in.
+                                                        </p>
+                                                        <button 
+                                                            onClick={() => {
+                                                                if (!currentUser) return navigate('/login');
+                                                                setBookModalOpen(true);
+                                                            }}
+                                                            className="w-full py-3 bg-white text-primary dark:text-indigo-400 font-black rounded-xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            <Shield size={16} className="fill-indigo-100" /> Book Now
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {property.instantBooking && (!property.securityDeposit || property.securityDeposit === 0) && (
                                                 <button 
-                                                    onClick={() => setBookModalOpen(true)}
-                                                    className="w-full py-5 rounded-2xl bg-slate-900 dark:bg-slate-50 text-white dark:text-slate-900 font-black text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 mb-4 shadow-xl"
+                                                    onClick={() => {
+                                                        if (!currentUser) return navigate('/login');
+                                                        setBookModalOpen(true);
+                                                    }}
+                                                    className="w-full py-5 rounded-2xl bg-gradient-to-br from-primary to-indigo-900 text-white font-black text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 mb-4 shadow-xl shadow-primary/20"
                                                 >
-                                                    <Zap size={20} className="text-yellow-400" /> Book Now
+                                                    <Shield size={20} className="fill-indigo-100" /> Book Now
                                                 </button>
                                             )}
                                             <motion.button 
@@ -718,7 +795,7 @@ export default function PropertyDetails() {
                                         <User size={32} />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-lg font-black text-slate-900 dark:text-white leading-none mb-1 group-hover:text-primary dark:text-indigo-400 transition-colors">{owner?.name || 'Owner / Agent'}</p>
+                                        <p className="text-lg font-black text-slate-900 dark:text-white leading-none mb-1 group-hover:text-primary dark:text-indigo-400 transition-colors">{owner?.displayName || owner?.name || property?.ownerName || 'Owner / Agent'}</p>
                                         <p className="text-sm font-bold text-slate-500">Tap to view profile &amp; ads &gt;</p>
                                     </div>
                                 </Link>
@@ -774,12 +851,15 @@ export default function PropertyDetails() {
                             <div className="flex flex-col sm:flex-row items-center gap-4">
                                 {property.instantBooking && (
                                     <motion.button 
-                                        onClick={() => setBookModalOpen(true)}
+                                        onClick={() => {
+                                            if (!currentUser) return navigate('/login');
+                                            setBookModalOpen(true);
+                                        }}
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.96 }}
-                                        className="w-full h-14 rounded-2xl bg-slate-900 dark:bg-slate-50 text-white dark:text-slate-900 font-black text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-xl"
+                                        className="w-full h-14 rounded-2xl bg-gradient-to-br from-primary to-indigo-900 text-white font-black text-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-xl shadow-primary/20"
                                     >
-                                        <Zap size={20} className="text-yellow-400" /> Book Now
+                                        <Shield size={20} className="fill-indigo-100" /> Book Now
                                     </motion.button>
                                 )}
                                 <motion.button 

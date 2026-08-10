@@ -1,10 +1,15 @@
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 
 export default function Terms() {
     const navigate = useNavigate();
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10">
+            <Helmet>
+                <title>Terms & Conditions | Any-Let</title>
+                <meta name="description" content="Terms and Conditions for using Any-Let." />
+            </Helmet>
             <div className="max-w-3xl mx-auto px-6 prose dark:prose-invert prose-slate">
                 {/* Back button handled by MobileNavBar */}
                 <h1 className="text-4xl font-black mb-8 text-slate-900 dark:text-white">Terms & Conditions</h1>

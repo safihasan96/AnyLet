@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 
 export default function Sitemap() {
     const sections = [
@@ -39,6 +40,7 @@ export default function Sitemap() {
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-16">
+            <Helmet><title>Sitemap | Any-Let</title></Helmet>
             <div className="max-w-4xl mx-auto px-6">
                 <header className="mb-12 border-b border-slate-200 dark:border-slate-800 pb-8">
                     <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-4">Site Map</h1>

@@ -62,7 +62,7 @@ export default function AdminKycTab({ openModal }) {
 
   async function reviewSubmission(submission, decision, reason = '') {
     const token = await currentUser.getIdToken();
-    const res = await fetch(getApiUrl('/api/admin-review-kyc'), {
+    const res = await fetch(getApiUrl('/api/admin?action=review-kyc'), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,

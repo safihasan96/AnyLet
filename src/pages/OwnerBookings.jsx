@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Ticket, Building2, Calendar, MapPin, Search, ArrowLeft, Loader2, CreditCard, ChevronRight, Shield, Lock, CheckCircle2, Clock, AlertTriangle, Banknote } from 'lucide-react';
+import { Lock, CheckCircle2, AlertTriangle, Banknote, Shield, Loader2 } from 'lucide-react';
 import { Skeleton } from '../components/Skeleton';
 import PaymentStatusModal from '../components/PaymentStatusModal';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -13,7 +13,6 @@ import { Helmet } from 'react-helmet-async';
 import { createNotification } from '../utils/notificationService';
 import logger from '../utils/logger';
 import { getApiUrl } from '../utils/api';
-import { auth } from '../firebase';
 
 const STATUS_MAP = {
     held: { label: 'Deposit Held', color: 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 border-blue-100 dark:border-blue-500/20', icon: Lock },
@@ -22,7 +21,7 @@ const STATUS_MAP = {
     refunded: { label: 'Refunded', color: 'bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-100 dark:border-slate-700', icon: Banknote },
 };
 
-export default function MyBookings() {
+export default function OwnerBookings() {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
     const toast = useToast();
@@ -41,7 +40,7 @@ export default function MyBookings() {
 
         const q = query(
             collection(db, 'escrowDeposits'),
-            where('tenantId', '==', currentUser.uid)
+            where('ownerId', '==', currentUser.uid)
         );
         const unsub = onSnapshot(q, (snap) => {
             const data = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
@@ -70,17 +69,17 @@ export default function MyBookings() {
             if (!res.ok) throw new Error(data.error || 'Failed to confirm');
 
             const booking = bookings.find(b => b.firestoreId === confirmModal.bookingId);
-            if (booking && booking.ownerId) {
+            if (booking && booking.tenantId) {
                 await createNotification(
-                    booking.ownerId,
+                    booking.tenantId,
                     'system',
-                    'Move-in Confirmed',
-                    `Tenant has confirmed move-in for ${booking.propertyName || 'the property'}. Please confirm from your side to release the deposit.`,
-                    '/owner-bookings'
+                    'Owner Confirmed Move-in',
+                    `The property owner has confirmed your move-in for ${booking.propertyName || 'the property'}.`,
+                    '/my-bookings'
                 );
             }
 
-            toast.success(data.message || 'Move-in confirmed! The deposit will be released once the owner also confirms.');
+            toast.success(data.message || 'Confirmation successful. Funds released to your wallet if both parties confirmed.');
             setConfirmModal({ isOpen: false, bookingId: null });
         } catch (err) {
             logger.error(err);
@@ -129,13 +128,13 @@ export default function MyBookings() {
 
     return (
         <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-28">
-            <Helmet><title>My Bookings | Any-Let</title></Helmet>
+            <Helmet><title>Guest Bookings | Any-Let</title></Helmet>
 
             <header className="flex items-center justify-center px-6 pt-6 pb-4 sticky top-14 bg-[#f8fafc]/95 dark:bg-slate-950/95 backdrop-blur-md z-20 border-b border-slate-100 dark:border-slate-800/50">
-                <h1 className="text-[20px] font-[900] text-slate-900 dark:text-white tracking-tight">My Bookings</h1>
+                <h1 className="text-[20px] font-[900] text-slate-900 dark:text-white tracking-tight">Guest Bookings</h1>
             </header>
 
-            <main className="flex-1 px-6 pt-6">
+            <main className="flex-1 px-6 pt-6 max-w-3xl mx-auto w-full">
                 {loading ? (
                     <div className="flex flex-col gap-4">
                         {[1,2,3].map(n => <Skeleton key={n} className="h-[180px] w-full rounded-[28px]" />)}
@@ -147,16 +146,13 @@ export default function MyBookings() {
                                 <Shield size={40} className="text-slate-400 dark:text-slate-500" />
                             </div>
                             <div className="absolute -bottom-2 -right-2 size-10 bg-gradient-to-br from-primary to-indigo-500 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30">
-                                <Lock size={20} className="text-white" />
+                                <CheckCircle2 size={20} className="text-white" />
                             </div>
                         </div>
-                        <h3 className="text-[20px] font-[900] text-slate-900 dark:text-white mb-3">No Bookings Yet</h3>
+                        <h3 className="text-[20px] font-[900] text-slate-900 dark:text-white mb-3">No Incoming Bookings</h3>
                         <p className="text-[#64748b] text-[15px] font-medium leading-relaxed mb-8 max-w-[280px]">
-                            When you book a property with a security deposit, it will appear here. Your money stays safe with Any-Let.
+                            When guests book your properties and pay the deposit, their escrowed funds will appear here.
                         </p>
-                        <button onClick={() => navigate('/search')} className="bg-primary text-white font-[800] text-[15px] py-4 px-8 rounded-full shadow-lg shadow-primary/20 transition-transform active:scale-95">
-                            Browse Properties
-                        </button>
                     </div>
                 ) : (
                     <div className="flex flex-col gap-4">
@@ -177,7 +173,7 @@ export default function MyBookings() {
                                         className="bg-white dark:bg-slate-900 rounded-[28px] overflow-hidden border border-slate-100 dark:border-slate-800/80 shadow-sm"
                                     >
                                         <div className="p-5">
-                                            {/* Header: Property + Status */}
+                                            {/* Header */}
                                             <div className="flex items-start justify-between gap-3 mb-4">
                                                 <div className="flex-1 min-w-0">
                                                     <h3 className="font-black text-base text-slate-900 dark:text-white truncate mb-1">
@@ -196,19 +192,11 @@ export default function MyBookings() {
                                                 </button>
                                             </div>
 
-                                            {/* Financial Breakdown */}
+                                            {/* Escrow Display */}
                                             <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 mb-4 space-y-2">
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-slate-500 font-medium">Security Deposit</span>
+                                                    <span className="text-slate-500 font-medium">Escrowed Deposit</span>
                                                     <span className="font-black text-slate-900 dark:text-white">৳{booking.depositAmount?.toLocaleString()}</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-slate-500 font-medium">Service Fee</span>
-                                                    <span className="font-black text-slate-900 dark:text-white">৳{booking.serviceFee}</span>
-                                                </div>
-                                                <div className="border-t border-slate-200 dark:border-slate-700 pt-2 flex justify-between text-sm">
-                                                    <span className="font-black text-slate-700 dark:text-slate-300">Total Paid</span>
-                                                    <span className="font-black text-primary dark:text-indigo-400 text-base">৳{booking.totalPaid?.toLocaleString()}</span>
                                                 </div>
                                             </div>
 
@@ -220,7 +208,7 @@ export default function MyBookings() {
                                                             <CheckCircle2 size={14} strokeWidth={3} />
                                                         </div>
                                                         <span className={`text-xs font-bold ${booking.confirmedByTenant ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                                                            {booking.confirmedByTenant ? 'You confirmed move-in' : 'Your confirmation pending'}
+                                                            {booking.confirmedByTenant ? 'Tenant confirmed move-in' : 'Pending tenant confirmation'}
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-3">
@@ -228,11 +216,11 @@ export default function MyBookings() {
                                                             <CheckCircle2 size={14} strokeWidth={3} />
                                                         </div>
                                                         <span className={`text-xs font-bold ${booking.confirmedByOwner ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                                                            {booking.confirmedByOwner ? 'Owner confirmed' : 'Owner confirmation pending'}
+                                                            {booking.confirmedByOwner ? 'You confirmed move-in' : 'Your confirmation pending'}
                                                         </span>
                                                     </div>
 
-                                                    {!booking.confirmedByTenant && (
+                                                    {!booking.confirmedByOwner && (
                                                         <div className="flex gap-2 w-full mt-2">
                                                             <button
                                                                 onClick={() => setConfirmModal({ isOpen: true, bookingId: booking.firestoreId })}
@@ -255,7 +243,7 @@ export default function MyBookings() {
                                             {booking.status === 'released' && (
                                                 <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 p-3 rounded-2xl text-xs font-bold border border-emerald-100 dark:border-emerald-500/20">
                                                     <CheckCircle2 size={14} />
-                                                    Deposit released to owner on {formatDate(booking.releasedAt)}
+                                                    Funds released to your wallet on {formatDate(booking.releasedAt)}
                                                 </div>
                                             )}
                                             {booking.status === 'disputed' && (
@@ -275,8 +263,8 @@ export default function MyBookings() {
 
             <ConfirmationModal
                 isOpen={confirmModal.isOpen}
-                title="Confirm Move-In"
-                message="By confirming, you're telling us you have moved into this property. The security deposit will be flagged for release to the owner after they also confirm. This action cannot be undone."
+                title="Confirm Guest Move-In"
+                message="By confirming, you verify that the tenant has moved in. If the tenant has also confirmed, the deposit will be released to your wallet instantly. This action cannot be undone."
                 confirmText="Confirm Move-In"
                 confirmColor="#059669"
                 variant="success"
@@ -293,10 +281,10 @@ export default function MyBookings() {
                 title={`Deposit ${STATUS_MAP[statusModal.booking?.status]?.label || 'Under Review'}`}
                 message={
                     statusModal.booking?.status === 'released' 
-                        ? 'The funds have been released to the owner.'
+                        ? 'The funds have been released to your wallet.'
                         : statusModal.booking?.status === 'disputed'
                         ? 'There is a dispute regarding this deposit. Our team is reviewing.'
-                        : 'Your security deposit is safely held by Any-Let. It will be released to the owner once you both confirm the move-in.'
+                        : 'The security deposit is safely held by Any-Let. It will be released to you once both you and the tenant confirm the move-in.'
                 }
                 transactionId={statusModal.booking?.paymentId}
             />
@@ -324,7 +312,7 @@ export default function MyBookings() {
                             </div>
                             
                             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4">
-                                If there is an issue with your move-in, you can raise a dispute. This will freeze the funds until our support team investigates.
+                                If the tenant was a no-show or there is an issue with the booking, you can raise a dispute. This freezes the funds for manual review.
                             </p>
 
                             <textarea

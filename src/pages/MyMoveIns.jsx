@@ -107,48 +107,48 @@ export default function MyMoveIns() {
             </motion.header>
 
             <main className="flex-1 px-4 md:px-6 pt-6 max-w-2xl mx-auto w-full">
-                {loading ? (
-                    <div className="flex flex-col gap-4">
-                        {[1, 2, 3].map(n => (
-                            <Skeleton key={n} className="h-[240px] w-full rounded-[28px]" />
-                        ))}
-                    </div>
-                ) : moveIns.length === 0 ? (
-                    <EmptyState />
-                ) : (
-                    <motion.div
-                        variants={shouldReduceMotion ? {} : containerVariants}
-                        initial="hidden"
-                        animate="visible"
-                        className="flex flex-col gap-4"
-                    >
-                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">
-                            {moveIns.length} {moveIns.length === 1 ? 'Property' : 'Properties'} Recorded
-                        </p>
-                        <AnimatePresence>
-                            {moveIns.map((item) => (
-                                <motion.div
-                                    key={item.id}
-                                    variants={shouldReduceMotion ? {} : cardVariants}
-                                    layout
-                                >
-                                    <MoveInCard
-                                        moveIn={item}
-                                        ownerName={ownerNames[item.ownerId] || 'Property Owner'}
-                                        formatDate={formatDate}
-                                        onReview={() => setReviewModal({
-                                            isOpen: true,
-                                            moveIn: item,
-                                            ownerId: item.ownerId,
-                                            ownerName: ownerNames[item.ownerId] || 'this landlord'
-                                        })}
-                                        onViewOwner={() => navigate(`/owner/${item.ownerId}`)}
-                                    />
-                                </motion.div>
+                    {loading ? (
+                        <div className="flex flex-col gap-4">
+                            {[1, 2, 3].map(n => (
+                                <Skeleton key={n} className="h-[240px] w-full rounded-[28px]" />
                             ))}
-                        </AnimatePresence>
-                    </motion.div>
-                )}
+                        </div>
+                    ) : moveIns.length === 0 ? (
+                        <EmptyState />
+                    ) : (
+                        <motion.div
+                            variants={shouldReduceMotion ? {} : containerVariants}
+                            initial="hidden"
+                            animate="visible"
+                            className="flex flex-col gap-4"
+                        >
+                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">
+                                {moveIns.length} {moveIns.length === 1 ? 'Property' : 'Properties'} Recorded
+                            </p>
+                            <AnimatePresence>
+                                {moveIns.map((item) => (
+                                    <motion.div
+                                        key={item.id}
+                                        variants={shouldReduceMotion ? {} : cardVariants}
+                                        layout
+                                    >
+                                        <MoveInCard
+                                            moveIn={item}
+                                            ownerName={ownerNames[item.ownerId] || 'Property Owner'}
+                                            formatDate={formatDate}
+                                            onReview={() => setReviewModal({
+                                                isOpen: true,
+                                                moveIn: item,
+                                                ownerId: item.ownerId,
+                                                ownerName: ownerNames[item.ownerId] || 'this landlord'
+                                            })}
+                                            onViewOwner={() => navigate(`/owner/${item.ownerId}`)}
+                                        />
+                                    </motion.div>
+                                ))}
+                            </AnimatePresence>
+                        </motion.div>
+                    )}
             </main>
 
             <WriteReviewModal
