@@ -29,3 +29,15 @@ dist-ssr
 # Firebase Service Accounts
 *firebase-adminsdk*.json
 *serviceAccount*.json
+
+# Local tooling / preview config
+.claude/
+
+# Throwaway QA / browser-automation artifacts
+/browser-report.json
+/browser_mission.mjs
+/browser_mission_report.json
+/mission_report.json
+/landing-page.png
+/main_page.png
+/screenshots/*_mission.png
