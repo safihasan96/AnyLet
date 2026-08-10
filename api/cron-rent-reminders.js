@@ -1,5 +1,14 @@
+import crypto from 'crypto';
 import { db, admin } from './_lib/firebase-admin.js';
 import { withMiddleware } from './_lib/middleware.js';
+
+// Constant-time comparison so the cron secret can't be recovered via timing.
+function safeEqual(a, b) {
+  const left = Buffer.from(String(a || ''), 'utf8');
+  const right = Buffer.from(String(b || ''), 'utf8');
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
 
 // Cron job to send rent-due reminders to tenants.
 // Triggered by Vercel Cron — protected by CRON_SECRET env var.
@@ -16,7 +25,7 @@ export default withMiddleware(async (req, res) => {
   // because it is called by the Vercel scheduler, not a browser client.
   const authHeader = req.headers.authorization || '';
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || !safeEqual(authHeader, `Bearer ${cronSecret}`)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
