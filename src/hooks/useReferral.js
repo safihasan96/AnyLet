@@ -13,12 +13,11 @@
 import { useState, useEffect } from 'react';
 import {
     doc, collection, query, where,
-    onSnapshot, getDocs
+    onSnapshot
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import {
-    generateReferralCode,
     getReferralLink
 } from '../utils/referral';
 

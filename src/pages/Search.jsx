@@ -19,7 +19,7 @@ import {
   DoorOpen,
   Clock
 } from 'lucide-react';
-import { motion, AnimatePresence, useSpring, useMotionValue } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // ── Variants (all decoupled from JSX) ──────────────────────────────────────
 const sidebarVariants = {
@@ -115,7 +115,7 @@ export default function Search() {
     
     const [displayCount, setDisplayCount] = useState(12);
     const lastDocRef = useRef(null);   // Cursor for Firestore pagination
-    const [hasMore, setHasMore] = useState(true);
+    const [, setHasMore] = useState(true);
 
     const { sentinelRef } = useInfiniteScroll(() => {
         setDisplayCount(prev => prev + 12);
@@ -454,7 +454,7 @@ export default function Search() {
     );
 }
 
-function FilterContent({ filterState, setFilterState, districts, thanas, PROPERTY_TYPES, BILLING_CYCLES, TENANT_TYPES, UTILITY_OPTIONS, FEATURE_OPTIONS, toggleList }) {
+function FilterContent({ filterState, setFilterState, districts, thanas, PROPERTY_TYPES, UTILITY_OPTIONS, toggleList }) {
     return (
         <div className="space-y-10">
             <section>

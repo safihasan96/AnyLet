@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db, auth } from '../firebase';
-import { doc, onSnapshot, collection, query, where, getDocs, setDoc, getCountFromServer } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where, setDoc, getCountFromServer } from 'firebase/firestore';
 import { updateProfile, sendEmailVerification } from 'firebase/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -260,19 +260,8 @@ function StatBlock({ icon: Icon, iconBg, iconColor, value, label, onClick, isLoa
    Updates in real-time via onSnapshot — no page reload needed.
 ───────────────────────────────────────────────────────────────*/
 function DynamicMemberBadge({ userData, isEmailVerified, toast }) {
-  const tier = userData?.membershipTier || 'Standard';
-  const level = userData?.membershipLevel || 1;
   const isKycApproved = userData?.verification?.isKycApproved === true;
   const kycPending = userData?.onboardingStatus === 'PENDING_VERIFICATION';
-
-  // Tier display config
-  const tierConfig = (() => {
-    const t = tier.toLowerCase();
-    if (t.includes('premium')) return { label: tier, icon: <Crown size={13} className="text-amber-500 fill-amber-400" />, color: 'text-amber-600 dark:text-amber-400' };
-    if (t.includes('pro'))     return { label: tier, icon: <Crown size={13} className="text-violet-500 fill-violet-400" />, color: 'text-violet-600 dark:text-violet-400' };
-    if (t.includes('elite'))   return { label: tier, icon: <Crown size={13} className="text-rose-500 fill-rose-400" />, color: 'text-rose-600 dark:text-rose-400' };
-    return { label: 'Standard Member', icon: <User size={13} className="text-slate-400" />, color: 'text-slate-500 dark:text-slate-400' };
-  })();
 
   // Verification pill
   const verificationPill = (() => {

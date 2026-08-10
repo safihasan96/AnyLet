@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { motion, useReducedMotion } from 'framer-motion';
 import {
     ArrowLeft, Star, ShieldCheck, Calendar, Home, MessageSquare,
     Award, Building2, Loader2, ThumbsUp, MapPin
@@ -17,11 +17,6 @@ import { toggleHelpfulVote, submitLandlordReply } from '../utils/reviewService';
 import logger from '../utils/logger';
 
 // ── Named variants (Framer Motion rule #1 — all motion config OUTSIDE the component) ──
-const fadeUp = {
-    hidden: { opacity: 0, y: 10 },
-    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 26 } },
-};
-
 const reviewCardVariants = {
     hidden: { opacity: 0, y: 16 },
     visible: (i) => ({

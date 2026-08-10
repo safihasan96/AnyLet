@@ -10,7 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
  *   showModal             — instead of redirecting, call this fn (for inline prompts)
  */
 export default function OnboardingGuard({ children, requirePhoneVerified = false, requireOnboarded = false }) {
-    const { currentUser, isOnboarded, isPhoneVerified, onboardingStep } = useAuth();
+    const { currentUser, isOnboarded, isPhoneVerified } = useAuth();
     const location = useLocation();
 
     if (!currentUser) {

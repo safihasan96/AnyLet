@@ -29,7 +29,7 @@ async function getEscrowFeeRate() {
         const parsed = Number(rate);
         if (isNaN(parsed) || parsed < 0 || parsed >= 1) return 0.05; // sanity guard
         return parsed;
-    } catch (_) {
+    } catch {
         console.warn('[escrow] Could not fetch platform fees, defaulting to 5%');
         return 0.05;
     }

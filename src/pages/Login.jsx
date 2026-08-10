@@ -37,7 +37,7 @@ export default function Login() {
     const [searchParams] = useSearchParams();
     const nextRoute = searchParams.get('next') || '/';
 
-    function getRedirect(role, onboardingStep) {
+    function getRedirect(role) {
         if (role === 'admin') return '/admin';
         return nextRoute;
     }

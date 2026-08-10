@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, onSnapshot, query, orderBy, getDocs, updateDoc, doc, serverTimestamp, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { AlertTriangle, Clock, ArrowUpRight, ArrowDownRight, Search, Activity, RefreshCw, XCircle, CheckCircle2, MessageSquare } from 'lucide-react';
 import { getApiUrl } from '../../utils/api';
@@ -17,7 +17,7 @@ export default function AdminMoneyManagement() {
     const [transactions, setTransactions] = useState([]);
     const [deadlines, setDeadlines] = useState([]);
     const [disputes, setDisputes] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
 
     useEffect(() => {

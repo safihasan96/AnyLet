@@ -1,11 +1,9 @@
 import { CheckCircle2, Star, ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import PaymentModal from '../components/PaymentModal';
 import { useFees } from '../hooks/useFees';
 
 export default function Pricing() {
-    const navigate = useNavigate();
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [selectedPlan, setSelectedPlan] = useState(null);
     const { fees } = useFees();

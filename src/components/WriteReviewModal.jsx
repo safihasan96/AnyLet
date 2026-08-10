@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -9,7 +9,6 @@ import {
     X, Star, ArrowRight, ArrowLeft, Loader2, MessageSquare,
     Send, CheckCircle2, Eye
 } from 'lucide-react';
-import { createNotification } from '../utils/notificationService';
 import { submitOwnerReview, submitPropertyReview } from '../utils/reviewService';
 import logger from '../utils/logger';
 

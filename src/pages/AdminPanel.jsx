@@ -162,7 +162,7 @@ function EnquiryCard({ enquiry, onReply, onResolve, onDelete }) {
    COMPONENT
 ───────────────────────────────────────────────────────────────────────────── */
 export default function AdminPanel() {
-    const { currentUser, isAdmin, logout } = useAuth();
+    const { currentUser, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -173,13 +173,13 @@ export default function AdminPanel() {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [users, setUsers] = useState([]);
     const [listings, setListings] = useState([]);
-    const [viewingReqs, setViewingReqs] = useState([]);
+    const [, setViewingReqs] = useState([]);
     const [enquiries, setEnquiries] = useState([]);
     const [reports, setReports] = useState([]);
     const [payments, setPayments] = useState([]);
     const [webhookTxns, setWebhookTxns] = useState([]);
     const [escrowDeposits, setEscrowDeposits] = useState([]);
-    const [loadingUsers, setLoadingUsers] = useState(true);
+    const [, setLoadingUsers] = useState(true);
     const [loadingStats, setLoadingStats] = useState(true);
     const [stats, setStats] = useState({ 
         totalUsers: 0, 
@@ -326,7 +326,7 @@ export default function AdminPanel() {
         try { await logout(); navigate('/login'); } catch (e) { logger.error(e); }
     };
 
-    const handleToggleAdmin = user => {
+    const handleToggleAdmin = () => {
         // The toggle admin feature is now handled securely in the AdminClaimsTab
         navigate('/admin/claims');
     };

@@ -1,4 +1,4 @@
-import { db, admin } from './_lib/firebase-admin.js';
+import { db } from './_lib/firebase-admin.js';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { withMiddleware } from './_lib/middleware.js';
 // ─── Single Source of Truth for fee calculation ────────────────────────────

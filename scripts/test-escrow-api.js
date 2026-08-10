@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { db, auth, admin } from './api/_lib/firebase-admin.js';
-import escrowHandler from './api/escrow.js';
+import { db, auth, admin } from '../api/_lib/firebase-admin.js';
+import escrowHandler from '../api/escrow.js';
 
 // Mock verifyIdToken so we don't need real Google JWTs
 auth.verifyIdToken = async (token) => {

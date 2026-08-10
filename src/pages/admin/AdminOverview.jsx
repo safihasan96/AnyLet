@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, limit, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { TrendingUp, TrendingDown, AlertCircle, Building2, Search, ArrowRight } from 'lucide-react';
+
+// Placeholder bar heights for the mock activity chart. Computed once at module
+// load so they stay stable across renders (Math.random() during render is impure
+// and made the bars jump on every re-render).
+const MOCK_CHART_BARS = Array.from({ length: 30 }, () => ({
+    success: Math.random() * 60 + 20,
+    primary: Math.random() * 40 + 10,
+}));
 
 export default function AdminOverview() {
     const [stats, setStats] = useState({
@@ -10,9 +18,8 @@ export default function AdminOverview() {
         todayInflow: 0,
     });
     
-    const [recentBookings, setRecentBookings] = useState([]);
     const [propertyHealth, setPropertyHealth] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
 
     useEffect(() => {
         // Fetch escrow deposits for Held Balance
@@ -147,15 +154,15 @@ export default function AdminOverview() {
                     </div>
                     <div className="flex-1 min-h-[200px] flex items-end gap-2 pt-10 border-b border-[hsla(0,0%,100%,0.05)] relative">
                         {/* Mock Chart lines for now to simulate high density data */}
-                        {Array.from({length: 30}).map((_, i) => (
+                        {MOCK_CHART_BARS.map((bar, i) => (
                             <div key={i} className="flex-1 flex flex-col justify-end gap-1 group relative">
-                                <div 
-                                    className="w-full bg-[hsl(var(--success))] rounded-t-sm opacity-80 group-hover:opacity-100 transition-opacity" 
-                                    style={{height: `${Math.random() * 60 + 20}%`}}
+                                <div
+                                    className="w-full bg-[hsl(var(--success))] rounded-t-sm opacity-80 group-hover:opacity-100 transition-opacity"
+                                    style={{height: `${bar.success}%`}}
                                 />
-                                <div 
-                                    className="w-full bg-[hsl(var(--primary))] rounded-t-sm opacity-80 group-hover:opacity-100 transition-opacity" 
-                                    style={{height: `${Math.random() * 40 + 10}%`}}
+                                <div
+                                    className="w-full bg-[hsl(var(--primary))] rounded-t-sm opacity-80 group-hover:opacity-100 transition-opacity"
+                                    style={{height: `${bar.primary}%`}}
                                 />
                                 {/* Tooltip mock */}
                                 <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-[hsl(var(--surface-container-highest))] p-2 rounded text-[10px] hidden group-hover:block whitespace-nowrap z-20 shadow-lg border border-[hsla(0,0%,100%,0.1)]">

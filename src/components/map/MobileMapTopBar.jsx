@@ -196,7 +196,7 @@ export default function MobileMapTopBar({ value, onChange, onLocationSelect, fil
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) setHistory(JSON.parse(saved));
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
     }, []);
 
     // Close dropdown on outside click

@@ -25,14 +25,11 @@ import { fadeDown } from '../lib/motion';
 import { useAnimationSafe } from '../hooks/useAnimationSafe';
 
 export default function Header() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [language, setLanguage] = useState('EN');
-  const [currency, setCurrency] = useState('BDT');
   const [unreadCount, setUnreadCount] = useState(0);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const dropdownRef = useRef(null);
-  const { currentUser, logout, userProfile, login } = useAuth();
+  const { currentUser, logout, userProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const shouldAnimate = useAnimationSafe();
@@ -68,7 +65,6 @@ export default function Header() {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-      setIsDarkMode(true);
       document.documentElement.setAttribute('data-theme', 'dark');
     }
 
@@ -80,15 +76,6 @@ export default function Header() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const toggleTheme = () => {
-    setIsDarkMode((prev) => {
-      const newTheme = !prev ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', newTheme);
-      localStorage.setItem('theme', newTheme);
-      return !prev;
-    });
-  };
 
   const handleLogout = async () => {
     try {

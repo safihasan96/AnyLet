@@ -69,7 +69,6 @@ export default function Home() {
 
     useMotionValueEvent(scrollY, 'change', useCallback((latest) => {
         if (!searchBarRef.current) return;
-        const rect = searchBarRef.current.getBoundingClientRect();
         // Trigger sticky when the search bar's top edge scrolls past the viewport top
         // On mobile, account for the safe area; on desktop, account for the 80px header
         const threshold = isDesktop ? 80 : 0;

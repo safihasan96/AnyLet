@@ -13,7 +13,6 @@
  */
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, Copy, Check, Gift, Users, TrendingUp,
     Wallet, ChevronRight, Clock, AlertCircle, Share2,
@@ -42,7 +41,7 @@ function relativeTime(ts) {
 import { createPortal } from 'react-dom';
 import { getApiUrl } from '../utils/api';
 
-function WithdrawModal({ available, onClose, uid }) {
+function WithdrawModal({ available, onClose }) {
     const [amount, setAmount]         = useState('');
     const [bankName, setBankName]     = useState('');
     const [accNo, setAccNo]           = useState('');
@@ -206,13 +205,12 @@ function StatCard({ icon: Icon, label, value, accent = 'indigo' }) {
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function ReferralDashboard() {
-    const navigate = useNavigate();
     const { currentUser } = useAuth();
 
     const {
         referralLink, referralCode,
         referees, commissions,
-        totalEarned, availableBalance, withdrawn,
+        totalEarned, availableBalance,
         loading,
     } = useReferral();
 

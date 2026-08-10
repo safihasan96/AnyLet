@@ -1,11 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Compass, Map, MessageSquare, User, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { motion } from 'framer-motion';
 import { subscribeToUnreadCount } from '../utils/messageService';
 
 export default function BottomNav() {

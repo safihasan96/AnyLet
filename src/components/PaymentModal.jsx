@@ -84,13 +84,6 @@ const backBtnV = {
     exit:    { opacity: 0, x: -10, transition: { duration: 0.1 } },
 };
 
-const dotV = (i) => ({
-    hidden:  { opacity: 0, scale: 0 },
-    visible: {
-        opacity: [0.4, 1, 0.4], scale: 1,
-        transition: { delay: 0.25 + i * 0.08, duration: 2.4, repeat: Infinity, ease: 'easeInOut' },
-    },
-});
 
 /* ════════════════════════════════════════════════════════════════════════════
    PAYMENT MODAL
@@ -126,7 +119,7 @@ export default function PaymentModal({
     const [dir,             setDir]            = useState(1);
     const [selectedMethod,  setSelectedMethod] = useState(null);
     const [txnId,           setTxnId]          = useState('');
-    const [loading,         setLoading]        = useState(false);
+    const [, setLoading] = useState(false);
     const [copied,          setCopied]         = useState(false);
     const [verifyResult,    setVerifyResult]   = useState(null); // { success, paymentId, amount, verifiedAt, message, error }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import {
@@ -288,7 +288,7 @@ function PaymentDetailSheet({ payment, isOpen, onClose, onViewInvoice }) {
 /* ─────────────────────────────────────────────────────────────
    PAYMENT CARD — single list item
 ───────────────────────────────────────────────────────────────*/
-function PaymentCard({ payment, onViewDetails, onViewInvoice, index }) {
+function PaymentCard({ payment, onViewDetails, onViewInvoice }) {
   const reduced = useReducedMotion();
   const status = payment.status || (payment.used ? 'completed' : 'pending');
   const sc = statusConfig(status);

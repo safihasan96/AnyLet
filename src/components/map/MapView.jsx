@@ -1,4 +1,4 @@
-import { Children, cloneElement, isValidElement, useCallback, useMemo, useState } from 'react';
+import { Children, cloneElement, isValidElement, useCallback, useMemo } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, ZoomControl } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';

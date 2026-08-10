@@ -24,10 +24,6 @@ function buildReferenceCode() {
   return `ANYLET-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 }
 
-function propertyNameFallback(propertyId) {
-  return `Property ${propertyId.slice(0, 6)}`;
-}
-
 export default withMiddleware(async (req, res) => {
   const body = req.body || {};
 

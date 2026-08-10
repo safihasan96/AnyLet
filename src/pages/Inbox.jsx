@@ -118,7 +118,7 @@ function timeAgo(ts) {
 // ─────────────────────────────────────────────────────────────────────────────
 //  3D Tilt wrapper
 // ─────────────────────────────────────────────────────────────────────────────
-function TiltCard({ children, onClick, isActive, className }) {
+function TiltCard({ children, onClick, className }) {
   const ref = useRef(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);

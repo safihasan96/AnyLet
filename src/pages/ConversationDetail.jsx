@@ -351,7 +351,7 @@ export default function ConversationDetail({ embedded = false, conversationId: p
     try {
       await acceptViewingRequest({ requestId: request.id, ownerId: request.ownerId, tenantId: request.tenantId, propertyId: request.propertyId, propertyTitle: request.propertyName, propertyImage: request.propertyImage, propertyPrice: request.propertyPrice, conversationId: conversation.id });
       showToast('Request accepted!', 'success');
-    } catch (err) {
+    } catch {
       showToast('Failed to accept request.', 'error');
     } finally { setActioning(false); }
   }

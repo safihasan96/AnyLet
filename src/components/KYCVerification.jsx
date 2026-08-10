@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { CheckCircle2, Clock, FileText, Loader2, ShieldCheck, Upload, X } from 'lucide-react';
 import { db } from '../firebase';
@@ -124,7 +124,7 @@ export default function KYCVerification({ isOpen, onClose, userData, onSubmitted
     setBackPreview(URL.createObjectURL(file));
   }
 
-  async function uploadSigned(file, side) {
+  async function uploadSigned(file) {
     const userToken = await currentUser.getIdToken();
     const sigRes = await fetch(getApiUrl('/api/cloudinary-sign'), {
       method: 'POST',

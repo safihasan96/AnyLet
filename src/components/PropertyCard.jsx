@@ -31,7 +31,7 @@ const heartVariants = {
 };
 
 export default function PropertyCard({ property }) {
-    const { id, title, rent, area, beds, baths, sqft, image, type, isVerified, utilitiesCost } = property;
+    const { id, title, rent, beds, baths, image, type, isVerified, utilitiesCost } = property;
     const { toggleSaveProperty, isPropertySaved } = useSavedProperties();
     const isSaved = isPropertySaved(id);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -72,7 +72,7 @@ export default function PropertyCard({ property }) {
             if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)}w`;
             if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)}mo`;
             return `${Math.floor(diffInSeconds / 31536000)}y`;
-        } catch (e) { return ''; }
+        } catch { return ''; }
     };
 
     return (

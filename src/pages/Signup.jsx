@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db, auth } from '../firebase';
+import { db } from '../firebase';
 import {
     doc, setDoc, collection, query,
     where, getDocs, updateDoc, arrayUnion, serverTimestamp
@@ -96,7 +96,6 @@ export default function Signup() {
     const urlRefCode = searchParams.get('ref') || '';
 
     // Active referral code: URL takes priority, otherwise manual input
-    const activeRefCode = urlRefCode || (refStatus === REF_STATUS.VALID ? manualRefCode : '');
 
     // ── Auto-detect referral from URL ─────────────────────────────────────────
     useEffect(() => {

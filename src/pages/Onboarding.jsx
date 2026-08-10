@@ -1,9 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { storage } from '../firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
     User, Phone, Camera, ShieldCheck, ArrowRight, ArrowLeft,
     CheckCircle2, Home as HomeIcon, Building2, Users,
@@ -32,26 +30,6 @@ function isAdult(dob) {
     return age >= 18;
 }
 
-// Compress image client-side before upload (simple canvas resize)
-async function compressImage(file, maxSizePx = 800) {
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                const scale = Math.min(1, maxSizePx / Math.max(img.width, img.height));
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width * scale;
-                canvas.height = img.height * scale;
-                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                canvas.toBlob(resolve, 'image/jpeg', 0.82);
-            };
-            img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-    });
-}
-
 /* ─────────────────────────────────────────────────────────────────────────
    Animations
 ───────────────────────────────────────────────────────────────────────── */
@@ -70,7 +48,7 @@ const STEPS = [
    Main Component
 ───────────────────────────────────────────────────────────────────────── */
 export default function Onboarding() {
-    const { currentUser, userData, updateUserProfile } = useAuth();
+    const { userData, updateUserProfile } = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const nextRoute = searchParams.get('next') || '/';

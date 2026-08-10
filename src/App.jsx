@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation, Link } from 'react-router-dom';
-import { useState, useEffect, Suspense, lazy } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import Header from './components/Header';
 import MobileNavBar from './components/MobileNavBar';
 import BottomNav from './components/BottomNav';
@@ -10,7 +10,7 @@ import AdminRoute from './components/AdminRoute';
 import OnboardingGuard from './components/OnboardingGuard';
 import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
-import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
+import { AnimatePresence, MotionConfig } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
 
 /* ─────────────────────────────────────────────────────────────

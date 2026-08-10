@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { MapPin, Bed, DoorOpen, Building2, Heart, Star, CheckCircle2, Clock, Lock, ShieldCheck } from 'lucide-react';
 import useSavedProperties from '../hooks/useSavedProperties';
-import { motion } from 'framer-motion';
 
 // ── Variants (fully decoupled from JSX) ───────────────────────────────────────
 
@@ -27,7 +27,7 @@ const heartVariants = {
 };
 
 export default function HorizontalPropertyCard({ property }) {
-    const { id, title, rent, beds, baths, sqft, image, type, utilitiesCost, isVerified } = property;
+    const { id, title, rent, beds, baths, sqft, image, utilitiesCost, isVerified } = property;
     const { toggleSaveProperty, isPropertySaved } = useSavedProperties();
     const isSaved = isPropertySaved(id);
 

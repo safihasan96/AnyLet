@@ -1,6 +1,6 @@
 'use client';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 
 import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, limit, Timestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -43,26 +43,12 @@ import {
   UserX,
   DoorOpen
 } from 'lucide-react';
-import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // ── Variants (all decoupled from JSX) ──────────────────────────────────────
-const pageVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
-};
-
 const sectionVariants = {
     hidden: { opacity: 0, y: 28 },
     visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 80, damping: 18 } },
-};
-
-const chipVariants = {
-    hidden: { opacity: 0, scale: 0.75 },
-    visible: (i) => ({
-        opacity: 1,
-        scale: 1,
-        transition: { type: 'spring', stiffness: 200, damping: 18, delay: i * 0.05 },
-    }),
 };
 
 const ctaVariants = {
@@ -160,7 +146,7 @@ export default function PropertyDetails() {
                         );
                         const moveInsSnap = await getDocs(moveInsQ);
                         propData.rentHistoryCount = moveInsSnap.size;
-                    } catch (e) {
+                    } catch {
                         propData.rentHistoryCount = 0;
                     }
                     
@@ -198,7 +184,7 @@ export default function PropertyDetails() {
                             if (hasRecentRequest) {
                                 setRequestSent(true);
                             }
-                        } catch (e) {
+                        } catch {
                             // Silently ignore — non-critical check
                         }
                     }
@@ -394,7 +380,7 @@ export default function PropertyDetails() {
                     </button>
                     <button 
                         onClick={() => setShareModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:text-primary dark:text-indigo-400 dark:hover:text-primary dark:text-indigo-400 border border-slate-100 dark:border-slate-800 hover:border-primary/20 dark:hover:border-primary/20 transition-all font-bold text-sm shadow-sm hover:shadow-md"
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:text-primary dark:text-indigo-400 dark:hover:text-primary border border-slate-100 dark:border-slate-800 hover:border-primary/20 dark:hover:border-primary/20 transition-all font-bold text-sm shadow-sm hover:shadow-md"
                     >
                         <Share2 size={16} />
                         <span>Share</span>
@@ -963,7 +949,6 @@ export default function PropertyDetails() {
     );
 }
 
-import { useRef } from 'react';
 import logger from '../utils/logger';
 
 // ── Spec card variants (decoupled per framer-motion-expert skill rules) ──

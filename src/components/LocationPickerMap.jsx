@@ -91,7 +91,7 @@ export default function LocationPickerMap({ lat, lng, onLocationSelect, division
         }).addTo(map);
 
         // Update parent state on drag end
-        marker.on('dragend', (e) => {
+        marker.on('dragend', () => {
             const position = marker.getLatLng();
             onLocationSelect({ lat: position.lat, lng: position.lng });
         });

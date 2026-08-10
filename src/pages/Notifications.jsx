@@ -6,7 +6,7 @@ import { Bell, ArrowLeft, Building2, CheckCircle2, MapPin, AlertTriangle, Shield
 import { Skeleton } from '../components/Skeleton';
 import { useNavigate } from 'react-router-dom';
 import logger from '../utils/logger';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Notifications() {
     const { currentUser } = useAuth();
@@ -107,10 +107,6 @@ export default function Notifications() {
         transition: { type: "spring", stiffness: 300, damping: 30 },
       },
     };
-    const shouldReduce = useReducedMotion();
-    // If user prefers reduced motion, disable variants
-    const effectiveContainer = shouldReduce ? {} : containerVariants;
-    const effectiveItem = shouldReduce ? {} : itemVariants;
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-900 pb-24">

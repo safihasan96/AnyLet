@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { collection, query, getDocs, where, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import PropertyCard from './PropertyCard';

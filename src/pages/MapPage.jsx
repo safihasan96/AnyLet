@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import { useEffect, useMemo, useState } from 'react';
+import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Search, X, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -7,8 +7,8 @@ import MapView from '../components/map/MapView';
 import FilterBar from '../components/map/FilterBar';
 import ListingCard from '../components/listings/ListingCard';
 import ListingSkeleton from '../components/listings/ListingSkeleton';
-import Toast from '../components/ui/Toast';
 import logger from '../utils/logger';
+import { useToast } from '../contexts/ToastContext';
 import MapSearchBar from '../components/map/MapSearchBar';
 import MobileMapTopBar from '../components/map/MobileMapTopBar';
 
@@ -73,12 +73,12 @@ export default function MapPage() {
     const [visibleListings, setVisibleListings] = useState([]);
     const [selectedListingId, setSelectedListingId] = useState(null);
     const [hoveredListingId, setHoveredListingId] = useState(null);
-    const [hasPanned, setHasPanned] = useState(false);
+    const [, setHasPanned] = useState(false);
     const [currentBounds, setCurrentBounds] = useState(null);
     const [filters, setFilters] = useState(INITIAL_FILTERS);
     const [activeLayer, setActiveLayer] = useState('street');
     const [isLoading, setIsLoading] = useState(true);
-    const [toastMessage, setToastMessage] = useState('');
+    const toast = useToast();
     const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
     const [flyToTarget, setFlyToTarget] = useState(null);
 
@@ -109,7 +109,7 @@ export default function MapPage() {
                 setVisibleListings(listings);
             } catch (error) {
                 logger.error('Map listings fetch failed', error);
-                if (isMounted) setToastMessage('Could not load map listings');
+                if (isMounted) toast.error('Could not load map listings');
             } finally {
                 if (isMounted) setIsLoading(false);
             }
@@ -160,7 +160,7 @@ export default function MapPage() {
                             setVisibleListings={setVisibleListings}
                             setHasPanned={setHasPanned}
                             setCurrentBounds={setCurrentBounds}
-                            showToast={setToastMessage}
+                            showToast={toast.error}
                             activeLayer={activeLayer}
                             flyToTarget={flyToTarget}
                         >
@@ -276,7 +276,6 @@ export default function MapPage() {
                     </AnimatePresence>
             </div>
 
-            <Toast message={toastMessage} onClose={() => setToastMessage('')} />
         </div>
     );
 }

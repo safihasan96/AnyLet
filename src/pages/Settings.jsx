@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { auth } from '../firebase';
@@ -12,7 +11,6 @@ export default function Settings() {
     const navigate = useNavigate();
     const { isDark, toggleTheme } = useTheme();
     const { language, setLanguage, t } = useLanguage();
-    const { currentUser } = useAuth();
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
     const handleLogout = async () => {

@@ -12,14 +12,14 @@
  *   7. Non-admin token → 403
  *
  * Usage:
- *   node --env-file=.env test-admin-api.js
+ *   node --env-file=.env scripts/test-admin-api.js
  */
 
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { db, auth, admin } from './api/_lib/firebase-admin.js';
-import adminHandler from './api/admin.js';
+import { db, auth, admin } from '../api/_lib/firebase-admin.js';
+import adminHandler from '../api/admin.js';
 
 // ── Mock verifyIdToken (same pattern as test-escrow-api.js) ───────────────────
 auth.verifyIdToken = async (token) => {
@@ -27,7 +27,7 @@ auth.verifyIdToken = async (token) => {
   if (token === 'non-admin-token') return { uid: 'user-uid',  email: 'user@anylet.com',  admin: false };
   throw new Error('Invalid token');
 };
-auth.getUser   = async (uid) => { throw Object.assign(new Error('User not found'), { code: 'auth/user-not-found' }); };
+auth.getUser   = async () => { throw Object.assign(new Error('User not found'), { code: 'auth/user-not-found' }); };
 auth.setCustomUserClaims = async () => {};
 auth.revokeRefreshTokens  = async () => {};
 
@@ -71,7 +71,6 @@ function section(title) { console.log(`\n[TEST ${passed + failed + 1}] ${title}`
   const userToken    = 'non-admin-token';
   const testBookingId = `test-booking-${Date.now()}`;
   const createdEscrows = [];
-  const createdDisputes = [];
 
   // ── TEST 1: Unknown action ─────────────────────────────────────────────────
   section('Unknown action → 400');

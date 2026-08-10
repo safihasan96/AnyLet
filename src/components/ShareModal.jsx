@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { X, Copy, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { X, Copy, Check } from 'lucide-react';
 import Modal3D from './Modal3D';
 import logger from '../utils/logger';
 

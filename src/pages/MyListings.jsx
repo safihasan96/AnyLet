@@ -540,7 +540,6 @@ function ListingCard({ property, onClick, onActionClick, onDeleteRequest }) {
         badgeTextColor = 'text-white';
     }
 
-    const isPendingOrRejected = !isDraftType && (!property.isApproved || property.isRejected);
 
     const shortId = property.id ? property.id.slice(0, 8).toUpperCase() : '';
 
