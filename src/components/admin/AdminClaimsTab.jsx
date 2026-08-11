@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { ShieldCheck, ShieldAlert, User, Check, X } from 'lucide-react';
-import logger from '../utils/logger';
-import { getApiUrl } from '../utils/api';
+import logger from '../../utils/logger';
+import { getApiUrl } from '../../utils/api';
 
 export default function AdminClaimsTab() {
     const { currentUser, isAdmin } = useAuth();

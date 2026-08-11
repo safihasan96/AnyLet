@@ -1,162 +1,32 @@
-import { useNavigate, useLocation, NavLink, Link, Routes, Route } from 'react-router-dom';
-import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link, Routes, Route } from 'react-router-dom';
+import { useState } from 'react';
 
-import {
-    Users, Home, ClipboardList, Search, LayoutDashboard, Settings,
-    LogOut, UserCheck, UserMinus, Trash2, TrendingUp, ShieldCheck,
-    Bell, ChevronRight, ChevronLeft, Activity, Database, Lock,
-    Menu, CheckCircle, Clock, Building2, MessageSquare, Flag, AlertCircle,
-    CreditCard, Banknote, HelpCircle, Star, FileCheck, Receipt, X
-} from 'lucide-react';
-import { collection, onSnapshot, updateDoc, deleteDoc, doc, getDoc, getDocs, addDoc, serverTimestamp, setDoc, query, where, limit, orderBy } from 'firebase/firestore';
+import { Users, Bell, ChevronRight, Database, Star, FileCheck, X } from 'lucide-react';
+import { collection, updateDoc, deleteDoc, doc, getDoc, getDocs, addDoc, serverTimestamp, setDoc, query, where, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import QUERY_LIMITS from '../config/queryLimits';
+import useAdminData from '../hooks/useAdminData';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
 import { getApiUrl } from '../utils/api';
-import AdminReviewsTab from '../components/AdminReviewsTab';
-import AdminKycTab from '../components/AdminKycTab';
-import AdminClaimsTab from '../components/AdminClaimsTab';
-import AdminFeesTab from '../components/AdminFeesTab';
+import AdminReviewsTab from '../components/admin/AdminReviewsTab';
+import AdminKycTab from '../components/admin/AdminKycTab';
+import AdminClaimsTab from '../components/admin/AdminClaimsTab';
+import AdminFeesTab from '../components/admin/AdminFeesTab';
+import AdminEnquiriesTab from '../components/admin/AdminEnquiriesTab';
+import AdminReportsTab from '../components/admin/AdminReportsTab';
+import ListingDetailDrawer from '../components/admin/ListingDetailDrawer';
+import AdminPaymentsTab from '../components/admin/AdminPaymentsTab';
+import AdminPaymentDetailsTab from '../components/admin/AdminPaymentDetailsTab';
+import AdminUsersTab from '../components/admin/AdminUsersTab';
+import AdminPropertiesTab from '../components/admin/AdminPropertiesTab';
+import AdminOverviewSection from '../components/admin/AdminOverviewSection';
+import AdminSidebar from '../components/admin/AdminSidebar';
 import '../index.css';
 import logger from '../utils/logger';
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   NAV ITEMS
-───────────────────────────────────────────────────────────────────────────── */
-const NAV_ITEMS = [
-    { path: '/admin', icon: LayoutDashboard, label: 'Overview', end: true },
-    { path: '/admin/users', icon: Users, label: 'Platform Users' },
-    { path: '/admin/properties', icon: Building2, label: 'Properties' },
-    { path: '/admin/requests', icon: ClipboardList, label: 'Live Pipeline' },
-    { path: '/admin/payments', icon: CreditCard, label: 'Payments & Escrow' },
-    { path: '/admin/payment-details', icon: Receipt, label: 'Payment Details' },
-    { path: '/admin/enquiries', icon: MessageSquare, label: 'Enquiries' },
-    { path: '/admin/reviews', icon: Star, label: 'Reviews' },
-    { path: '/admin/kyc', icon: FileCheck, label: 'KYC Verification' },
-    { path: '/admin/reports', icon: Flag, label: 'Reports' },
-    { path: '/admin/chat-review', icon: Search, label: 'Chat Review' },
-    { path: '/admin/claims', icon: Lock, label: 'Admin Access' },
-    { path: '/admin/settings', icon: Settings, label: 'System Health' },
-    { path: '/admin/fees', icon: Banknote, label: 'Fees Config' },
-];
-
-/* ─────────────────────────────────────────────────────────────────────────────
-   ENQUIRY CARD  (self-contained sub-component for multi-message threads)
-───────────────────────────────────────────────────────────────────────────── */
-function EnquiryCard({ enquiry, onReply, onResolve, onDelete }) {
-    const formRef = React.useRef(null);
-
-    // Build conversation: merge legacy adminReply + new replies array
-    const thread = React.useMemo(() => {
-        const msgs = [];
-        // User's original message
-        msgs.push({ text: enquiry.description, sender: 'user', sentAt: enquiry.createdAt?.toDate?.()?.toISOString() || '' });
-        // Legacy single reply (only if no replies array yet)
-        if (enquiry.adminReply && (!enquiry.replies || enquiry.replies.length === 0)) {
-            msgs.push({ text: enquiry.adminReply, sender: 'admin', sentAt: enquiry.repliedAt?.toDate?.()?.toISOString() || '' });
-        }
-        // New multi-message replies
-        if (enquiry.replies?.length) {
-            enquiry.replies.forEach(r => msgs.push(r));
-        }
-        return msgs;
-    }, [enquiry]);
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const reply = e.target.reply.value.trim();
-        if (reply) onReply(enquiry.id, reply, formRef);
-    };
-
-    return (
-        <div className="p-6 md:p-8 hover:bg-slate-50/60 dark:hover:bg-white/[0.02] transition-all border-b border-slate-100 dark:border-white/[0.05] last:border-0">
-            {/* Header */}
-            <div className="flex justify-between items-start mb-5">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-slate-100 dark:bg-white/[0.06] rounded-2xl flex items-center justify-center font-black text-slate-500 dark:text-slate-400 text-lg">
-                        {enquiry.userEmail?.[0]?.toUpperCase() || '?'}
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-black text-zinc-950">{enquiry.topic}</p>
-                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${enquiry.type === 'support' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
-                                {enquiry.type || 'Support'}
-                            </span>
-                            {enquiry.status === 'resolved' ? (
-                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest bg-emerald-50 text-emerald-600">
-                                    ✓ Resolved
-                                </span>
-                            ) : (
-                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest bg-red-50 text-red-500">
-                                    Pending
-                                </span>
-                            )}
-                        </div>
-                        <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mt-0.5">{enquiry.userEmail}</p>
-                        <p className="text-[10px] font-medium text-slate-300 dark:text-slate-600 mt-0.5">
-                            {enquiry.createdAt?.toDate().toLocaleString()}
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                    {enquiry.status !== 'resolved' && (
-                        <button
-                            onClick={() => onResolve(enquiry.id)}
-                            className="text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
-                        >
-                            ✓ Resolve
-                        </button>
-                    )}
-                    <button onClick={() => onDelete(enquiry.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={16} />
-                    </button>
-                </div>
-            </div>
-
-            {/* Conversation thread */}
-            <div className="space-y-3 mb-5 ml-4 border-l-2 border-slate-100 dark:border-white/[0.06] pl-5">
-                {thread.map((msg, idx) => (
-                    <div key={idx} className={`${msg.sender === 'admin' ? 'ml-4' : ''}`}>
-                        <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${msg.sender === 'admin' ? 'text-emerald-600' : 'text-zinc-400'}`}>
-                            {msg.sender === 'admin' ? '🔷 Admin' : '💬 User'}
-                            {msg.sentAt && (
-                                <span className="ml-2 font-medium lowercase tracking-normal">
-                                    · {new Date(msg.sentAt).toLocaleString()}
-                                </span>
-                            )}
-                        </p>
-                        <p className={`text-sm font-medium leading-relaxed p-4 rounded-xl ${msg.sender === 'admin' ? 'bg-emerald-50/70 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-300' : 'bg-slate-50 dark:bg-white/[0.04] text-slate-600 dark:text-slate-300'}`}>
-                            {msg.text}
-                        </p>
-                    </div>
-                ))}
-            </div>
-
-            {/* Reply form — always visible unless resolved */}
-            {enquiry.status !== 'resolved' && (
-                <div className="ml-4 pl-5 border-l-2 border-dashed border-slate-200 dark:border-white/[0.08]">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Send a Reply</p>
-                    <form ref={formRef} onSubmit={handleSubmit} className="flex gap-3">
-                        <input
-                            name="reply"
-                            placeholder="Type your reply here..."
-                            className="flex-1 bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400 dark:focus:border-emerald-500 transition-all"
-                        />
-                        <button
-                            type="submit"
-                            className="px-5 py-2.5 bg-slate-900 dark:bg-white/[0.08] text-white text-xs font-black rounded-xl hover:bg-emerald-600 dark:hover:bg-emerald-600 transition-all whitespace-nowrap"
-                        >
-                            Send Reply
-                        </button>
-                    </form>
-                </div>
-            )}
-        </div>
-    );
-}
 
 /* ─────────────────────────────────────────────────────────────────────────────
    COMPONENT
@@ -169,27 +39,14 @@ export default function AdminPanel() {
     const activeTab = location.pathname.split('/').pop() || 'admin';
     const toast = useToast();
 
-    /* ── State ─────────────────────────────────────────────────────────────── */
+    /* ── Data (real-time listeners + derived stats) ─────────────────────────── */
+    const {
+        users, listings, enquiries, reports, payments, webhookTxns, escrowDeposits,
+        stats, loadingStats, propertiesLimit, setPropertiesLimit,
+    } = useAdminData();
+
+    /* ── UI state ──────────────────────────────────────────────────────────── */
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const [users, setUsers] = useState([]);
-    const [listings, setListings] = useState([]);
-    const [, setViewingReqs] = useState([]);
-    const [enquiries, setEnquiries] = useState([]);
-    const [reports, setReports] = useState([]);
-    const [payments, setPayments] = useState([]);
-    const [webhookTxns, setWebhookTxns] = useState([]);
-    const [escrowDeposits, setEscrowDeposits] = useState([]);
-    const [, setLoadingUsers] = useState(true);
-    const [loadingStats, setLoadingStats] = useState(true);
-    const [stats, setStats] = useState({ 
-        totalUsers: 0, 
-        totalListings: 0, 
-        pendingRequests: 0,
-        verifiedListings: 0,
-        verifiedLandlords: 0,
-        successfulMoveIns: 0,
-        monthlyRevenue: 0
-    });
     const [searchQuery, setSearchQuery] = useState('');
     const [listingSearch, setListingSearch] = useState('');
     const [propertiesTab, setPropertiesTab] = useState('pending'); // 'all' | 'pending' | 'approved'
@@ -197,7 +54,6 @@ export default function AdminPanel() {
     const [listingOwner, setListingOwner] = useState(null);
     const [ownerLoading, setOwnerLoading] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
-    const [propertiesLimit, setPropertiesLimit] = useState(QUERY_LIMITS.ADMIN_PROPERTIES);
 
     const [modal, setModal] = useState({
         isOpen: false, title: '', message: '',
@@ -206,120 +62,6 @@ export default function AdminPanel() {
     });
     const closeModal = () => setModal(p => ({ ...p, isOpen: false, isSuccess: false }));
     const showModal = (cfg) => setModal({ ...cfg, isOpen: true, isSuccess: false, isLoading: false });
-
-    /* ── Real-time listeners ────────────────────────────────────────────────── */
-    useEffect(() => {
-        setLoadingStats(true);
-
-        // Users
-        const unsubUsers = onSnapshot(
-            query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_USERS)),
-            snap => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setUsers(list);
-            setStats(p => ({ 
-                ...p, 
-                totalUsers: snap.size,
-                verifiedLandlords: list.filter(u => u.role === 'owner' && u.isVerified).length 
-            }));
-            setLoadingUsers(false);
-        });
-
-        // Leads / viewing requests
-        const unsubLeads = onSnapshot(
-            query(collection(db, 'viewing_requests'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_REQUESTS)),
-            snap => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setViewingReqs(list);
-            setStats(p => ({ ...p, pendingRequests: list.filter(r => r.status === 'pending').length }));
-            setLoadingStats(false);
-        }, err => {
-            logger.error('FIRESTORE (viewing_requests):', err.message);
-            setLoadingStats(false);
-        });
-
-        // Enquiries
-        const unsubEnquiries = onSnapshot(
-            query(collection(db, 'enquiries'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_ENQUIRIES)),
-            snap => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setEnquiries(list);
-        }, err => logger.error('FIRESTORE (enquiries):', err.message));
-
-        // Reports
-        const unsubReports = onSnapshot(
-            query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_REPORTS)),
-            snap => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setReports(list);
-        }, err => logger.error('FIRESTORE (reports):', err.message));
-
-        // Payments
-        const unsubPayments = onSnapshot(
-            query(collection(db, 'payments'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_PAYMENTS)),
-            snap => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            list.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-            setPayments(list);
-        });
-
-        // Escrow Deposits
-        const unsubEscrow = onSnapshot(
-            query(collection(db, 'escrowDeposits'), orderBy('createdAt', 'desc'), limit(QUERY_LIMITS.ADMIN_ESCROW || 50)),
-            snap => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            list.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-            setEscrowDeposits(list);
-        });
-
-        // Webhook Txns
-        const unsubWebhookTxns = onSnapshot(
-            query(collection(db, 'unclaimed_transactions'), orderBy('receivedAt', 'desc'), limit(QUERY_LIMITS.ADMIN_PAYMENTS || 100)),
-            snap => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setWebhookTxns(list);
-        });
-
-        return () => { unsubUsers(); unsubLeads(); unsubEnquiries(); unsubReports(); unsubPayments(); unsubEscrow(); unsubWebhookTxns(); };
-    }, []);
-
-    useEffect(() => {
-        let rev = 0;
-        payments.forEach(p => {
-            if (p.status === 'completed') {
-                rev += Number(p.amount) || 0;
-            }
-        });
-        
-        let moveIns = 0;
-        escrowDeposits.forEach(e => {
-            if (e.status === 'released') {
-                moveIns++;
-                rev += (Number(e.amount) || 0) * 0.01; // 1% deduction
-            }
-        });
-
-        setStats(p => ({ ...p, monthlyRevenue: rev, successfulMoveIns: moveIns }));
-    }, [payments, escrowDeposits]);
-
-    // Separated properties listener to support 'Load More' pagination
-    useEffect(() => {
-        const unsubListings = onSnapshot(
-            query(collection(db, 'properties'), orderBy('createdAt', 'desc'), limit(propertiesLimit)),
-            snap => {
-                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                setListings(list);
-                // Keep the stats updated but note snap.size is bounded by propertiesLimit
-                setStats(p => ({ 
-                    ...p, 
-                    totalListings: snap.size,
-                    verifiedListings: list.filter(l => l.isVerified || l.verificationStatus === 'verified').length 
-                }));
-            }, 
-            err => logger.error('FIRESTORE (properties):', err.message)
-        );
-        return () => unsubListings();
-    }, [propertiesLimit]);
 
     /* ── User actions ─────────────────────────────────────────────────────── */
     const handleLogout = async () => {
@@ -801,116 +543,15 @@ export default function AdminPanel() {
         <div className="flex h-screen overflow-hidden bg-[#F8F9FA] dark:bg-[#0F1117] font-sans">
 
             {/* ══════════════════════════  SIDEBAR  ══════════════════════════ */}
-            <aside
-                className={`
-                    relative flex-shrink-0 flex flex-col
-                    ${isCollapsed ? 'w-20' : 'w-64'}
-                    bg-zinc-950 text-white h-full
-                    transition-all duration-300 ease-in-out
-                    shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-30 overflow-hidden
-                `}
-            >
-                {/* Brand + Toggle */}
-                <div className={`flex items-center ${isCollapsed ? 'justify-center px-2' : 'justify-between px-5'} py-5 border-b border-zinc-800/60`}>
-                    {!isCollapsed && (
-                        <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 bg-emerald-500 rounded-xl flex items-center justify-center shadow-[0_4px_12px_rgba(16,185,129,0.35)] flex-shrink-0">
-                                <ShieldCheck size={16} className="text-white" />
-                            </div>
-                            <div className="overflow-hidden">
-                                <h1 className="text-sm font-black text-white leading-none tracking-tight">Architect</h1>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    <p className="text-zinc-500 text-[9px] uppercase font-black tracking-widest">Live Control</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    <button
-                        onClick={() => setIsCollapsed(p => !p)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all duration-200 flex-shrink-0"
-                        title={isCollapsed ? 'Expand' : 'Collapse'}
-                    >
-                        {isCollapsed ? <Menu size={16} /> : <ChevronLeft size={16} />}
-                    </button>
-                </div>
-
-                {/* Nav */}
-                <div className="flex-1 px-2 py-4 overflow-y-auto">
-                    {!isCollapsed && (
-                        <p className="text-zinc-600 text-[9px] font-black uppercase tracking-widest px-3 mb-3">Main Core</p>
-                    )}
-                    <nav className="space-y-1">
-                        {NAV_ITEMS.map(item => (
-                            <NavLink
-                                key={item.path}
-                                to={item.path}
-                                end={item.end}
-                                title={isCollapsed ? item.label : undefined}
-                                className={({ isActive }) =>
-                                    `flex items-center gap-3 w-full p-3 rounded-xl transition-all duration-200 group border-l-4
-                                    ${isCollapsed ? 'justify-center' : ''}
-                                    ${isActive
-                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500 shadow-[inset_0_0_16px_rgba(16,185,129,0.06)]'
-                                        : 'text-zinc-500 hover:text-white hover:bg-zinc-900 border-transparent'
-                                    }`
-                                }
-                            >
-                                <item.icon size={20} className="w-5 h-5 flex-shrink-0" />
-                                {!isCollapsed && (
-                                    <>
-                                        <span className="font-semibold text-sm">{item.label}</span>
-                                        {item.label === 'Properties' && pendingListings > 0 && (
-                                            <span className="ml-auto bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                                                {pendingListings}
-                                            </span>
-                                        )}
-                                        {item.label === 'Enquiries' && enquiries.filter(e => e.status !== 'resolved').length > 0 && (
-                                            <span className="ml-auto bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                                                {enquiries.filter(e => e.status !== 'resolved').length}
-                                            </span>
-                                        )}
-                                        {item.label === 'Reports' && reports.length > 0 && (
-                                            <span className="ml-auto bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                                                {reports.length}
-                                            </span>
-                                        )}
-                                        {item.label !== 'Listings' && (
-                                            <ChevronRight size={13} className="ml-auto opacity-0 group-hover:opacity-60 transition-opacity" />
-                                        )}
-                                    </>
-                                )}
-                            </NavLink>
-                        ))}
-                    </nav>
-                </div>
-
-                {/* Footer */}
-                <div className={`${isCollapsed ? 'p-2' : 'p-4'} border-t border-zinc-800/60`}>
-                    {isCollapsed ? (
-                        <button onClick={handleLogout} title="Sign Out"
-                            className="flex items-center justify-center w-full p-2.5 text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all">
-                            <LogOut size={18} />
-                        </button>
-                    ) : (
-                        <div className="bg-zinc-900/60 rounded-2xl p-3 border border-zinc-800/50">
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="w-8 h-8 bg-zinc-800 rounded-xl flex items-center justify-center font-black text-zinc-300 uppercase text-sm flex-shrink-0">
-                                    {currentUser?.email?.[0] || 'A'}
-                                </div>
-                                <div className="overflow-hidden">
-                                    <p className="text-xs font-black text-white truncate">{currentUser?.email?.split('@')[0]}</p>
-                                    <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">SuperAdmin</p>
-                                </div>
-                            </div>
-                            <button onClick={handleLogout}
-                                className="flex items-center justify-center w-full gap-2 px-3 py-2 text-red-400 hover:text-white hover:bg-red-500 rounded-xl font-bold text-xs transition-all">
-                                <LogOut size={13} /> Sign Out
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </aside>
+            <AdminSidebar
+                isCollapsed={isCollapsed}
+                onToggleCollapse={() => setIsCollapsed(p => !p)}
+                currentUser={currentUser}
+                onLogout={handleLogout}
+                pendingListings={pendingListings}
+                unresolvedEnquiries={enquiries.filter(e => e.status !== 'resolved').length}
+                reportsCount={reports.length}
+            />
 
             {/* ══════════════════════════  MAIN  ═════════════════════════════ */}
             <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
@@ -953,658 +594,75 @@ export default function AdminPanel() {
 
                             {/* ── Overview ── */}
                             <Route index element={
-                                loadingStats ? (
-                                    <div className="h-[50vh] flex flex-col items-center justify-center gap-4">
-                                        <div className="w-12 h-12 border-4 border-zinc-100 border-t-emerald-500 rounded-full animate-spin" />
-                                        <p className="text-zinc-400 font-black text-xs uppercase tracking-widest animate-pulse">Syncing data...</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-8">
-                                        {/* Stat Cards */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                            {[
-                                                { label: 'Platform Users', value: stats.totalUsers, icon: Users, growth: 'Live' },
-                                                { label: 'Total Properties', value: stats.totalListings, icon: Building2, growth: `${pendingListings} pending` },
-                                                { label: 'Verified Listings', value: stats.verifiedListings, icon: ShieldCheck, growth: 'Moat' },
-                                                { label: 'Verified Landlords', value: stats.verifiedLandlords, icon: CheckCircle, growth: 'Moat' },
-                                                { label: 'Pipeline Queue', value: stats.pendingRequests, icon: ClipboardList, growth: 'Live' },
-                                                { label: 'Move-Ins (Escrow)', value: stats.successfulMoveIns, icon: Home, growth: 'Scale' },
-                                                { label: 'Est. Revenue', value: `৳${stats.monthlyRevenue.toLocaleString()}`, icon: Banknote, growth: 'Total' },
-                                            ].map((s, i) => (
-                                                <div key={i} className="group bg-white p-8 rounded-3xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-500 border border-zinc-100">
-                                                    <div className="flex justify-between items-start mb-6">
-                                                        <div className="p-3 bg-emerald-50 text-emerald-500 rounded-2xl group-hover:bg-emerald-500 group-hover:text-white transition-all duration-400">
-                                                            <s.icon size={20} />
-                                                        </div>
-                                                        <div className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
-                                                            <TrendingUp size={10} />
-                                                            <span>{s.growth}</span>
-                                                        </div>
-                                                    </div>
-                                                    <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-1">{s.label}</p>
-                                                    <div className="text-4xl font-black text-zinc-950 tabular-nums group-hover:text-emerald-600 transition-colors duration-400">{s.value}</div>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        {/* Activity + Security */}
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                            <div className="lg:col-span-2 bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-                                                <div className="px-8 py-6 border-b border-zinc-50 flex items-center justify-between">
-                                                    <h3 className="font-black text-zinc-950 flex items-center gap-2">
-                                                        <Activity size={18} className="text-emerald-500" /> Active Events
-                                                    </h3>
-                                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest px-2.5 py-1 bg-zinc-50 rounded-lg">Live</span>
-                                                </div>
-                                                <div className="divide-y divide-zinc-50">
-                                                    {users.slice(0, 5).map((user, i) => (
-                                                        <div key={i} className="flex items-center justify-between px-8 py-4 hover:bg-zinc-50/50 transition-colors">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="w-9 h-9 bg-zinc-100 rounded-xl flex items-center justify-center font-black text-zinc-400 text-xs uppercase">{user.email?.[0]}</div>
-                                                                <div>
-                                                                    <p className="text-sm font-bold text-zinc-900">{user.email}</p>
-                                                                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Authenticated</p>
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-[10px] font-black text-zinc-400 tracking-widest">LIVE</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            <div className="bg-zinc-950 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden group">
-                                                <div className="absolute -top-16 -right-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] group-hover:bg-emerald-500/20 transition-all duration-700" />
-                                                <div className="relative z-10 space-y-6">
-                                                    <div>
-                                                        <p className="text-emerald-400 text-[9px] font-black uppercase tracking-widest mb-3 flex items-center gap-2">
-                                                            <Lock size={10} /> Security Status
-                                                        </p>
-                                                        <div className="flex items-baseline gap-2">
-                                                            <span className="text-4xl font-black">AES-256</span>
-                                                            <span className="text-emerald-500 text-[9px] font-black animate-pulse uppercase tracking-widest">Active</span>
-                                                        </div>
-                                                    </div>
-                                                    <button
-                                                        onClick={handleSystemCleanup}
-                                                        className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl transition-all text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-emerald-500/20 active:scale-[0.98] flex items-center justify-center gap-2"
-                                                    >
-                                                        <Database size={14} /> Synchronize & Cleanup Data
-                                                    </button>
-                                                    <div>
-                                                        <div className="flex justify-between text-[9px] font-black uppercase tracking-widest mb-2">
-                                                            <span className="text-zinc-500">Firewall</span>
-                                                            <span className="text-emerald-500">100%</span>
-                                                        </div>
-                                                        <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
-                                                            <div className="w-full h-full bg-emerald-500 rounded-full" />
-                                                        </div>
-                                                    </div>
-                                                    <div className="p-4 bg-zinc-900/60 rounded-2xl border border-white/5 flex items-start gap-3">
-                                                        <ShieldCheck size={16} className="text-emerald-500 flex-shrink-0 mt-0.5" />
-                                                        <p className="text-[11px] text-zinc-400 font-bold leading-relaxed">All operations encrypted and audited.</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )
+                                <AdminOverviewSection
+                                    loadingStats={loadingStats}
+                                    stats={stats}
+                                    pendingListings={pendingListings}
+                                    users={users}
+                                    onSystemCleanup={handleSystemCleanup}
+                                />
                             } />
 
                             {/* ── Users ── */}
                             <Route path="users" element={
-                                <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-                                    <div className="px-8 py-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-zinc-50">
-                                        <div>
-                                            <h3 className="text-2xl font-black text-zinc-950">Platform Directory</h3>
-                                            <p className="text-sm text-zinc-400 font-bold mt-1">{filteredUsers.length} authenticated identities</p>
-                                        </div>
-                                        <div className="relative w-full lg:w-96">
-                                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-                                            <input
-                                                type="text" placeholder="Search name or email..."
-                                                value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                                                className="w-full pl-12 pr-5 py-3 bg-zinc-50 rounded-2xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 placeholder:text-zinc-300"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left">
-                                            <thead>
-                                                <tr className="text-zinc-400 text-[10px] font-black uppercase tracking-widest border-b border-zinc-50">
-                                                    <th className="px-8 py-5">Identity</th>
-                                                    <th className="px-8 py-5 text-center">Status</th>
-                                                    <th className="px-8 py-5 text-center">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-zinc-50">
-                                                {filteredUsers.map(user => (
-                                                    <tr key={user.id} onClick={() => setSelectedUser(user)} className="group hover:bg-zinc-50/50 transition-colors cursor-pointer">
-                                                        <td className="px-8 py-6">
-                                                            <div className="flex items-center gap-5">
-                                                                <div className="w-12 h-12 bg-zinc-100 rounded-2xl flex items-center justify-center font-black text-zinc-300 text-lg uppercase group-hover:border-emerald-500 group-hover:text-emerald-500 border border-transparent transition-all">
-                                                                    {user.email?.[0]}
-                                                                </div>
-                                                                <div>
-                                                                    <p className="font-black text-zinc-950 tracking-tight group-hover:text-emerald-600 transition-colors">{user.fullName || 'Anonymous'}</p>
-                                                                    <p className="text-xs font-bold text-zinc-400 mt-0.5">{user.email}</p>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-8 py-6 text-center">
-                                                            <div className="flex flex-col items-center gap-1.5">
-                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${user.accountStatus === 'deactivated' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                                    {user.accountStatus === 'deactivated' ? 'Inactive' : 'Active'}
-                                                                </span>
-                                                                <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{user.role || 'client'}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-8 py-6">
-                                                            <div className="flex justify-center gap-3">
-                                                                <button onClick={(e) => { e.stopPropagation(); handleToggleAdmin(user); }}
-                                                                    className={`p-3 rounded-xl transition-all border ${user.role === 'admin' ? 'bg-zinc-950 text-white border-zinc-950 hover:bg-emerald-500 hover:border-emerald-500' : 'bg-white text-zinc-400 border-zinc-100 hover:text-emerald-500 hover:border-emerald-200'}`}
-                                                                    title="Toggle Admin">
-                                                                    <ShieldCheck size={18} />
-                                                                </button>
-                                                                <button onClick={(e) => { e.stopPropagation(); handleToggleStatus(user); }}
-                                                                    className={`p-3 rounded-xl transition-all border ${user.accountStatus === 'deactivated' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-600 hover:text-white' : 'bg-white text-zinc-400 border-zinc-100 hover:text-red-500 hover:border-red-100'}`}
-                                                                    title="Toggle Status">
-                                                                    {user.accountStatus === 'deactivated' ? <UserCheck size={18} /> : <UserMinus size={18} />}
-                                                                </button>
-                                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteUser(user); }}
-                                                                    className="p-3 bg-white text-zinc-200 hover:text-red-500 hover:border-red-100 rounded-xl border border-zinc-100 transition-all"
-                                                                    title="Delete">
-                                                                    <Trash2 size={18} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
+                                <AdminUsersTab
+                                    users={filteredUsers}
+                                    searchQuery={searchQuery}
+                                    onSearchChange={setSearchQuery}
+                                    onSelectUser={setSelectedUser}
+                                    onToggleAdmin={handleToggleAdmin}
+                                    onToggleStatus={handleToggleStatus}
+                                    onDeleteUser={handleDeleteUser}
+                                />
                             } />
 
                             {/* ── Listings ── */}
                             <Route path="properties" element={
-                                <div className="space-y-6">
-                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-                                        <div className="px-8 py-8 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b border-zinc-50">
-                                            <div>
-                                                <h3 className="text-2xl font-black text-zinc-950">Property Approvals</h3>
-                                                <p className="text-sm text-zinc-400 font-bold mt-1">
-                                                    {listings.length} total · <span className="text-amber-500">{pendingListings} pending approval</span>
-                                                </p>
-                                            </div>
-                                            <div className="flex flex-col sm:flex-row w-full lg:w-auto items-center gap-4">
-                                                <div className="bg-zinc-100 p-1 rounded-xl flex items-center w-full sm:w-auto">
-                                                    <button onClick={() => setPropertiesTab('pending')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all ${propertiesTab === 'pending' ? 'bg-white shadow-sm text-amber-500' : 'text-zinc-400 hover:text-zinc-600'}`}>Pending ({pendingListings})</button>
-                                                    <button onClick={() => setPropertiesTab('approved')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all ${propertiesTab === 'approved' ? 'bg-white shadow-sm text-emerald-500' : 'text-zinc-400 hover:text-zinc-600'}`}>Approved</button>
-                                                    <button onClick={() => setPropertiesTab('rejected')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all ${propertiesTab === 'rejected' ? 'bg-white shadow-sm text-rose-500' : 'text-zinc-400 hover:text-zinc-600'}`}>Rejected</button>
-                                                    <button onClick={() => setPropertiesTab('all')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-black transition-all ${propertiesTab === 'all' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'}`}>All</button>
-                                                </div>
-                                                <div className="relative w-full sm:w-64">
-                                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
-                                                    <input
-                                                        type="text" placeholder="Search..."
-                                                        value={listingSearch} onChange={e => setListingSearch(e.target.value)}
-                                                        className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 placeholder:text-zinc-300"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left">
-                                                <thead>
-                                                    <tr className="text-zinc-400 text-[10px] font-black uppercase tracking-widest border-b border-zinc-50">
-                                                        <th className="px-8 py-5">Property</th>
-                                                        <th className="px-8 py-5 text-center">Approval Status</th>
-                                                        <th className="px-8 py-5 text-center">Action</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-zinc-50">
-                                                    {filteredListings.length === 0 ? (
-                                                        <tr>
-                                                            <td colSpan={3} className="px-8 py-16 text-center text-zinc-400 font-bold">
-                                                                No listings found.
-                                                            </td>
-                                                        </tr>
-                                                    ) : filteredListings.map(listing => (
-                                                        <tr
-                                                            key={listing.id}
-                                                            onClick={() => openListingDetail(listing)}
-                                                            className="group hover:bg-zinc-50/80 transition-colors cursor-pointer"
-                                                        >
-                                                            <td className="px-8 py-5">
-                                                                <div className="flex items-center gap-4">
-                                                                    {listing.images?.[0] ? (
-                                                                        <img loading="lazy" src={listing.images[0]} alt="listing" className="w-14 h-14 rounded-2xl object-cover flex-shrink-0 border border-zinc-100" />
-                                                                    ) : (
-                                                                        <div className="w-14 h-14 bg-zinc-100 rounded-2xl flex items-center justify-center flex-shrink-0">
-                                                                            <Building2 size={20} className="text-zinc-300" />
-                                                                        </div>
-                                                                    )}
-                                                                    <div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <p className="font-black text-zinc-950 group-hover:text-emerald-600 transition-colors">
-                                                                                {listing.title || 'Untitled Listing'}
-                                                                            </p>
-                                                                            <span className="text-[10px] font-mono font-black text-zinc-400 bg-zinc-100 px-1.5 py-0.5 rounded uppercase">
-                                                                                #{listing.id ? listing.id.slice(0, 8) : 'N/A'}
-                                                                            </span>
-                                                                        </div>
-                                                                        <p className="text-xs font-bold text-zinc-400 mt-0.5">
-                                                                            {listing.upazila || listing.location || listing.address || 'No location set'}
-                                                                        </p>
-                                                                        {listing.rent && (
-                                                                            <p className="text-xs font-black text-emerald-600 mt-0.5">৳{Number(listing.rent).toLocaleString()}/mo</p>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-8 py-5 text-center">
-                                                                {listing.isApproved ? (
-                                                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 uppercase tracking-widest">
-                                                                        <CheckCircle size={11} /> Verified
-                                                                    </span>
-                                                                ) : listing.isRejected ? (
-                                                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 uppercase tracking-widest">
-                                                                        <X size={11} /> Rejected
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full bg-amber-50 text-amber-600 uppercase tracking-widest">
-                                                                        <Clock size={11} /> Pending
-                                                                    </span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-8 py-5 text-center">
-                                                                {listing.isApproved ? (
-                                                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Live ✓</span>
-                                                                ) : (
-                                                                    <div className="flex items-center justify-center gap-2">
-                                                                        <button
-                                                                            onClick={e => { e.stopPropagation(); handleApproveListing(listing); }}
-                                                                            className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1"
-                                                                        >
-                                                                            Approve
-                                                                        </button>
-                                                                        {!listing.isRejected && (
-                                                                            <button
-                                                                                onClick={e => { e.stopPropagation(); handleRejectListing(listing); }}
-                                                                                className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-black rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1"
-                                                                            >
-                                                                                Reject
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        {listings.length >= propertiesLimit && (
-                                            <div className="p-6 border-t border-zinc-50 flex justify-center bg-zinc-50/30">
-                                                <button
-                                                    onClick={() => setPropertiesLimit(prev => prev + 50)}
-                                                    className="px-6 py-2.5 bg-white border border-zinc-200 text-zinc-600 font-black text-xs uppercase tracking-widest rounded-xl shadow-sm hover:bg-zinc-50 transition-all active:scale-95"
-                                                >
-                                                    Load More
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                <AdminPropertiesTab
+                                    listings={listings}
+                                    filteredListings={filteredListings}
+                                    pendingListings={pendingListings}
+                                    propertiesTab={propertiesTab}
+                                    onPropertiesTabChange={setPropertiesTab}
+                                    listingSearch={listingSearch}
+                                    onSearchChange={setListingSearch}
+                                    onOpenDetail={openListingDetail}
+                                    onApprove={handleApproveListing}
+                                    onReject={handleRejectListing}
+                                    propertiesLimit={propertiesLimit}
+                                    onLoadMore={() => setPropertiesLimit(prev => prev + 50)}
+                                />
                             } />
 
                             {/* ── Enquiries ── */}
                             <Route path="enquiries" element={
-                                <div className="space-y-6">
-                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-                                        <div className="px-8 py-8 border-b border-zinc-50">
-                                            <h3 className="text-2xl font-black text-zinc-950">Support Enquiries</h3>
-                                            <p className="text-sm text-zinc-400 font-bold mt-1">
-                                                {enquiries.length} total tickets · <span className="text-red-500">{enquiries.filter(e => e.status !== 'resolved').length} needs attention</span>
-                                            </p>
-                                        </div>
-
-                                        <div className="divide-y divide-zinc-50">
-                                            {enquiries.length === 0 ? (
-                                                <div className="px-8 py-16 text-center text-zinc-400 font-bold">
-                                                    No enquiries found.
-                                                </div>
-                                            ) : enquiries.map(enquiry => (
-                                                <EnquiryCard
-                                                    key={enquiry.id}
-                                                    enquiry={enquiry}
-                                                    onReply={handleReplyEnquiry}
-                                                    onResolve={handleResolveEnquiry}
-                                                    onDelete={handleDeleteEnquiry}
-                                                />
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
+                                <AdminEnquiriesTab
+                                    enquiries={enquiries}
+                                    onReply={handleReplyEnquiry}
+                                    onResolve={handleResolveEnquiry}
+                                    onDelete={handleDeleteEnquiry}
+                                />
                             } />
 
                             {/* ── Payments & Escrow ── */}
                             <Route path="payments" element={
-                                <div className="space-y-8">
-                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-                                        <div className="px-8 py-8 border-b border-zinc-50">
-                                            <h3 className="text-2xl font-black text-zinc-950">Payment Verification</h3>
-                                            <p className="text-sm text-zinc-400 font-bold mt-1">
-                                                {payments.filter(p => p.status === 'pending').length} pending verifications
-                                            </p>
-                                        </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left">
-                                                <thead>
-                                                    <tr className="text-zinc-400 text-[10px] font-black uppercase tracking-widest border-b border-zinc-50">
-                                                        <th className="px-8 py-5">Payment Type & Package</th>
-                                                        <th className="px-8 py-5">Amount & Method</th>
-                                                        <th className="px-8 py-5">Transaction ID</th>
-                                                        <th className="px-8 py-5 text-center">Status</th>
-                                                        <th className="px-8 py-5 text-center">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-zinc-50">
-                                                    {payments.length === 0 ? (
-                                                        <tr><td colSpan="5" className="text-center py-8 text-zinc-400">No payments found.</td></tr>
-                                                    ) : payments.map(payment => (
-                                                        <tr key={payment.id} className="group hover:bg-zinc-50/50 transition-colors">
-                                                            <td className="px-8 py-6">
-                                                                <p className="font-black text-zinc-950 tracking-tight">{(payment.type || '').replace('_', ' ').toUpperCase()}</p>
-                                                                {payment.type === 'subscription' && payment.metadata?.plan ? (
-                                                                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mt-1">Package: {payment.metadata.plan}</p>
-                                                                ) : (
-                                                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mt-1">Prop: {payment.propertyName || 'N/A'}</p>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                <span className="font-black text-emerald-600">৳{payment.amount?.toLocaleString()}</span>
-                                                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">{payment.paymentMethod || payment.method || 'Unknown'}</p>
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                <p className="text-sm font-bold text-zinc-950 tracking-wider font-mono">{payment.transactionId}</p>
-                                                                {payment.metadata?.userEmail && <p className="text-[10px] text-zinc-400 font-bold mt-1">{payment.metadata.userEmail}</p>}
-                                                                {payment.verifiedBy === 'sms-watcher' && (
-                                                                    <div className="mt-2 p-1.5 bg-emerald-50 rounded-md border border-emerald-100 inline-block">
-                                                                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 flex items-center gap-1">
-                                                                            <CheckCircle size={10} /> Auto-Verified ({payment.smsProvider || 'SMS'})
-                                                                        </span>
-                                                                        <span className="text-[10px] font-bold text-emerald-600/70 mt-0.5 block">
-                                                                            Sender: {payment.smsSenderNumber || 'Unknown'}
-                                                                        </span>
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-8 py-6 text-center">
-                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${payment.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : payment.status === 'failed' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
-                                                                    {payment.status}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                {payment.status === 'pending' && (
-                                                                    <div className="flex justify-center gap-2">
-                                                                        <button onClick={() => handleApprovePayment(payment)} className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-500 hover:text-white transition-colors" title="Approve">
-                                                                            <CheckCircle size={16} />
-                                                                        </button>
-                                                                        <button onClick={() => handleRejectPayment(payment)} className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-500 hover:text-white transition-colors" title="Reject">
-                                                                            <Trash2 size={16} />
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-                                        <div className="px-8 py-8 border-b border-zinc-50">
-                                            <h3 className="text-2xl font-black text-zinc-950">Escrow Management</h3>
-                                            <p className="text-sm text-zinc-400 font-bold mt-1">
-                                                {escrowDeposits.filter(e => e.status === 'held').length} deposits currently held
-                                            </p>
-                                        </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left">
-                                                <thead>
-                                                    <tr className="text-zinc-400 text-[10px] font-black uppercase tracking-widest border-b border-zinc-50">
-                                                        <th className="px-8 py-5">Property & Tenant</th>
-                                                        <th className="px-8 py-5">Deposit</th>
-                                                        <th className="px-8 py-5 text-center">Status</th>
-                                                        <th className="px-8 py-5 text-center">Confirmations</th>
-                                                        <th className="px-8 py-5 text-center">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-zinc-50">
-                                                    {escrowDeposits.length === 0 ? (
-                                                        <tr><td colSpan="5" className="text-center py-8 text-zinc-400">No escrow deposits.</td></tr>
-                                                    ) : escrowDeposits.map(escrow => (
-                                                        <tr key={escrow.id} className="group hover:bg-zinc-50/50 transition-colors">
-                                                            <td className="px-8 py-6">
-                                                                <p className="font-black text-zinc-950 tracking-tight">{escrow.propertyName}</p>
-                                                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Tenant ID: {escrow.tenantId?.slice(0,6)}...</p>
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                <span className="font-black text-emerald-600">৳{escrow.depositAmount?.toLocaleString()}</span>
-                                                            </td>
-                                                            <td className="px-8 py-6 text-center">
-                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${escrow.status === 'released' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600 dark:text-blue-400'}`}>
-                                                                    {escrow.status}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-8 py-6 text-center">
-                                                                <div className="flex flex-col gap-1 items-center">
-                                                                    <span className={`text-[9px] font-black uppercase tracking-widest ${escrow.confirmedByTenant ? 'text-emerald-500' : 'text-zinc-400'}`}>
-                                                                        Tenant: {escrow.confirmedByTenant ? 'Yes' : 'No'}
-                                                                    </span>
-                                                                    <span className={`text-[9px] font-black uppercase tracking-widest ${escrow.confirmedByOwner ? 'text-emerald-500' : 'text-zinc-400'}`}>
-                                                                        Owner: {escrow.confirmedByOwner ? 'Yes' : 'No'}
-                                                                    </span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                {escrow.status === 'held' && escrow.confirmedByTenant && escrow.confirmedByOwner && (
-                                                                    <div className="flex justify-center">
-                                                                        <button onClick={() => handleReleaseEscrow(escrow.id)} className="px-4 py-2 bg-emerald-500 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20">
-                                                                            Release Funds
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-                                        <div className="px-8 py-8 border-b border-zinc-50">
-                                            <h3 className="text-2xl font-black text-zinc-950">Webhook SMS Transactions</h3>
-                                            <p className="text-sm text-zinc-400 font-bold mt-1">
-                                                {webhookTxns.filter(t => t.status === 'unclaimed').length} unclaimed transactions
-                                            </p>
-                                        </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left">
-                                                <thead>
-                                                    <tr className="text-zinc-400 text-[10px] font-black uppercase tracking-widest border-b border-zinc-50">
-                                                        <th className="px-8 py-5">Transaction ID</th>
-                                                        <th className="px-8 py-5">Amount & Provider</th>
-                                                        <th className="px-8 py-5">Sender Number</th>
-                                                        <th className="px-8 py-5">Date & Time</th>
-                                                        <th className="px-8 py-5 text-center">Status</th>
-                                                        <th className="px-8 py-5 text-center">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-zinc-50">
-                                                    {webhookTxns.length === 0 ? (
-                                                        <tr><td colSpan="6" className="text-center py-8 text-zinc-400">No webhook transactions.</td></tr>
-                                                    ) : webhookTxns.map(txn => (
-                                                        <tr key={txn.id} className="group hover:bg-zinc-50/50 transition-colors">
-                                                            <td className="px-8 py-6">
-                                                                <p className="text-sm font-bold text-zinc-950 tracking-wider font-mono">{txn.transactionId}</p>
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                <span className="font-black text-emerald-600">৳{txn.amount?.toLocaleString()}</span>
-                                                                <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">{txn.provider || 'Unknown'}</p>
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                <p className="text-sm font-bold text-zinc-950 tracking-tight">{txn.senderNumber || 'N/A'}</p>
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                <p className="text-xs font-bold text-zinc-500">
-                                                                    {txn.receivedAt?.toDate ? txn.receivedAt.toDate().toLocaleString() : 'N/A'}
-                                                                </p>
-                                                            </td>
-                                                            <td className="px-8 py-6 text-center">
-                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${txn.status === 'claimed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                                                                    {txn.status}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                {txn.status === 'unclaimed' && (
-                                                                    <div className="flex justify-center">
-                                                                        <button onClick={() => handleApproveWebhookTxn(txn)} className="px-4 py-2 bg-emerald-50 text-emerald-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-emerald-500 hover:text-white transition-colors">
-                                                                            Approve
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
+                                <AdminPaymentsTab
+                                    payments={payments}
+                                    escrowDeposits={escrowDeposits}
+                                    webhookTxns={webhookTxns}
+                                    onApprovePayment={handleApprovePayment}
+                                    onRejectPayment={handleRejectPayment}
+                                    onReleaseEscrow={handleReleaseEscrow}
+                                    onApproveWebhookTxn={handleApproveWebhookTxn}
+                                />
                             } />
 
                             {/* ── Payment Details (SMS Webhook) ── */}
                             <Route path="payment-details" element={
-                                <div className="space-y-8">
-                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-                                        <div className="px-8 py-8 border-b border-zinc-50">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <h3 className="text-2xl font-black text-zinc-950">SMS Webhook Payment Details</h3>
-                                                    <p className="text-sm text-zinc-400 font-bold mt-1">
-                                                        {webhookTxns.filter(t => t.status === 'unclaimed').length} unclaimed · {webhookTxns.filter(t => t.status === 'claimed').length} claimed
-                                                    </p>
-                                                </div>
-                                                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 rounded-xl">
-                                                    <div className={`w-2 h-2 rounded-full ${webhookTxns.length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-300'}`} />
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">{webhookTxns.length > 0 ? 'Live' : 'Waiting'}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left">
-                                                <thead>
-                                                    <tr className="text-zinc-400 text-[10px] font-black uppercase tracking-widest border-b border-zinc-50">
-                                                        <th className="px-8 py-5">Provider</th>
-                                                        <th className="px-8 py-5">Sender Number</th>
-                                                        <th className="px-8 py-5">Transaction ID</th>
-                                                        <th className="px-8 py-5">Amount</th>
-                                                        <th className="px-8 py-5">Date & Time</th>
-                                                        <th className="px-8 py-5 text-center">Status</th>
-                                                        <th className="px-8 py-5 text-center">Claimed By</th>
-                                                        <th className="px-8 py-5 text-center">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-zinc-50">
-                                                    {webhookTxns.length === 0 ? (
-                                                        <tr><td colSpan="8" className="text-center py-16 text-zinc-400">
-                                                            <div className="flex flex-col items-center gap-3">
-                                                                <Receipt size={32} className="text-zinc-300" />
-                                                                <span className="font-bold">No webhook transactions yet.</span>
-                                                                <span className="text-xs text-zinc-400">SMS payments will appear here automatically.</span>
-                                                            </div>
-                                                        </td></tr>
-                                                    ) : webhookTxns.map(txn => (
-                                                        <tr key={txn.id} className="group hover:bg-zinc-50/50 transition-colors">
-                                                            <td className="px-8 py-6">
-                                                                {txn.provider ? (
-                                                                    <span className={`text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest ${
-                                                                        txn.provider === 'bkash' ? 'bg-pink-50 text-pink-600' :
-                                                                        txn.provider === 'nagad' ? 'bg-orange-50 text-orange-600' :
-                                                                        txn.provider === 'rocket' ? 'bg-purple-50 text-purple-600' :
-                                                                        'bg-zinc-50 text-zinc-500'
-                                                                    }`}>
-                                                                        {txn.provider}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Unknown</span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                <p className="text-sm font-bold text-zinc-950 tracking-tight">{txn.senderNumber || 'N/A'}</p>
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                <p className="text-sm font-bold text-zinc-950 tracking-wider font-mono">{txn.transactionId}</p>
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                <span className="font-black text-emerald-600">৳{txn.amount?.toLocaleString()}</span>
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                <p className="text-xs font-bold text-zinc-500">
-                                                                    {txn.receivedAt?.toDate ? txn.receivedAt.toDate().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : 'N/A'}
-                                                                </p>
-                                                            </td>
-                                                            <td className="px-8 py-6 text-center">
-                                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
-                                                                    txn.status === 'claimed' ? 'bg-emerald-50 text-emerald-600' :
-                                                                    txn.status === 'unclaimed' ? 'bg-amber-50 text-amber-600' :
-                                                                    'bg-zinc-50 text-zinc-500'
-                                                                }`}>
-                                                                    {txn.status}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-8 py-6 text-center">
-                                                                {txn.claimedBy ? (
-                                                                    <div className="flex flex-col gap-1 items-center">
-                                                                        <span className="text-[10px] font-bold text-zinc-600">{txn.claimedBy?.slice(0,8)}...</span>
-                                                                        {txn.claimedAt?.toDate && (
-                                                                            <span className="text-[9px] text-zinc-400 font-medium">
-                                                                                {txn.claimedAt.toDate().toLocaleDateString('en-GB')}
-                                                                            </span>
-                                                                        )}
-                                                                        {txn.bookingType && (
-                                                                            <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">{txn.bookingType}</span>
-                                                                        )}
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">—</span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-8 py-6">
-                                                                {txn.status === 'unclaimed' && (
-                                                                    <div className="flex justify-center">
-                                                                        <button
-                                                                            onClick={() => handleApproveWebhookTxn(txn)}
-                                                                            className="px-3 py-2 bg-amber-50 text-amber-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-amber-500 hover:text-white transition-colors shadow-sm"
-                                                                            title="Manually claim this transaction"
-                                                                        >
-                                                                            Mark Claimed
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </div>
+                                <AdminPaymentDetailsTab
+                                    webhookTxns={webhookTxns}
+                                    onApproveWebhookTxn={handleApproveWebhookTxn}
+                                />
                             } />
 
                             {/* ── Reviews ── */}
@@ -1641,85 +699,12 @@ export default function AdminPanel() {
 
                             {/* ── Reports ── */}
                             <Route path="reports" element={
-                                <div className="space-y-6">
-                                    <div className="bg-white rounded-3xl border border-zinc-100 shadow-sm overflow-hidden">
-                                        <div className="px-8 py-8 border-b border-zinc-50">
-                                            <h3 className="text-2xl font-black text-zinc-950">Property Reports</h3>
-                                            <p className="text-sm text-zinc-400 font-bold mt-1">
-                                                {reports.length} active reports · <span className="text-rose-500">Security & Content Moderation</span>
-                                            </p>
-                                        </div>
-
-                                        <div className="divide-y divide-zinc-50">
-                                            {reports.length === 0 ? (
-                                                <div className="px-8 py-16 text-center text-zinc-400 font-bold">
-                                                    No property reports found. Excellent!
-                                                </div>
-                                            ) : reports.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)).map(report => (
-                                                <div key={report.id} className="p-8 hover:bg-rose-50/[0.02] transition-all border-l-4 border-transparent hover:border-rose-500">
-                                                    <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
-                                                        <div className="flex-1 space-y-4">
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500">
-                                                                    <Flag size={24} />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">Reason: {report.reason}</p>
-                                                                    <h4 className="text-lg font-black text-zinc-950 leading-tight">
-                                                                        {report.propertyTitle}
-                                                                    </h4>
-                                                                    <p className="text-xs font-bold text-zinc-400 mt-1">Property ID: {report.propertyId}</p>
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            <div className="bg-zinc-50 rounded-2xl p-6 border border-zinc-100">
-                                                                <p className="text-sm text-zinc-600 font-medium leading-relaxed italic">
-                                                                    "{report.details || 'No additional details provided.'}"
-                                                                </p>
-                                                            </div>
-
-                                                            <div className="flex flex-wrap gap-6 items-center">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="w-6 h-6 bg-zinc-200 rounded-lg flex items-center justify-center text-[10px] font-black text-zinc-600 uppercase">
-                                                                        {report.reporterName?.[0] || 'U'}
-                                                                    </div>
-                                                                    <p className="text-xs font-bold text-zinc-500">Reporter: <span className="text-zinc-900">{report.reporterName}</span></p>
-                                                                </div>
-                                                                <p className="text-xs font-bold text-zinc-400">
-                                                                    Email: <span className="text-zinc-700">{report.reporterEmail}</span>
-                                                                </p>
-                                                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
-                                                                    {report.createdAt?.toDate()?.toLocaleString() || 'Just now'}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex flex-row lg:flex-col gap-3 w-full lg:w-48">
-                                                            <button 
-                                                                onClick={() => navigate(`/property/${report.propertyId}`)}
-                                                                className="flex-1 py-3 px-4 bg-zinc-950 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-zinc-800 transition-all flex items-center justify-center gap-2"
-                                                            >
-                                                                <Search size={14} /> View Ad
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => handleDeleteReportedProperty(report)}
-                                                                className="flex-1 py-3 px-4 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2"
-                                                            >
-                                                                <Trash2 size={14} /> Delete Ad
-                                                            </button>
-                                                            <button 
-                                                                onClick={() => handleDismissReport(report.id)}
-                                                                className="flex-1 py-3 px-4 bg-zinc-100 text-zinc-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-zinc-200 transition-all flex items-center justify-center gap-2"
-                                                            >
-                                                                <CheckCircle size={14} /> Dismiss
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
+                                <AdminReportsTab
+                                    reports={reports}
+                                    onViewProperty={(propertyId) => navigate(`/property/${propertyId}`)}
+                                    onDeleteReported={handleDeleteReportedProperty}
+                                    onDismiss={handleDismissReport}
+                                />
                             } />
 
                             {/* ── Catch-all ── */}
@@ -1747,170 +732,15 @@ export default function AdminPanel() {
             </main>
 
             {/* ─── Listing Detail Drawer ─────────────────────────────────────── */}
-            {selectedListing && (
-                <>
-                    {/* Backdrop */}
-                    <div
-                        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
-                        onClick={closeDetail}
-                    />
-                    {/* Drawer */}
-                    <aside className="fixed right-0 top-0 h-full w-full max-w-xl bg-white z-50 shadow-2xl flex flex-col overflow-hidden">
-                        {/* Drawer Header */}
-                        <div className="flex items-center justify-between px-8 py-6 border-b border-zinc-100">
-                            <div>
-                                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Listing Detail</p>
-                                <h3 className="text-xl font-black text-zinc-950 leading-tight">{selectedListing.title || 'Untitled Listing'}</h3>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                {selectedListing.isApproved ? (
-                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-600 uppercase tracking-widest">
-                                        <CheckCircle size={11} /> Verified
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full bg-amber-50 text-amber-600 uppercase tracking-widest">
-                                        <Clock size={11} /> Pending
-                                    </span>
-                                )}
-                                <button onClick={closeDetail} className="w-9 h-9 rounded-xl bg-zinc-50 flex items-center justify-center text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition-all">
-                                    <ChevronRight size={18} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Scrollable body */}
-                        <div className="flex-1 overflow-y-auto">
-                            {/* Image */}
-                            {selectedListing.images?.[0] ? (
-                                <img loading="lazy"
-                                    src={selectedListing.images[0]}
-                                    alt="listing"
-                                    className="w-full h-56 object-cover"
-                                />
-                            ) : (
-                                <div className="w-full h-40 bg-zinc-100 flex items-center justify-center">
-                                    <Building2 size={40} className="text-zinc-300" />
-                                </div>
-                            )}
-
-                            <div className="p-8 space-y-6">
-                                {/* Location grid */}
-                                <div>
-                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Location</p>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {[
-                                            { label: 'Division', value: selectedListing.division },
-                                            { label: 'District', value: selectedListing.district },
-                                            { label: 'Area', value: selectedListing.area || selectedListing.upazila },
-                                            { label: 'Address', value: selectedListing.address || selectedListing.location },
-                                        ].map(({ label, value }) => value ? (
-                                            <div key={label} className="bg-zinc-50 rounded-2xl p-3">
-                                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{label}</p>
-                                                <p className="text-sm font-bold text-zinc-950 mt-0.5">{value}</p>
-                                            </div>
-                                        ) : null)}
-                                    </div>
-                                </div>
-
-                                {/* Rent & Details */}
-                                <div>
-                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Pricing & Details</p>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {[
-                                            { label: 'Monthly Rent', value: selectedListing.rent ? `৳${Number(selectedListing.rent).toLocaleString()}` : null },
-                                            { label: 'Bedrooms', value: selectedListing.bedrooms || selectedListing.beds },
-                                            { label: 'Bathrooms', value: selectedListing.bathrooms },
-                                            { label: 'Area (sq ft)', value: selectedListing.area_sqft || selectedListing.size },
-                                        ].map(({ label, value }) => value ? (
-                                            <div key={label} className="bg-zinc-50 rounded-2xl p-3">
-                                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{label}</p>
-                                                <p className="text-sm font-bold text-zinc-950 mt-0.5">{value}</p>
-                                            </div>
-                                        ) : null)}
-                                    </div>
-                                </div>
-
-                                {/* Features */}
-                                {selectedListing.features?.length > 0 && (
-                                    <div>
-                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Features</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {selectedListing.features.map((f, i) => (
-                                                <span key={i} className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-xl">{f}</span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Description */}
-                                {selectedListing.description && (
-                                    <div>
-                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-2">Description</p>
-                                        <p className="text-sm text-zinc-600 font-medium leading-relaxed">{selectedListing.description}</p>
-                                    </div>
-                                )}
-
-                                {/* Owner Info */}
-                                <div className="border-t border-zinc-100 pt-6">
-                                    <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Owner / Landlord</p>
-                                    {ownerLoading ? (
-                                        <div className="flex items-center gap-3 p-4 bg-zinc-50 rounded-2xl">
-                                            <div className="w-5 h-5 border-2 border-zinc-200 border-t-emerald-500 rounded-full animate-spin" />
-                                            <p className="text-sm text-zinc-400 font-bold">Looking up owner...</p>
-                                        </div>
-                                    ) : listingOwner ? (
-                                        <div className="bg-zinc-50 rounded-2xl p-4 flex items-start gap-4">
-                                            <div className="w-11 h-11 bg-zinc-200 rounded-xl flex items-center justify-center font-black text-zinc-500 text-sm uppercase flex-shrink-0">
-                                                {listingOwner.email?.[0] || '?'}
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <p className="font-black text-zinc-950">{listingOwner.fullName || listingOwner.name || 'No name'}</p>
-                                                <p className="text-sm text-zinc-500 font-bold">{listingOwner.email}</p>
-                                                {(listingOwner.phone || listingOwner.contact) && (
-                                                    <p className="text-sm text-emerald-600 font-bold">{listingOwner.phone || listingOwner.contact}</p>
-                                                )}
-                                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest pt-1">{listingOwner.role || 'user'} · ID: {listingOwner.id?.slice(0, 10)}...</p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-zinc-400 font-bold p-4 bg-zinc-50 rounded-2xl">No owner ID linked to this listing.</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Drawer Footer */}
-                        <div className="flex-shrink-0 px-8 py-5 border-t border-zinc-100 bg-white flex flex-col gap-3">
-                            <button
-                                onClick={() => handleToggleVerification(selectedListing)}
-                                className={`w-full py-3.5 font-black rounded-2xl transition-all text-sm active:scale-[0.98] flex items-center justify-center gap-2 ${selectedListing.isVerified ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-100'}`}
-                            >
-                                <ShieldCheck size={18} />
-                                {selectedListing.isVerified ? 'Remove Verification' : 'Verify Landlord'}
-                            </button>
-
-                            {!selectedListing.isApproved && (
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={() => handleApproveListing(selectedListing)}
-                                        className="flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black rounded-2xl transition-all text-sm shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
-                                    >
-                                        ✓ Approve
-                                    </button>
-                                    {!selectedListing.isRejected && (
-                                        <button
-                                            onClick={() => handleRejectListing(selectedListing)}
-                                            className="flex-1 py-3.5 bg-rose-500 hover:bg-rose-600 text-white font-black rounded-2xl transition-all text-sm shadow-lg shadow-rose-500/20 active:scale-[0.98]"
-                                        >
-                                            ✕ Reject
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </aside>
-                </>
-            )}
+            <ListingDetailDrawer
+                listing={selectedListing}
+                owner={listingOwner}
+                ownerLoading={ownerLoading}
+                onClose={closeDetail}
+                onToggleVerification={handleToggleVerification}
+                onApprove={handleApproveListing}
+                onReject={handleRejectListing}
+            />
 
             <ConfirmationModal
                 isOpen={modal.isOpen}

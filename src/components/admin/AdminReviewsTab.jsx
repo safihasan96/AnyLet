@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../../firebase';
 import { Star, ShieldCheck, Trash2, CheckCircle, XCircle } from 'lucide-react';
-import { useToast } from '../contexts/ToastContext';
-import logger from '../utils/logger';
+import { useToast } from '../../contexts/ToastContext';
+import logger from '../../utils/logger';
 
 export default function AdminReviewsTab({ openModal }) {
     const [propertyReviews, setPropertyReviews] = useState([]);

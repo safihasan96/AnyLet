@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { collection, doc, getDoc, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { CheckCircle, Clock, ExternalLink, FileCheck, ShieldCheck, User, XCircle } from 'lucide-react';
-import { db } from '../firebase';
-import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../contexts/ToastContext';
-import logger from '../utils/logger';
-import { getApiUrl } from '../utils/api';
+import { db } from '../../firebase';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+import logger from '../../utils/logger';
+import { getApiUrl } from '../../utils/api';
 
 const STATUS_MAP = {
   pending: { label: 'Pending Review', icon: Clock },

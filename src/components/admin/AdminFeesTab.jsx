@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db } from '../../firebase';
 import { doc, getDoc, updateDoc, collection, addDoc, serverTimestamp, query, orderBy, getDocs, limit } from 'firebase/firestore';
-import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { Banknote, Save, History, RefreshCw, AlertCircle, Percent, Hash } from 'lucide-react';
-import ConfirmationModal from './ConfirmationModal';
-import logger from '../utils/logger';
+import ConfirmationModal from '../ConfirmationModal';
+import logger from '../../utils/logger';
 
 const FLAT_MAX = 10000;
 const PERCENT_MAX = 100;
