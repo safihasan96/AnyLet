@@ -8,13 +8,7 @@ import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import DOMPurify from 'dompurify';
 import { bdLocations } from '../data/locations';
-import {
-    ArrowLeft, ArrowRight, Building2, MapPin, Info, Image as ImageIcon,
-    CheckCircle, Flame, Zap, Droplets, Wifi, Trash2, Battery,
-    ShieldCheck, Car, Wind, Lock, DoorOpen, ChevronsUp, Phone, Camera,
-    CloudSun, UtensilsCrossed, Thermometer, Package, Bike, Calendar, Users,
-    CreditCard
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Phone, CreditCard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LocationPickerMap from '../components/LocationPickerMap';
 import PaymentModal from '../components/PaymentModal';
@@ -22,8 +16,11 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
 import logger from '../utils/logger';
-import { getApiUrl } from '../utils/api';
 import { useFees } from '../hooks/useFees';
+import useImageUpload from '../hooks/useImageUpload';
+import StepBasics from '../components/add-property/StepBasics';
+import StepDetails from '../components/add-property/StepDetails';
+import StepPreview from '../components/add-property/StepPreview';
 
 export default function AddProperty() {
     const { currentUser, userProfile } = useAuth();
@@ -69,6 +66,7 @@ export default function AddProperty() {
     const ONSITE_FEE = Number(fees.onsiteVerificationFee.value);
     const totalAmount = LISTING_FEE + (wantOnsiteVerify ? ONSITE_FEE : 0);
 
+    const { uploading, uploadImages } = useImageUpload();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -118,10 +116,6 @@ export default function AddProperty() {
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
 
-    const BILLING_CYCLES = ["Month", "Week", "Day"];
-    const PROPERTY_TYPES = ["House", "Apartment", "Sublet", "Room", "Mess", "Cottage", "Hotel", "Resort", "Commercial Space", "Land", "Shop", "Others"];
-    const TENANT_TYPES = ["Any", "Family", "Bachelor (Male)", "Bachelor (Female)"];
-
     // Location Helpers
     const divisions = useMemo(() => Object.keys(bdLocations), []);
     const districts = useMemo(() => {
@@ -132,34 +126,6 @@ export default function AddProperty() {
             ? bdLocations[formData.division][formData.district] || []
             : [];
     }, [formData.division, formData.district]);
-
-    const UTILITY_OPTIONS = [
-        { id: 'Prepaid Gas', icon: <Flame size={16} /> },
-        { id: 'Line Gas', icon: <Flame size={16} /> },
-        { id: 'Prepaid Electricity', icon: <Zap size={16} /> },
-        { id: 'Postpaid Electricity', icon: <Zap size={16} /> },
-        { id: 'Water (WASA)', icon: <Droplets size={16} /> },
-        { id: 'Deep Tube-well Water', icon: <Droplets size={16} /> },
-        { id: 'Central WiFi', icon: <Wifi size={16} /> },
-        { id: 'Trash Collection', icon: <Trash2 size={16} /> },
-        { id: 'Generator/IPS Backup', icon: <Battery size={16} /> }
-    ];
-
-    const FEATURE_OPTIONS = [
-        { id: 'Lift/Elevator', icon: <ArrowRight className="rotate-[-90deg]" size={16} /> },
-        { id: 'CCTV Security', icon: <ShieldCheck size={16} /> },
-        { id: 'Fire Exit', icon: <DoorOpen size={16} /> },
-        { id: 'Emergency Stairs', icon: <ChevronsUp size={16} /> },
-        { id: 'Intercom', icon: <Phone size={16} /> },
-        { id: 'Roof Access', icon: <CloudSun size={16} /> },
-        { id: 'Drawing & Dining Separate', icon: <UtensilsCrossed size={16} /> },
-        { id: 'Geyser Connection', icon: <Thermometer size={16} /> },
-        { id: 'Cabinet/Wall Cupboard', icon: <Package size={16} /> },
-        { id: 'Balcony', icon: <Wind size={16} /> },
-        { id: 'Tiled Floor', icon: <Building2 size={16} /> },
-        { id: 'Car Parking', icon: <Car size={16} /> },
-        { id: 'Bike Parking', icon: <Bike size={16} /> }
-    ];
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -203,73 +169,17 @@ export default function AddProperty() {
             return;
         }
 
-        setLoading(true);
-        const uploadedUrls = [];
-
-        try {
-            const sigRes = await fetch(getApiUrl('/api/cloudinary-sign'), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${await currentUser.getIdToken()}`,
-                },
-                body: JSON.stringify({ isKyc: false })
+        const uploadedUrls = await uploadImages(files);
+        if (uploadedUrls.length > 0) {
+            setFormData(prev => {
+                const newImages = [...prev.images, ...uploadedUrls];
+                return {
+                    ...prev,
+                    images: newImages,
+                    imageUrl: newImages[0], // Keep for backward compatibility
+                    image_url: newImages[0]  // Keep for backward compatibility
+                };
             });
-            const sigData = await sigRes.json();
-            if (!sigRes.ok) throw new Error(sigData.error || 'Failed to generate secure upload signature. Ensure backend API keys are configured.');
-
-            for (const file of files) {
-                const data = new FormData();
-                data.append('file', file);
-                data.append('api_key', sigData.apiKey);
-                data.append('timestamp', sigData.timestamp);
-                data.append('signature', sigData.signature);
-                data.append('folder', sigData.folder);
-
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-                const res = await fetch(`https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`, {
-                    method: 'POST',
-                    body: data,
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-                
-                const fileData = await res.json();
-                
-                if (!res.ok) {
-                    logger.error("Cloudinary Error:", fileData);
-                    toast.error(`Upload failed!\nError: ${fileData.error?.message || "Unknown error"}`);
-                    throw new Error(fileData.error?.message || 'Upload failed');
-                }
-                
-                if (fileData.secure_url) {
-                    uploadedUrls.push(fileData.secure_url);
-                }
-            }
-
-            if (uploadedUrls.length > 0) {
-                setFormData(prev => {
-                    const newImages = [...prev.images, ...uploadedUrls];
-                    return { 
-                        ...prev, 
-                        images: newImages,
-                        imageUrl: newImages[0], // Keep for backward compatibility
-                        image_url: newImages[0]  // Keep for backward compatibility
-                    };
-                });
-            }
-        } catch (error) {
-            logger.error('Error during upload process:', error);
-            if (error.name === 'AbortError') {
-                toast.error('Upload timed out. Please check your connection and try again.');
-            } else if (!error.message?.includes('Upload failed')) {
-                // Only show toast if we haven't already shown one from the inner loop
-                toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
-            }
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -484,402 +394,45 @@ export default function AddProperty() {
 
             <div className="p-5 max-w-2xl mx-auto w-full">
                 {step === 1 && (
-                    <div className="space-y-6 fade-in">
-                        <Section title="Basic Details" icon={<Building2 size={20} />}>
-                            <Input label="Property Title" name="title" value={formData.title} onChange={handleChange} placeholder="e.g. Modern Flat in Gulshan" required />
-                            <div className="grid grid-cols-2 gap-4">
-                                <Select label="Property Type" name="type" value={formData.type} onChange={handleChange}>
-                                    {PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                </Select>
-                                <Input label="Rent (৳)" name="rent" type="number" value={formData.rent} onChange={handleChange} placeholder="25000" required />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest flex items-center gap-1">
-                                        <Calendar size={12} /> Billing Cycle
-                                    </label>
-                                    <Select name="billingCycle" value={formData.billingCycle} onChange={handleChange}>
-                                        {BILLING_CYCLES.map(cycle => <option key={cycle} value={cycle}>{cycle}</option>)}
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest flex items-center gap-1">
-                                        <Users size={12} /> Tenant Type
-                                    </label>
-                                    <Select name="tenantType" value={formData.tenantType} onChange={handleChange}>
-                                        {TENANT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </Select>
-                                </div>
-                            </div>
-                        </Section>
-
-                        <Section title="Location Setup" icon={<MapPin size={20} />}>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Select label="Division" name="division" value={formData.division} onChange={handleChange} required>
-                                        <option value="">Select Division</option>
-                                        {divisions.map(d => <option key={d} value={d}>{d}</option>)}
-                                    </Select>
-                                    <Select label="District" name="district" value={formData.district} onChange={handleChange} disabled={!formData.division} required>
-                                        <option value="">Select District</option>
-                                        {districts.map(d => <option key={d} value={d}>{d}</option>)}
-                                    </Select>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Select label="Thana / Upazila" name="upazila" value={formData.upazila} onChange={handleChange} disabled={!formData.district} required>
-                                        <option value="">Select Thana</option>
-                                        {thanas.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </Select>
-                                    <Input label="House/Road No. (Details)" name="addressDetails" value={formData.addressDetails} onChange={handleChange} placeholder="e.g. House 5, Road 10" />
-                                </div>
-                                
-                                <div className="pt-2">
-                                    <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest block mb-2">Pin Exact Location on Map</label>
-                                    <LocationPickerMap 
-                                        lat={formData.lat} 
-                                        lng={formData.lng} 
-                                        division={formData.division}
-                                        district={formData.district}
-                                        upazila={formData.upazila}
-                                        onLocationSelect={(coords) => setFormData(prev => ({ ...prev, lat: coords.lat, lng: coords.lng }))} 
-                                    />
-                                </div>
-                            </div>
-                        </Section>
-
-                        <Section title="Specifications & Utilities" icon={<Info size={20} />}>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                <Input label="Beds" name="beds" type="number" value={formData.beds} onChange={handleChange} />
-                                <Input label="Baths" name="baths" type="number" value={formData.baths} onChange={handleChange} />
-                                <Input label="Verandas" name="verandas" type="number" value={formData.verandas} onChange={handleChange} />
-                                <Input label="SqFt (Optional)" name="area" type="number" value={formData.area} onChange={handleChange} placeholder="N/A" />
-                            </div>
-
-                            <div className="pt-4 mt-4 border-t border-slate-100 dark:border-white/[0.06]">
-                                <div className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20">
-                                    <div className="flex-1 pr-4">
-                                        <h4 className="text-sm font-black text-indigo-900 dark:text-indigo-400">Instant Booking</h4>
-                                        <p className="text-[10px] font-bold text-indigo-700/70 dark:text-indigo-400/70 mt-1 leading-relaxed">If enabled, a "Book Now" button will appear on your listing. You can set up the required deposit amount in your dashboard later.</p>
-                                    </div>
-                                    <Select name="instantBooking" value={formData.instantBooking ? 'Yes' : 'No'} onChange={(e) => setFormData(prev => ({ ...prev, instantBooking: e.target.value === 'Yes' }))} className="w-24 bg-white dark:bg-[#222630] !py-2">
-                                        <option value="No">No</option>
-                                        <option value="Yes">Yes</option>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 mt-4">
-                                <Input label="Security Deposit (Optional)" name="securityDeposit" type="number" value={formData.securityDeposit} onChange={handleChange} placeholder="৳0" />
-                                {/* <Input label="Agent Commission (if applicable)" name="agentCommission" value={formData.agentCommission} onChange={handleChange} placeholder="e.g. 1 Month Rent or ৳10000" /> */}
-                            </div>
-                            <Textarea label="Description" name="description" value={formData.description} onChange={handleChange} placeholder="Tell tenants about your space..." />
-                        </Section>
-
-                        <Section title="Media (Up to 5 images)" icon={<ImageIcon size={20} />}>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                    {formData.images.map((url, index) => (
-                                        <div key={index} className="relative aspect-square rounded-2xl overflow-hidden group border border-slate-100 dark:border-white/[0.06] shadow-sm">
-                                            <img loading="lazy" src={url} alt={`Property ${index + 1}`} className="w-full h-full object-cover" />
-                                            <button 
-                                                onClick={() => removeImage(index)}
-                                                className="absolute top-2 right-2 p-1.5 bg-rose-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-rose-500/20"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                            {index === 0 && (
-                                                <div className="absolute bottom-0 inset-x-0 bg-primary/80 backdrop-blur-sm py-1 text-[8px] font-black text-white text-center uppercase tracking-widest">
-                                                    Main Cover
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                    
-                                    {formData.images.length < 5 && (
-                                        <div className="relative aspect-square flex flex-col gap-2">
-                                            <input 
-                                                type="file" 
-                                                accept="image/*" 
-                                                multiple
-                                                onChange={handleImageUpload}
-                                                className="hidden" 
-                                                id="image-upload" 
-                                                disabled={loading}
-                                            />
-                                            <input 
-                                                type="file" 
-                                                accept="image/*" 
-                                                capture="environment"
-                                                onChange={handleImageUpload}
-                                                className="hidden" 
-                                                id="camera-upload" 
-                                                disabled={loading}
-                                            />
-                                            <label 
-                                                htmlFor="image-upload"
-                                                className="flex-1 flex flex-col items-center justify-center w-full border-2 border-dashed border-slate-200 dark:border-white/[0.06] rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
-                                            >
-                                                <div className="text-primary dark:text-indigo-400 mb-0.5">
-                                                    <ImageIcon size={18} />
-                                                </div>
-                                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                                    {loading ? "..." : "Gallery"}
-                                                </p>
-                                            </label>
-                                            <label 
-                                                htmlFor="camera-upload"
-                                                className="flex-1 flex flex-col items-center justify-center w-full border-2 border-dashed border-slate-200 dark:border-white/[0.06] rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
-                                            >
-                                                <div className="text-primary dark:text-indigo-400 mb-0.5">
-                                                    <Camera size={18} />
-                                                </div>
-                                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                                    {loading ? "..." : "Camera"}
-                                                </p>
-                                            </label>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                {loading && (
-                                    <div className="h-1 w-full bg-slate-100 dark:bg-white/[0.06] rounded-full overflow-hidden">
-                                        <div className="h-full bg-primary animate-progress" style={{ width: '100%' }} />
-                                    </div>
-                                )}
-                            </div>
-                        </Section>
-
-                        <button
-                            type="button"
-                            onClick={nextStep}
-                            disabled={!formData.title || !formData.rent || !formData.upazila || !formData.imageUrl}
-                            className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
-                        >
-                            Continue: Amenities
-                            <ArrowRight size={20} />
-                        </button>
-                    </div>
+                    <StepBasics
+                        formData={formData}
+                        setFormData={setFormData}
+                        onChange={handleChange}
+                        onImageUpload={handleImageUpload}
+                        onRemoveImage={removeImage}
+                        uploading={uploading}
+                        onNext={nextStep}
+                        divisions={divisions}
+                        districts={districts}
+                        thanas={thanas}
+                    />
                 )}
 
                 {step === 2 && (
-                    <div className="space-y-6 fade-in">
-                        <Section title="Utilities & Features" icon={<Info size={20} />}>
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">Included Utilities</label>
-                                    <div className="grid grid-cols-2 gap-2 mt-2">
-                                        {UTILITY_OPTIONS.map(opt => (
-                                            <button
-                                                key={opt.id}
-                                                type="button"
-                                                onClick={() => toggleItem('utilities', opt.id)}
-                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.utilities.includes(opt.id) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-[#222630] border-transparent text-slate-500'}`}
-                                            >
-                                                {opt.icon}
-                                                <span className="truncate">{opt.id}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <Input label="Monthly Utilities Cost (৳)" name="utilitiesCost" type="number" value={formData.utilitiesCost} onChange={handleChange} placeholder="e.g. 2000" />
-
-                                <div>
-                                    <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">Property Features</label>
-                                    <div className="grid grid-cols-2 gap-2 mt-2">
-                                        {FEATURE_OPTIONS.map(opt => (
-                                            <button
-                                                key={opt.id}
-                                                type="button"
-                                                onClick={() => toggleItem('features', opt.id)}
-                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.features.includes(opt.id) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-[#222630] border-transparent text-slate-500'}`}
-                                            >
-                                                {opt.icon}
-                                                <span className="truncate">{opt.id}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </Section>
-
-                        <Section title="BD Specific Policies & Amenities" icon={<Building2 size={20} />}>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Select label="Gas Supply" name="gasSupply" value={formData.gasSupply} onChange={handleChange}>
-                                    <option value="Line Gas">Line Gas</option>
-                                    <option value="Prepaid Gas">Prepaid Gas</option>
-                                    <option value="Cylinder">Cylinder</option>
-                                </Select>
-                                <Select label="Electricity Bill" name="electricityBilling" value={formData.electricityBilling} onChange={handleChange}>
-                                    <option value="Excluded">Excluded (Standard)</option>
-                                    <option value="Included">Included in Rent</option>
-                                    <option value="Sub-meter">Sub-meter</option>
-                                </Select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Select label="Water Source" name="waterSource" value={formData.waterSource} onChange={handleChange}>
-                                    <option value="WASA">WASA</option>
-                                    <option value="Deep Tube-well">Deep Tube-well</option>
-                                    <option value="Tank">Tank Delivery</option>
-                                </Select>
-                                <Select label="Facing Direction" name="facing" value={formData.facing} onChange={handleChange}>
-                                    <option value="">Select Direction</option>
-                                    <option value="South">South Facing</option>
-                                    <option value="North">North Facing</option>
-                                    <option value="East">East Facing</option>
-                                    <option value="West">West Facing</option>
-                                </Select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input label="Floor Number" name="floorNumber" value={formData.floorNumber} onChange={handleChange} placeholder="e.g. 5th Floor" />
-                                <Select label="Parking Type" name="parkingType" value={formData.parkingType} onChange={handleChange}>
-                                    <option value="None">None</option>
-                                    <option value="Covered">Covered Garage</option>
-                                    <option value="Open">Open Parking</option>
-                                </Select>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4">
-                                <Select label="Pet Policy" name="petPolicy" value={formData.petPolicy} onChange={handleChange}>
-                                    <option value="Not Allowed">Not Allowed</option>
-                                    <option value="Allowed">Allowed</option>
-                                </Select>
-                                <Select label="Bachelor Policy" name="bachelorPolicy" value={formData.bachelorPolicy} onChange={handleChange}>
-                                    <option value="Not Allowed">Not Allowed</option>
-                                    <option value="Allowed">Allowed</option>
-                                </Select>
-                                <Select label="Family Policy" name="familyPolicy" value={formData.familyPolicy} onChange={handleChange}>
-                                    <option value="Family Only">Family Only</option>
-                                    <option value="Any">Any</option>
-                                </Select>
-                            </div>
-
-                            <div>
-                                <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest block mb-2">Nearby Distances (in km/meters)</label>
-                                <div className="grid grid-cols-3 gap-4">
-                                    <Input label="Mosque" name="mosque" value={formData.distances.mosque} onChange={handleDistanceChange} placeholder="e.g. 0.5km" />
-                                    <Input label="School" name="school" value={formData.distances.school} onChange={handleDistanceChange} placeholder="e.g. 1km" />
-                                    <Input label="Market" name="market" value={formData.distances.market} onChange={handleDistanceChange} placeholder="e.g. 200m" />
-                                </div>
-                            </div>
-                        </Section>
-
-                        <button
-                            type="button"
-                            onClick={nextStep}
-                            className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95"
-                        >
-                            Preview Details
-                            <ArrowRight size={20} />
-                        </button>
-                    </div>
+                    <StepDetails
+                        formData={formData}
+                        onChange={handleChange}
+                        onDistanceChange={handleDistanceChange}
+                        toggleItem={toggleItem}
+                        onNext={nextStep}
+                    />
                 )}
 
                 {step === 3 && (
-                    <div className="space-y-6 fade-in">
-                        <div className="space-y-4">
-                            <div className="relative h-64 rounded-3xl overflow-hidden shadow-xl">
-                                <img loading="lazy" src={formData.imageUrl} className="w-full h-full object-cover" alt="Preview" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                                <div className="absolute bottom-6 left-6 right-6">
-                                    <span className="bg-primary px-3 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-widest mb-2 inline-block shadow-lg">
-                                        {formData.type}
-                                    </span>
-                                    <h2 className="text-xl font-black text-white uppercase truncate">{formData.title}</h2>
-                                </div>
-                            </div>
-                            
-                            {formData.images.length > 1 && (
-                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                    {formData.images.map((url, idx) => (
-                                        <div 
-                                            key={idx} 
-                                            className={`size-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${formData.imageUrl === url ? 'border-primary scale-105' : 'border-transparent opacity-60'}`}
-                                            onClick={() => setFormData(prev => ({ ...prev, imageUrl: url, image_url: url }))}
-                                        >
-                                            <img loading="lazy" src={url} className="w-full h-full object-cover" alt="Thumb" />
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <Section title="Everything Looks Good?" icon={<CheckCircle size={20} />}>
-                            <div className="grid grid-cols-2 gap-y-4 text-sm">
-                                <PreviewInfo label="Rent" value={`৳${formData.rent}/${formData.billingCycle}`} />
-                                <PreviewInfo label="Location" value={`${formData.upazila}, ${formData.district}`} />
-                                <PreviewInfo label="Specs" value={`${formData.beds}B / ${formData.baths}Bath`} />
-                                <PreviewInfo label="Size" value={formData.area ? `${formData.area} Sqft` : 'N/A'} />
-                                <PreviewInfo label="Utilities Cost" value={`৳${formData.utilitiesCost || 0}`} />
-                                <PreviewInfo label="Security" value={`৳${formData.securityDeposit || 0}`} />
-                            </div>
-                            <div className="pt-4 border-t border-slate-50 dark:border-white/[0.06]">
-                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1 leading-none">Full Address</p>
-                                <p className="text-sm font-black text-slate-800 dark:text-slate-200 mb-3">{formData.addressDetails || 'Not specified'}, {formData.upazila}, {formData.district}, {formData.division}</p>
-                                <p className="text-xs text-slate-400 font-bold leading-relaxed">{formData.description}</p>
-                            </div>
-                        </Section>
-
-                        {hasActiveSubscription && (
-                            <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 mb-3">
-                                <CheckCircle size={20} className="text-emerald-600 shrink-0" />
-                                <div>
-                                    <p className="font-black text-emerald-700 dark:text-emerald-400 text-sm">{subscriptionPlan} Plan Active</p>
-                                    <p className="text-xs font-medium text-emerald-600/80">Listing fee included in your subscription — post for free!</p>
-                                </div>
-                            </div>
-                        )}
-
-                        <div
-                            onClick={() => setWantOnsiteVerify(v => !v)}
-                            className={`flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all mb-3 ${
-                                wantOnsiteVerify
-                                    ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                                    : 'border-slate-100 dark:border-white/[0.06] hover:border-primary/40'
-                            }`}
-                        >
-                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
-                                wantOnsiteVerify ? 'bg-primary border-primary' : 'border-slate-300 dark:border-slate-600'
-                            }`}>
-                                {wantOnsiteVerify && <CheckCircle size={14} className="text-white" strokeWidth={3} />}
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex items-center justify-between">
-                                    <p className="font-black text-slate-900 dark:text-white text-sm">Add On-Site Verification</p>
-                                    <span className="text-xs font-black text-primary dark:text-indigo-400">+ ৳{ONSITE_FEE}</span>
-                                </div>
-                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                    Our team visits your property, verifies it, and adds a <span className="font-black text-emerald-600">Verified ✅</span> badge — boosting trust with tenants.
-                                </p>
-                            </div>
-                        </div>
-
-                        <button
-                            type="button"
-                            disabled={loading}
-                            onClick={handleProceedToPayment}
-                            className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70"
-                        >
-                            <CreditCard size={20} />
-                            {totalAmount === 0 ? 'Publish Ad — Free with Subscription' : `Publish Ad — ৳${totalAmount}`}
-                        </button>
-
-                        <p className="text-center text-[10px] font-bold text-slate-400 mt-2">
-                            {hasActiveSubscription
-                                ? `${subscriptionPlan} subscription · Listing: Free${wantOnsiteVerify ? ` · On-Site Verify: ৳${ONSITE_FEE}` : ''}`
-                                : `Listing Fee: ৳${LISTING_FEE}${wantOnsiteVerify ? ` · On-Site Verify: ৳${ONSITE_FEE}` : ' · or get a subscription plan to post free'}`
-                            }
-                        </p>
-
-                        <button
-                            onClick={() => setStep(2)}
-                            className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-primary dark:text-indigo-400 transition-colors mt-2"
-                        >
-                            Wait, go back and edit
-                        </button>
-                    </div>
+                    <StepPreview
+                        formData={formData}
+                        setFormData={setFormData}
+                        hasActiveSubscription={hasActiveSubscription}
+                        subscriptionPlan={subscriptionPlan}
+                        wantOnsiteVerify={wantOnsiteVerify}
+                        setWantOnsiteVerify={setWantOnsiteVerify}
+                        onsiteFee={ONSITE_FEE}
+                        listingFee={LISTING_FEE}
+                        totalAmount={totalAmount}
+                        loading={loading}
+                        onProceedToPayment={handleProceedToPayment}
+                        onBack={() => setStep(2)}
+                    />
                 )}
             </div>
 
@@ -925,72 +478,3 @@ export default function AddProperty() {
     );
 }
 
-function Section({ title, icon, children }) {
-    return (
-        <div className="bg-white dark:bg-[#1A1D24] p-6 rounded-3xl border border-slate-100 dark:border-white/[0.06] shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-primary dark:text-indigo-400">
-                {icon}
-                <h3 className="font-black uppercase text-xs tracking-widest">{title}</h3>
-            </div>
-            {children}
-        </div>
-    );
-}
-
-function Input({ label, ...props }) {
-    return (
-        <div className="space-y-1">
-            <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">{label}</label>
-            <input
-                className="w-full bg-slate-50 dark:bg-[#222630] border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                {...props}
-            />
-        </div>
-    );
-}
-
-function PreviewInfo({ label, value }) {
-    return (
-        <div>
-            <p className="text-[9px] uppercase font-black text-slate-400 tracking-[0.1em]">{label}</p>
-            <p className="font-black text-slate-900 dark:text-white uppercase tracking-tight">{value}</p>
-        </div>
-    );
-}
-
-function Select({ label, children, ...props }) {
-    return (
-        <div className="space-y-1">
-            <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">{label}</label>
-            <div className="relative">
-                <select
-                    className="w-full bg-slate-50 dark:bg-[#222630] border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none disabled:opacity-50"
-                    {...props}
-                >
-                    {children}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <ChevronDown size={16} />
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function Textarea({ label, ...props }) {
-    return (
-        <div className="space-y-1">
-            <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">{label}</label>
-            <textarea
-                className="w-full bg-slate-50 dark:bg-[#222630] border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-primary/50 transition-all h-32"
-                {...props}
-            />
-        </div>
-    );
-}
-
-function ChevronDown({ size, className }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6" /></svg>
-    )
-}
