@@ -1,31 +1,15 @@
-/**
- * ReferralDashboard.jsx
- *
- * A full-page dedicated "Earn Money" / referral screen.
- * Placed at route /referral (protected).
- *
- * Sections:
- *   1. Your referral link + copy button
- *   2. Stats overview (Referred, Total Earned, Available Balance)
- *   3. Commission history table
- *   4. Referred Friends list
- *   5. Withdraw / Claim button + modal
- */
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-    ArrowLeft, Copy, Check, Gift, Users, TrendingUp,
-    Wallet, ChevronRight, Clock, AlertCircle, Share2,
-    ExternalLink, BadgeCheck, Banknote, X, RefreshCw
-} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import { useReferral } from '../hooks/useReferral';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../firebase';
 import { formatBDT } from '../utils/referral';
-
-// ─── helpers ──────────────────────────────────────────────────────────────────
+import { getApiUrl } from '../utils/api';
+import Container from '../components/layout/Container';
+import Grid from '../components/layout/Grid';
+import { Card, Button, Input, Field, IconButton, Icon, Badge, useToast, Spinner } from '../components/ui';
 
 function relativeTime(ts) {
     if (!ts) return '';
@@ -37,39 +21,30 @@ function relativeTime(ts) {
     return `${Math.floor(diff / 86400)}d ago`;
 }
 
-// ─── Withdraw Modal ────────────────────────────────────────────────────────────
-
-import { createPortal } from 'react-dom';
-import { getApiUrl } from '../utils/api';
-
-function WithdrawModal({ available, onClose, uid }) {
+function WithdrawModal({ available, onClose }) {
     const [amount, setAmount]         = useState('');
     const [bankName, setBankName]     = useState('');
     const [accNo, setAccNo]           = useState('');
     const [accName, setAccName]       = useState('');
     const [loading, setLoading]       = useState(false);
     const [success, setSuccess]       = useState(false);
-    const [error, setError]           = useState('');
+    const toast = useToast();
 
     const minWithdraw = 100;
 
     async function submit(e) {
         e.preventDefault();
-        setError('');
         const amt = parseFloat(amount);
         if (isNaN(amt) || amt < minWithdraw) {
-            setError(`Minimum withdrawal is ${formatBDT(minWithdraw)}`);
+            toast.error(`Minimum withdrawal is ${formatBDT(minWithdraw)}`);
             return;
         }
         if (amt > available) {
-            setError('Amount exceeds your available balance.');
+            toast.error('Amount exceeds your available balance.');
             return;
         }
         setLoading(true);
         try {
-            // ── Secure: call the server-side withdrawal endpoint ──────────────
-            // The server validates the balance atomically and writes to Firestore
-            // via the Admin SDK, bypassing client-side Firestore rules entirely.
             const idToken = await auth.currentUser?.getIdToken(true);
             if (!idToken) throw new Error('Not authenticated');
 
@@ -89,7 +64,7 @@ function WithdrawModal({ available, onClose, uid }) {
             if (!response.ok) throw new Error(data.error || 'Withdrawal failed');
             setSuccess(true);
         } catch (err) {
-            setError(err.message || 'Withdrawal failed. Please try again.');
+            toast.error(err.message || 'Withdrawal failed. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -100,123 +75,121 @@ function WithdrawModal({ available, onClose, uid }) {
     return createPortal(
         <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
             onClick={onClose}
         >
             <motion.div
                 initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 100, opacity: 0 }} transition={{ type: 'spring', damping: 22 }}
-                className="bg-white dark:bg-slate-900 rounded-[32px] p-7 w-full max-w-md shadow-2xl"
+                className="w-full max-w-md"
                 onClick={e => e.stopPropagation()}
             >
-                {success ? (
-                    <div className="text-center py-6">
-                        <div className="size-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-5">
-                            <BadgeCheck size={40} className="text-emerald-500" />
-                        </div>
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Request Submitted!</h3>
-                        <p className="text-sm text-slate-500 font-medium mb-6">
-                            Your withdrawal request is under review. We'll process it within 1-3 business days.
-                        </p>
-                        <button onClick={onClose} className="w-full bg-primary text-white font-black py-4 rounded-2xl">
-                            Done
-                        </button>
-                    </div>
-                ) : (
-                    <>
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white">Withdraw Earnings</h3>
-                            <button onClick={onClose} className="size-9 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-500">
-                                <X size={18} />
-                            </button>
-                        </div>
-
-                        <div className="bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl p-4 mb-6 flex items-center justify-between">
-                            <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-0.5">Available Balance</p>
-                                <p className="text-2xl font-black text-indigo-700 dark:text-indigo-300">{formatBDT(available)}</p>
+                <Card padding="xl" className="shadow-2xl">
+                    {success ? (
+                        <div className="py-6 text-center">
+                            <div className="mx-auto mb-5 grid size-20 place-items-center rounded-full bg-success-subtle text-success">
+                                <Icon name="success" className="size-10" />
                             </div>
-                            <Wallet size={28} className="text-indigo-400" />
+                            <h3 className="mb-2 text-title-lg font-display text-content">Request Submitted!</h3>
+                            <p className="mb-6 text-body-sm text-muted">
+                                Your withdrawal request is under review. We'll process it within 1-3 business days.
+                            </p>
+                            <Button fullWidth onClick={onClose}>Done</Button>
                         </div>
-
-                        {error && (
-                            <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 rounded-2xl p-4 mb-4 text-rose-600 text-sm font-bold">
-                                <AlertCircle size={16} className="shrink-0" /> {error}
+                    ) : (
+                        <>
+                            <div className="mb-6 flex items-center justify-between">
+                                <h3 className="text-title-md font-display text-content">Withdraw Earnings</h3>
+                                <IconButton variant="ghost" onClick={onClose} label="Close">
+                                    <Icon name="close" />
+                                </IconButton>
                             </div>
-                        )}
 
-                        <form onSubmit={submit} className="space-y-3">
-                            <input
-                                type="number" required min={minWithdraw} max={available}
-                                placeholder={`Amount (min ${formatBDT(minWithdraw)})`}
-                                value={amount} onChange={e => setAmount(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3.5 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-primary transition-all"
-                            />
-                            <input
-                                type="text" required placeholder="Bank / bKash / Nagad Name"
-                                value={bankName} onChange={e => setBankName(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3.5 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-primary transition-all"
-                            />
-                            <input
-                                type="text" required placeholder="Account / Mobile Number"
-                                value={accNo} onChange={e => setAccNo(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3.5 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-primary transition-all"
-                            />
-                            <input
-                                type="text" required placeholder="Account Holder Name"
-                                value={accName} onChange={e => setAccName(e.target.value)}
-                                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-4 py-3.5 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-primary transition-all"
-                            />
-                            <button
-                                disabled={loading}
-                                className="w-full bg-primary text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-70 mt-2"
-                            >
-                                {loading ? <><RefreshCw size={18} className="animate-spin" /> Processing...</> : <><Banknote size={18} /> Request Withdrawal</>}
-                            </button>
-                        </form>
-                    </>
-                )}
+                            <div className="mb-6 flex items-center justify-between rounded-card bg-primary-subtle p-4">
+                                <div>
+                                    <p className="mb-0.5 text-caption uppercase tracking-wider text-primary">Available Balance</p>
+                                    <p className="font-display text-display-sm text-primary">{formatBDT(available)}</p>
+                                </div>
+                                <Icon name="wallet" className="size-7 text-primary opacity-80" />
+                            </div>
+
+                            <form onSubmit={submit} className="space-y-4">
+                                <Field required>
+                                    <Input
+                                        type="number" min={minWithdraw} max={available}
+                                        placeholder={`Amount (min ${formatBDT(minWithdraw)})`}
+                                        value={amount} onChange={e => setAmount(e.target.value)}
+                                        required
+                                    />
+                                </Field>
+                                <Field required>
+                                    <Input
+                                        type="text" placeholder="Bank / bKash / Nagad Name"
+                                        value={bankName} onChange={e => setBankName(e.target.value)}
+                                        required
+                                    />
+                                </Field>
+                                <Field required>
+                                    <Input
+                                        type="text" placeholder="Account / Mobile Number"
+                                        value={accNo} onChange={e => setAccNo(e.target.value)}
+                                        required
+                                    />
+                                </Field>
+                                <Field required>
+                                    <Input
+                                        type="text" placeholder="Account Holder Name"
+                                        value={accName} onChange={e => setAccName(e.target.value)}
+                                        required
+                                    />
+                                </Field>
+                                <Button
+                                    type="submit" fullWidth disabled={loading}
+                                    leftIcon={loading ? <Icon name="refresh" className="animate-spin" /> : <Icon name="payments" />}
+                                    className="mt-2"
+                                >
+                                    {loading ? 'Processing...' : 'Request Withdrawal'}
+                                </Button>
+                            </form>
+                        </>
+                    )}
+                </Card>
             </motion.div>
         </motion.div>,
         document.body
     );
 }
 
-// ─── Stat Card ─────────────────────────────────────────────────────────────────
-
-function StatCard({ icon: Icon, label, value, accent = 'indigo' }) {
-    const colors = {
-        indigo: 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400',
-        emerald:'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400',
-        violet: 'bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400',
+function StatCard({ icon, label, value, tone = 'primary' }) {
+    const tones = {
+        primary: 'bg-primary-subtle text-primary',
+        success: 'bg-success-subtle text-success',
+        info: 'bg-info-subtle text-info',
     };
     return (
-        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] p-5 flex flex-col gap-3">
-            <div className={`size-10 rounded-2xl flex items-center justify-center ${colors[accent]}`}>
-                <Icon size={20} />
+        <Card padding="md" className="flex flex-col gap-3">
+            <div className={`grid size-10 place-items-center rounded-control ${tones[tone] || tones.primary}`}>
+                <Icon name={icon} className="size-5" />
             </div>
             <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</p>
-                <p className="text-xl font-black text-slate-900 dark:text-white">{value}</p>
+                <p className="mb-1 text-caption uppercase tracking-wider text-muted">{label}</p>
+                <p className="font-display text-title-lg text-content">{value}</p>
             </div>
-        </div>
+        </Card>
     );
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
-
 export default function ReferralDashboard() {
-    const navigate = useNavigate();
     const { currentUser } = useAuth();
 
     const {
         referralLink, referralCode,
         referees, commissions,
-        totalEarned, availableBalance, withdrawn,
+        totalEarned, availableBalance,
         loading,
     } = useReferral();
 
-    const [copied, setCopied]           = useState(false);
+    const [copied, setCopied] = useState(false);
     const [showWithdraw, setShowWithdraw] = useState(false);
 
     function copyLink() {
@@ -240,144 +213,139 @@ export default function ReferralDashboard() {
 
     if (loading) {
         return (
-            <div className="flex flex-col min-h-screen items-center justify-center bg-white dark:bg-slate-950">
-                <RefreshCw size={28} className="animate-spin text-primary dark:text-indigo-400 mb-3" />
-                <p className="text-sm font-bold text-slate-400">Loading your earnings...</p>
+            <div className="flex min-h-screen flex-col items-center justify-center bg-bg">
+                <Spinner size="lg" className="mb-3 text-primary" />
+                <p className="text-body-sm font-medium text-muted">Loading your earnings...</p>
             </div>
         );
     }
 
     return (
         <>
-            <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-32">
-                {/* ── Header ── */}
-                <header className="flex items-center justify-center p-6 bg-white dark:bg-slate-950 sticky top-14 z-10 border-b border-slate-100 dark:border-slate-800">
-                    <h1 className="text-[14px] font-[900] text-[#1a227f] dark:text-white tracking-[0.2em] uppercase">Earn Money</h1>
+            <div className="min-h-screen bg-bg pb-32">
+                <header className="sticky top-14 z-10 flex items-center justify-center border-b border-border bg-bg p-6">
+                    <h1 className="text-caption font-bold tracking-widest text-primary uppercase">Earn Money</h1>
                 </header>
 
-                <div className="p-6 space-y-6 max-w-lg mx-auto w-full">
-
-                    {/* ── Hero Banner ── */}
-                    <div className="relative bg-gradient-to-br from-[#1a227f] to-[#3730a3] rounded-[28px] p-7 overflow-hidden text-white">
-                        <div className="absolute -right-8 -top-8 size-36 rounded-full bg-white/5" />
-                        <div className="absolute -right-2 top-12 size-20 rounded-full bg-white/5" />
-                        <Gift size={32} className="mb-4 opacity-90" />
-                        <h2 className="text-2xl font-black mb-1 leading-tight">Refer & Earn</h2>
-                        <p className="text-white/70 text-sm font-medium leading-relaxed">
-                            Share your link. Earn a <strong className="text-white">5% lifetime commission</strong> on every purchase your referred friends make.
+                <Container size="narrow" className="mt-6 space-y-6">
+                    {/* Hero Banner */}
+                    <div className="relative overflow-hidden rounded-card bg-primary p-7 text-on-primary">
+                        <div className="absolute -right-8 -top-8 size-36 rounded-full bg-white/10" />
+                        <div className="absolute -right-2 top-12 size-20 rounded-full bg-white/10" />
+                        <Icon name="favorite" className="mb-4 size-8 opacity-90" />
+                        <h2 className="mb-1 font-display text-display-sm leading-tight">Refer & Earn</h2>
+                        <p className="text-body-sm font-medium text-on-primary/80 leading-relaxed">
+                            Share your link. Earn a <strong className="text-on-primary">5% lifetime commission</strong> on every purchase your referred friends make.
                         </p>
                     </div>
 
-                    {/* ── Referral Link Box ── */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] p-5 space-y-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Your Referral Link</p>
+                    {/* Referral Link Box */}
+                    <Card padding="lg" className="space-y-4">
+                        <p className="text-caption uppercase tracking-wider text-muted">Your Referral Link</p>
 
-                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-1 pl-4">
-                            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 truncate flex-1">{referralLink}</p>
-                            <button
-                                onClick={copyLink}
-                                className={`shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-black transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-primary text-white hover:bg-primary/90'}`}
+                        <div className="flex items-center gap-2 rounded-control border border-border bg-surface-sunken p-1 pl-4">
+                            <p className="flex-1 truncate text-body-sm font-medium text-content">{referralLink}</p>
+                            <Button 
+                                variant={copied ? 'secondary' : 'primary'} 
+                                onClick={copyLink} 
+                                className="shrink-0"
+                                leftIcon={<Icon name={copied ? 'check' : 'copy'} />}
                             >
-                                {copied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy</>}
-                            </button>
+                                {copied ? 'Copied!' : 'Copy'}
+                            </Button>
                         </div>
 
                         <div className="flex items-center gap-2 pt-1">
-                            <p className="text-[10px] font-bold text-slate-400">Code:</p>
-                            <span className="font-black text-xs text-primary dark:text-indigo-400 bg-primary/10 px-3 py-1 rounded-lg tracking-wide">{referralCode}</span>
-                            <button onClick={shareLink} className="ml-auto flex items-center gap-1.5 text-xs font-black text-primary dark:text-indigo-400 hover:text-primary dark:text-indigo-400/80 transition-colors">
-                                <Share2 size={14} /> Share
-                            </button>
+                            <p className="text-caption text-muted">Code:</p>
+                            <Badge tone="primary" size="md">{referralCode}</Badge>
+                            <Button variant="ghost" size="sm" onClick={shareLink} className="ml-auto" leftIcon={<Icon name="externalLink" />}>
+                                Share
+                            </Button>
                         </div>
-                    </div>
+                    </Card>
 
-                    {/* ── Stats Grid ── */}
-                    <div className="grid grid-cols-3 gap-3">
-                        <StatCard icon={Users}     label="Friends Referred"  value={referees.length}        accent="indigo"  />
-                        <StatCard icon={TrendingUp} label="Total Earned"      value={formatBDT(totalEarned)} accent="violet"  />
-                        <StatCard icon={Wallet}    label="Available"         value={formatBDT(availableBalance)} accent="emerald" />
-                    </div>
+                    {/* Stats Grid */}
+                    <Grid cols={3} gap="md">
+                        <StatCard icon="user" label="Friends Referred" value={referees.length} tone="info" />
+                        <StatCard icon="trending" label="Total Earned" value={formatBDT(totalEarned)} tone="primary" />
+                        <StatCard icon="wallet" label="Available" value={formatBDT(availableBalance)} tone="success" />
+                    </Grid>
 
-                    {/* ── Withdraw Button ── */}
-                    <motion.button
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => setShowWithdraw(true)}
-                        disabled={availableBalance < 100}
-                        className="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] p-5 shadow-sm disabled:opacity-50 group"
-                    >
+                    {/* Withdraw Button */}
+                    <Card as="button" onClick={() => setShowWithdraw(true)} disabled={availableBalance < 100} className="group flex w-full items-center justify-between p-5 text-left transition-colors disabled:opacity-50">
                         <div className="flex items-center gap-4">
-                            <div className="size-11 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600">
-                                <Banknote size={22} />
+                            <div className="grid size-11 place-items-center rounded-control bg-success-subtle text-success">
+                                <Icon name="payments" className="size-5" />
                             </div>
-                            <div className="text-left">
-                                <p className="text-sm font-black text-slate-900 dark:text-white">Claim Rewards</p>
-                                <p className="text-[11px] font-bold text-slate-400">{availableBalance < 100 ? 'Min. ৳100 required to withdraw' : `৳${availableBalance.toFixed(2)} ready to withdraw`}</p>
+                            <div>
+                                <p className="font-display text-title-sm text-content">Claim Rewards</p>
+                                <p className="text-caption text-muted">{availableBalance < 100 ? 'Min. ৳100 required to withdraw' : `৳${availableBalance.toFixed(2)} ready to withdraw`}</p>
                             </div>
                         </div>
-                        <ChevronRight size={18} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
-                    </motion.button>
+                        <Icon name="chevronRight" className="size-5 text-subtle transition-transform group-hover:translate-x-1" />
+                    </Card>
 
-                    {/* ── Commission History ── */}
+                    {/* Commission History */}
                     {commissions.length > 0 && (
-                        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] overflow-hidden">
+                        <Card padding="none" className="overflow-hidden">
                             <div className="p-5 pb-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Commission History</p>
+                                <p className="text-caption uppercase tracking-wider text-muted">Commission History</p>
                             </div>
-                            <div className="divide-y divide-slate-50 dark:divide-slate-800">
+                            <div className="divide-y divide-border">
                                 {commissions.slice(0, 10).map(c => (
                                     <div key={c.id} className="flex items-center justify-between px-5 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="size-9 bg-violet-50 dark:bg-violet-950/30 rounded-xl flex items-center justify-center text-violet-500">
-                                                <TrendingUp size={16} />
+                                            <div className="grid size-9 place-items-center rounded-control bg-primary-subtle text-primary">
+                                                <Icon name="trending" className="size-4" />
                                             </div>
                                             <div>
-                                                <p className="text-xs font-black text-slate-900 dark:text-white">{c.description || 'Commission'}</p>
-                                                <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                                                    <Clock size={10} /> {relativeTime(c.createdAt)}
+                                                <p className="text-body-sm font-semibold text-content">{c.description || 'Commission'}</p>
+                                                <p className="flex items-center gap-1 text-caption text-subtle">
+                                                    <Icon name="time" className="size-3" /> {relativeTime(c.createdAt)}
                                                 </p>
                                             </div>
                                         </div>
-                                        <span className="text-sm font-black text-emerald-600">+{formatBDT(c.amount)}</span>
+                                        <span className="text-title-sm font-display text-success">+{formatBDT(c.amount)}</span>
                                     </div>
                                 ))}
                             </div>
-                        </div>
+                        </Card>
                     )}
 
-                    {/* ── Referred Friends List ── */}
+                    {/* Referred Friends List */}
                     {referees.length > 0 ? (
-                        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] overflow-hidden">
+                        <Card padding="none" className="overflow-hidden">
                             <div className="p-5 pb-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Your Referrals ({referees.length})</p>
+                                <p className="text-caption uppercase tracking-wider text-muted">Your Referrals ({referees.length})</p>
                             </div>
-                            <div className="divide-y divide-slate-50 dark:divide-slate-800">
+                            <div className="divide-y divide-border">
                                 {referees.map(r => (
                                     <div key={r.id} className="flex items-center gap-3 px-5 py-4">
-                                        <div className="size-9 bg-primary rounded-full flex items-center justify-center text-white text-xs font-black shrink-0">
+                                        <div className="grid size-9 shrink-0 place-items-center rounded-full bg-primary text-body-sm font-bold text-on-primary">
                                             {(r.fullName?.[0] || r.email?.[0] || '?').toUpperCase()}
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-black text-slate-900 dark:text-white truncate">{r.fullName || 'Anonymous'}</p>
-                                            <p className="text-[10px] font-bold text-slate-400 truncate">{r.email}</p>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-body-sm font-semibold text-content">{r.fullName || 'Anonymous'}</p>
+                                            <p className="truncate text-caption text-subtle">{r.email}</p>
                                         </div>
-                                        <BadgeCheck size={16} className="text-emerald-500 shrink-0" />
+                                        <Icon name="verified" className="size-4 shrink-0 text-success" />
                                     </div>
                                 ))}
                             </div>
-                        </div>
+                        </Card>
                     ) : (
-                        <div className="text-center py-12 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px]">
-                            <div className="size-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-300">
-                                <Users size={28} />
+                        <Card className="py-12 text-center">
+                            <div className="mx-auto mb-4 grid size-16 place-items-center rounded-control bg-surface-sunken text-subtle">
+                                <Icon name="user" className="size-7" />
                             </div>
-                            <p className="text-sm font-black text-slate-400">No referrals yet</p>
-                            <p className="text-xs font-bold text-slate-300 mt-1">Share your link above to start earning!</p>
-                        </div>
+                            <p className="text-body-sm font-semibold text-muted">No referrals yet</p>
+                            <p className="mt-1 text-caption text-subtle">Share your link above to start earning!</p>
+                        </Card>
                     )}
 
-                    {/* ── How It Works ── */}
-                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[24px] p-5 space-y-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">How It Works</p>
+                    {/* How It Works */}
+                    <Card padding="lg" className="space-y-4">
+                        <p className="text-caption uppercase tracking-wider text-muted">How It Works</p>
                         {[
                             { step: '01', text: 'Copy your unique referral link above.' },
                             { step: '02', text: 'Share it with friends, family, or on social media.' },
@@ -385,15 +353,14 @@ export default function ReferralDashboard() {
                             { step: '04', text: 'Withdraw your earnings anytime (min. ৳100).' },
                         ].map(({ step, text }) => (
                             <div key={step} className="flex items-start gap-4">
-                                <span className="text-[10px] font-black text-primary dark:text-indigo-400 bg-primary/10 px-2.5 py-1 rounded-lg shrink-0">{step}</span>
-                                <p className="text-xs font-bold text-slate-600 dark:text-slate-400 leading-relaxed">{text}</p>
+                                <span className="shrink-0 rounded-control bg-primary-subtle px-2.5 py-1 text-caption font-bold text-primary">{step}</span>
+                                <p className="text-body-sm font-medium leading-relaxed text-muted">{text}</p>
                             </div>
                         ))}
-                    </div>
-                </div>
+                    </Card>
+                </Container>
             </div>
 
-            {/* ── Withdraw Modal ── */}
             <AnimatePresence>
                 {showWithdraw && (
                     <WithdrawModal

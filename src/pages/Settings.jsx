@@ -5,105 +5,74 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
-import { ArrowLeft, Moon, Sun, LogOut, ChevronRight, Bell, Globe } from 'lucide-react';
 import logger from '../utils/logger';
+import Container from '../components/layout/Container';
+import { Card, Button, Select, Switch, Icon } from '../components/ui';
 
 export default function Settings() {
-    const navigate = useNavigate();
-    const { isDark, toggleTheme } = useTheme();
-    const { language, setLanguage, t } = useLanguage();
-    const { currentUser } = useAuth();
-    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const navigate = useNavigate();
+  const { isDark, toggleTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
-    const handleLogout = async () => {
-        try {
-            await signOut(auth);
-            navigate('/login');
-        } catch (err) {
-            logger.error(err);
-        }
-    };
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/login');
+    } catch (err) {
+      logger.error(err);
+    }
+  };
 
-    return (
-        <div className="flex flex-col min-h-screen bg-white dark:bg-slate-950 pb-32">
-            {/* Header */}
-            <header className="flex items-center justify-center p-6 bg-white dark:bg-slate-950 sticky top-14 z-10 border-b border-[#f1f5f9] dark:border-slate-800">
-                <h1 className="text-[14px] font-[900] text-[#1a227f] dark:text-white tracking-[0.2em] uppercase">{t('settings')}</h1>
-            </header>
+  return (
+    <div className="min-h-screen bg-bg pb-24">
+      <Container size="narrow" className="pt-[max(env(safe-area-inset-top),1.5rem)] md:pt-10">
+        <header className="mb-6">
+          <h1 className="font-display text-display-md text-content">{t('settings')}</h1>
+          <p className="mt-1 text-body-sm text-muted">Manage your app preferences and account.</p>
+        </header>
 
-            <div className="px-6 py-6 space-y-8">
-                {/* Preferences */}
-                <section className="space-y-3">
-                    <h3 className="text-[10px] font-[900] uppercase tracking-[0.2em] text-[#94a3b8] ml-1">App Preferences</h3>
-                    <div className="bg-[#f8fafc] dark:bg-slate-900 border border-[#f1f5f9] dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm divide-y divide-[#f1f5f9] dark:divide-slate-800">
-                        
-                        <div className="flex items-center justify-between p-5">
-                            <div className="flex items-center gap-4">
-                                <div className="size-9 bg-white dark:bg-slate-800 border border-[#f1f5f9] dark:border-slate-700 rounded-[14px] flex items-center justify-center text-[#94a3b8] shadow-sm">
-                                    {isDark ? <Moon size={18} strokeWidth={2} /> : <Sun size={18} strokeWidth={2} />}
-                                </div>
-                                <span className="text-sm font-[800] text-[#1e293b] dark:text-slate-200">{t('dark_mode')}</span>
-                            </div>
-                            <button 
-                                onClick={toggleTheme}
-                                className={`w-12 h-6 rounded-full p-1 transition-colors ${isDark ? 'bg-[#3E2B88]' : 'bg-slate-200 dark:bg-slate-700'}`}
-                            >
-                                <div className={`size-4 bg-white rounded-full shadow-sm transform transition-transform ${isDark ? 'translate-x-6' : 'translate-x-0'}`} />
-                            </button>
-                        </div>
-
-                        <div className="flex items-center justify-between p-5">
-                            <div className="flex items-center gap-4">
-                                <div className="size-9 bg-white dark:bg-slate-800 border border-[#f1f5f9] dark:border-slate-700 rounded-[14px] flex items-center justify-center text-[#94a3b8] shadow-sm">
-                                    <Globe size={18} strokeWidth={2} />
-                                </div>
-                                <span className="text-sm font-[800] text-[#1e293b] dark:text-slate-200">{t('language')}</span>
-                            </div>
-                            <select 
-                                value={language}
-                                onChange={(e) => setLanguage(e.target.value)}
-                                className="bg-transparent border-none text-primary dark:text-indigo-400 font-[900] text-sm uppercase tracking-wider outline-none"
-                            >
-                                <option value="en">English</option>
-                                <option value="bn">বাংলা</option>
-                            </select>
-                        </div>
-
-                        <div className="flex items-center justify-between p-5">
-                            <div className="flex items-center gap-4">
-                                <div className="size-9 bg-white dark:bg-slate-800 border border-[#f1f5f9] dark:border-slate-700 rounded-[14px] flex items-center justify-center text-[#94a3b8] shadow-sm">
-                                    <Bell size={18} strokeWidth={2} />
-                                </div>
-                                <span className="text-sm font-[800] text-[#1e293b] dark:text-slate-200">{t('notifications')}</span>
-                            </div>
-                            <button 
-                                onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                                className={`w-12 h-6 rounded-full p-1 transition-colors ${notificationsEnabled ? 'bg-[#3E2B88]' : 'bg-slate-200 dark:bg-slate-700'}`}
-                            >
-                                <div className={`size-4 bg-white rounded-full shadow-sm transform transition-transform ${notificationsEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
-                            </button>
-                        </div>
-
-                    </div>
-                </section>
-
-                {/* Account Actions */}
-                <section className="space-y-3">
-                    <h3 className="text-[10px] font-[900] uppercase tracking-[0.2em] text-[#94a3b8] ml-1">Account Actions</h3>
-                    
-                    <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center p-5 bg-[#ffe4e6] dark:bg-rose-950/20 border border-transparent rounded-[24px] group transition-transform active:scale-95 text-[#e11d48]"
-                    >
-                        <div className="flex items-center gap-4">
-                            <div className="size-9 bg-white dark:bg-slate-800 rounded-[14px] flex items-center justify-center text-[#e11d48] shadow-sm">
-                                <LogOut size={18} strokeWidth={2} />
-                            </div>
-                            <span className="text-sm font-[800]">{t('sign_out')}</span>
-                        </div>
-                    </button>
-                </section>
+        <section className="mb-8 space-y-3">
+          <h2 className="text-overline uppercase text-subtle">App preferences</h2>
+          <Card padding="none" className="divide-y divide-border">
+            <div className="flex items-center justify-between gap-4 p-5">
+              <div className="flex items-center gap-3">
+                <span className="grid size-9 place-items-center rounded-control bg-surface-sunken text-muted"><Icon name={isDark ? 'themeDark' : 'themeLight'} className="size-[18px]" /></span>
+                <span className="text-body-sm font-medium text-content">{t('dark_mode')}</span>
+              </div>
+              <Switch checked={isDark} onChange={toggleTheme} aria-label={t('dark_mode')} />
             </div>
-        </div>
-    );
+
+            <div className="flex items-center justify-between gap-4 p-5">
+              <div className="flex items-center gap-3">
+                <span className="grid size-9 place-items-center rounded-control bg-surface-sunken text-muted"><Icon name="language" className="size-[18px]" /></span>
+                <span className="text-body-sm font-medium text-content">{t('language')}</span>
+              </div>
+              <Select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                options={[{ value: 'en', label: 'English' }, { value: 'bn', label: 'বাংলা' }]}
+                containerClassName="w-40"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4 p-5">
+              <div className="flex items-center gap-3">
+                <span className="grid size-9 place-items-center rounded-control bg-surface-sunken text-muted"><Icon name="notifications" className="size-[18px]" /></span>
+                <span className="text-body-sm font-medium text-content">{t('notifications')}</span>
+              </div>
+              <Switch checked={notificationsEnabled} onChange={setNotificationsEnabled} aria-label={t('notifications')} />
+            </div>
+          </Card>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-overline uppercase text-subtle">Account actions</h2>
+          <Button variant="soft" fullWidth onClick={handleLogout} leftIcon={<Icon name="logout" />} className="justify-start bg-danger-subtle text-danger hover:brightness-95">
+            {t('sign_out')}
+          </Button>
+        </section>
+      </Container>
+    </div>
+  );
 }

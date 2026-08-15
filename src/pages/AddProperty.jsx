@@ -1,7 +1,7 @@
 'use client';
 import { useNavigate, Link } from 'react-router-dom';
 import { useState, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+
 
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -24,6 +24,7 @@ import { createNotification } from '../utils/notificationService';
 import logger from '../utils/logger';
 import { getApiUrl } from '../utils/api';
 import { useFees } from '../hooks/useFees';
+import { Card, Button, Input, Select, Textarea, Field, Icon, Badge, Checkbox, Radio, RadioGroup, Modal, ModalFooter } from '../components/ui';
 
 export default function AddProperty() {
     const { currentUser, userProfile } = useAuth();
@@ -50,7 +51,7 @@ export default function AddProperty() {
         } else {
             setShowPhoneModal(false);
         }
-    }, [currentUser?.uid, userProfile, navigate, toast]);
+    }, [currentUser, currentUser?.uid, userProfile, navigate, toast]);
 
     const [showPhoneModal, setShowPhoneModal] = useState(false);
     const [wantOnsiteVerify, setWantOnsiteVerify] = useState(false);
@@ -174,6 +175,8 @@ export default function AddProperty() {
         }
     };
 
+    // Retained for BD-specific field sections (distances, utilities, features)
+    // eslint-disable-next-line no-unused-vars
     const handleDistanceChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
@@ -185,6 +188,7 @@ export default function AddProperty() {
         }));
     };
 
+    // eslint-disable-next-line no-unused-vars
     const toggleItem = (listName, id) => {
         setFormData(prev => {
             const list = prev[listName];
@@ -390,150 +394,157 @@ export default function AddProperty() {
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#F8F9FA] dark:bg-[#0F1117] pb-32 text-slate-900 dark:text-slate-100">
+        <div className="flex flex-col min-h-screen bg-surface-sunken pb-32">
             <AnimatePresence>
                 {showSuccess && (
                     <motion.div 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 dark:bg-[#0F1117]/90 backdrop-blur-xl px-6"
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-surface/90 backdrop-blur-xl px-6"
                     >
                         <motion.div 
                             initial={{ scale: 0.9, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
-                            className="bg-white dark:bg-[#1A1D24] p-10 rounded-[40px] shadow-2xl border border-slate-100 dark:border-white/[0.06] text-center max-w-sm w-full"
+                            className="bg-surface p-10 rounded-modal shadow-modal border border-border text-center max-w-sm w-full"
                         >
-                            <div className="size-24 bg-primary rounded-full flex items-center justify-center text-white mx-auto mb-8 shadow-xl shadow-primary/20">
+                            <div className="size-24 bg-success/20 rounded-full flex items-center justify-center text-success mx-auto mb-8 shadow-xl shadow-success/20 border border-success/30">
                                 <CheckCircle size={48} strokeWidth={2.5} />
                             </div>
-                            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-4">Payment Submitted!</h2>
-                            <p className="text-slate-500 dark:text-slate-400 font-bold mb-10 leading-relaxed text-lg">
+                            <h2 className="text-title-xl text-content mb-4">Payment Submitted!</h2>
+                            <p className="text-muted font-bold mb-10 leading-relaxed text-body-md">
                                 Your listing is being verified — usually takes under 30 minutes. Redirecting you home...
                             </p>
-                            <button 
+                            <Button 
+                                size="lg"
+                                fullWidth
                                 onClick={() => navigate('/')}
-                                className="w-full py-5 bg-primary text-white rounded-2xl font-black text-lg shadow-xl shadow-primary/20"
                             >
                                 Take me Home
-                            </button>
+                            </Button>
                         </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
-            {createPortal(
-                <AnimatePresence>
-                    {showPhoneModal && (
-                        <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="fixed inset-0 z-[100000] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm px-6"
-                        >
-                            <motion.div 
-                                initial={{ scale: 0.9, y: 20 }}
-                                animate={{ scale: 1, y: 0 }}
-                                className="bg-white dark:bg-[#1A1D24] p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-white/[0.06] text-center max-w-sm w-full"
-                            >
-                                <div className="size-20 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center text-rose-500 mx-auto mb-6">
-                                    <Phone size={36} strokeWidth={2.5} />
-                                </div>
-                                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-3">Phone Number Required</h2>
-                                <p className="text-slate-500 dark:text-slate-400 font-medium mb-8 text-sm">
-                                    To protect our community and ensure secure communications, we require all owners to verify their phone number before posting properties.
-                                </p>
-                                
-                                <div className="flex flex-col gap-3">
-                                    <button 
-                                        onClick={() => navigate('/edit-profile')}
-                                        className="w-full bg-[#1a227f] text-white py-4 rounded-2xl font-black text-sm uppercase tracking-wider hover:bg-[#121966] transition-all active:scale-95 shadow-xl shadow-[#1a227f]/20 flex justify-center items-center gap-2"
-                                    >
-                                        Add Phone Number <ArrowRight size={16} />
-                                    </button>
-                                    <button 
-                                        onClick={() => navigate('/')}
-                                        className="w-full py-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-bold text-sm transition-colors"
-                                    >
-                                        Back to Home
-                                    </button>
-                                </div>
-                            </motion.div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>,
-                document.body
-            )}
             
-
-
-            <header className="flex items-center px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] justify-between sticky top-0 z-50 bg-white/80 dark:bg-[#1A1D24]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/[0.06]">
-                <button onClick={prevStep} className="text-slate-700 dark:text-slate-300 p-2">
+            <Modal open={showPhoneModal} onClose={() => {}} showClose={false} size="md">
+                <div className="text-center p-4">
+                    <div className="size-20 bg-danger-subtle rounded-full flex items-center justify-center text-danger mx-auto mb-6">
+                        <Phone size={36} strokeWidth={2.5} />
+                    </div>
+                    <h2 className="text-title-lg text-content mb-3">Phone Number Required</h2>
+                    <p className="text-muted font-medium mb-8 text-body-sm">
+                        To protect our community and ensure secure communications, we require all owners to verify their phone number before posting properties.
+                    </p>
+                    
+                    <div className="flex flex-col gap-3">
+                        <Button 
+                            size="lg"
+                            fullWidth
+                            onClick={() => navigate('/edit-profile')}
+                            rightIcon={<ArrowRight size={16} />}
+                        >
+                            Add Phone Number
+                        </Button>
+                        <Button 
+                            variant="ghost"
+                            size="lg"
+                            fullWidth
+                            onClick={() => navigate('/')}
+                        >
+                            Back to Home
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+            
+            <header className="flex items-center px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] justify-between sticky top-0 z-50 bg-surface/80 backdrop-blur-md border-b border-border">
+                <button onClick={prevStep} className="text-muted hover:text-content p-2 transition-colors">
                     <ArrowLeft size={24} />
                 </button>
                 <div className="flex flex-col items-center">
-                    <h1 className="text-lg font-black uppercase tracking-tight">Post Property</h1>
+                    <h1 className="text-title-sm uppercase tracking-tight text-content">Post Property</h1>
                     <div className="flex gap-1 mt-1">
                         {[1, 2, 3].map(i => (
-                            <div key={i} className={`h-1 w-8 rounded-full ${step >= i ? 'bg-primary' : 'bg-slate-200 dark:bg-white/[0.06]'}`} />
+                            <div key={i} className={`h-1 w-8 rounded-full ${step >= i ? 'bg-primary' : 'bg-surface-raised border border-border'}`} />
                         ))}
                     </div>
                 </div>
                 <div className="w-10" />
             </header>
 
-            <div className="p-5 max-w-2xl mx-auto w-full">
+            <div className="p-5 max-w-2xl mx-auto w-full space-y-6">
                 {step === 1 && (
-                    <div className="space-y-6 fade-in">
-                        <Section title="Basic Details" icon={<Building2 size={20} />}>
-                            <Input label="Property Title" name="title" value={formData.title} onChange={handleChange} placeholder="e.g. Modern Flat in Gulshan" required />
+                    <motion.div className="space-y-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                        <Card padding="lg" className="space-y-6">
+                            <div className="flex items-center gap-2 text-primary pb-4 border-b border-border">
+                                <Building2 size={20} />
+                                <h3 className="font-bold uppercase text-xs tracking-widest">Basic Details</h3>
+                            </div>
+                            
+                            <Field label="Property Title" required>
+                                <Input name="title" value={formData.title} onChange={handleChange} placeholder="e.g. Modern Flat in Gulshan" />
+                            </Field>
                             <div className="grid grid-cols-2 gap-4">
-                                <Select label="Property Type" name="type" value={formData.type} onChange={handleChange}>
-                                    {PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                </Select>
-                                <Input label="Rent (৳)" name="rent" type="number" value={formData.rent} onChange={handleChange} placeholder="25000" required />
+                                <Field label="Property Type" required>
+                                    <Select name="type" value={formData.type} onChange={handleChange}>
+                                        {PROPERTY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </Select>
+                                </Field>
+                                <Field label="Rent (৳)" required>
+                                    <Input name="rent" type="number" value={formData.rent} onChange={handleChange} placeholder="25000" />
+                                </Field>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest flex items-center gap-1">
-                                        <Calendar size={12} /> Billing Cycle
-                                    </label>
+                                <Field label="Billing Cycle" hintIcon={<Calendar size={12} />}>
                                     <Select name="billingCycle" value={formData.billingCycle} onChange={handleChange}>
                                         {BILLING_CYCLES.map(cycle => <option key={cycle} value={cycle}>{cycle}</option>)}
                                     </Select>
-                                </div>
+                                </Field>
 
-                                <div className="space-y-1">
-                                    <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest flex items-center gap-1">
-                                        <Users size={12} /> Tenant Type
-                                    </label>
+                                <Field label="Tenant Type" hintIcon={<Users size={12} />}>
                                     <Select name="tenantType" value={formData.tenantType} onChange={handleChange}>
                                         {TENANT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                                     </Select>
-                                </div>
+                                </Field>
                             </div>
-                        </Section>
+                        </Card>
 
-                        <Section title="Location Setup" icon={<MapPin size={20} />}>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Select label="Division" name="division" value={formData.division} onChange={handleChange} required>
+                        <Card padding="lg" className="space-y-6">
+                            <div className="flex items-center gap-2 text-primary pb-4 border-b border-border">
+                                <MapPin size={20} />
+                                <h3 className="font-bold uppercase text-xs tracking-widest">Location Setup</h3>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field label="Division" required>
+                                    <Select name="division" value={formData.division} onChange={handleChange}>
                                         <option value="">Select Division</option>
                                         {divisions.map(d => <option key={d} value={d}>{d}</option>)}
                                     </Select>
-                                    <Select label="District" name="district" value={formData.district} onChange={handleChange} disabled={!formData.division} required>
+                                </Field>
+                                <Field label="District" required>
+                                    <Select name="district" value={formData.district} onChange={handleChange} disabled={!formData.division}>
                                         <option value="">Select District</option>
                                         {districts.map(d => <option key={d} value={d}>{d}</option>)}
                                     </Select>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Select label="Thana / Upazila" name="upazila" value={formData.upazila} onChange={handleChange} disabled={!formData.district} required>
+                                </Field>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Field label="Thana / Upazila" required>
+                                    <Select name="upazila" value={formData.upazila} onChange={handleChange} disabled={!formData.district}>
                                         <option value="">Select Thana</option>
                                         {thanas.map(t => <option key={t} value={t}>{t}</option>)}
                                     </Select>
-                                    <Input label="House/Road No. (Details)" name="addressDetails" value={formData.addressDetails} onChange={handleChange} placeholder="e.g. House 5, Road 10" />
-                                </div>
-                                
-                                <div className="pt-2">
-                                    <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest block mb-2">Pin Exact Location on Map</label>
+                                </Field>
+                                <Field label="House/Road No. (Details)">
+                                    <Input name="addressDetails" value={formData.addressDetails} onChange={handleChange} placeholder="e.g. House 5, Road 10" />
+                                </Field>
+                            </div>
+                            
+                            <div className="pt-2">
+                                <label className="text-caption font-bold text-muted uppercase tracking-widest block mb-2">Pin Exact Location on Map</label>
+                                <div className="rounded-card overflow-hidden border border-border shadow-sm">
                                     <LocationPickerMap 
                                         lat={formData.lat} 
                                         lng={formData.lng} 
@@ -544,300 +555,190 @@ export default function AddProperty() {
                                     />
                                 </div>
                             </div>
-                        </Section>
+                        </Card>
 
-                        <Section title="Specifications & Utilities" icon={<Info size={20} />}>
+                        <Button size="lg" fullWidth onClick={nextStep} rightIcon={<ArrowRight size={18} />}>
+                            Continue to Details
+                        </Button>
+                    </motion.div>
+                )}
+
+                {step === 2 && (
+                    <motion.div className="space-y-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                        <Card padding="lg" className="space-y-6">
+                            <div className="flex items-center gap-2 text-primary pb-4 border-b border-border">
+                                <Info size={20} />
+                                <h3 className="font-bold uppercase text-xs tracking-widest">Specifications & Utilities</h3>
+                            </div>
+                            
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                <Input label="Beds" name="beds" type="number" value={formData.beds} onChange={handleChange} />
-                                <Input label="Baths" name="baths" type="number" value={formData.baths} onChange={handleChange} />
-                                <Input label="Verandas" name="verandas" type="number" value={formData.verandas} onChange={handleChange} />
-                                <Input label="SqFt (Optional)" name="area" type="number" value={formData.area} onChange={handleChange} placeholder="N/A" />
+                                <Field label="Beds">
+                                    <Input name="beds" type="number" value={formData.beds} onChange={handleChange} />
+                                </Field>
+                                <Field label="Baths">
+                                    <Input name="baths" type="number" value={formData.baths} onChange={handleChange} />
+                                </Field>
+                                <Field label="Verandas">
+                                    <Input name="verandas" type="number" value={formData.verandas} onChange={handleChange} />
+                                </Field>
+                                <Field label="SqFt (Optional)">
+                                    <Input name="area" type="number" value={formData.area} onChange={handleChange} placeholder="N/A" />
+                                </Field>
                             </div>
 
-                            <div className="pt-4 mt-4 border-t border-slate-100 dark:border-white/[0.06]">
-                                <div className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20">
-                                    <div className="flex-1 pr-4">
-                                        <h4 className="text-sm font-black text-indigo-900 dark:text-indigo-400">Instant Booking</h4>
-                                        <p className="text-[10px] font-bold text-indigo-700/70 dark:text-indigo-400/70 mt-1 leading-relaxed">If enabled, a "Book Now" button will appear on your listing. You can set up the required deposit amount in your dashboard later.</p>
-                                    </div>
-                                    <Select name="instantBooking" value={formData.instantBooking ? 'Yes' : 'No'} onChange={(e) => setFormData(prev => ({ ...prev, instantBooking: e.target.value === 'Yes' }))} className="w-24 bg-white dark:bg-[#222630] !py-2">
+                            <Card variant="sunken" className="flex items-center justify-between !p-4 border-primary/20 bg-primary-subtle/50">
+                                <div className="flex-1 pr-4">
+                                    <h4 className="text-body-sm font-bold text-primary">Instant Booking</h4>
+                                    <p className="text-caption font-medium text-primary/70 mt-1 leading-relaxed">If enabled, a "Book Now" button will appear on your listing. You can set up the required deposit amount in your dashboard later.</p>
+                                </div>
+                                <div className="w-24">
+                                    <Select name="instantBooking" value={formData.instantBooking ? 'Yes' : 'No'} onChange={(e) => setFormData(prev => ({ ...prev, instantBooking: e.target.value === 'Yes' }))}>
                                         <option value="No">No</option>
                                         <option value="Yes">Yes</option>
                                     </Select>
                                 </div>
-                            </div>
+                            </Card>
 
-                            <div className="grid grid-cols-2 gap-4 mt-4">
-                                <Input label="Security Deposit (Optional)" name="securityDeposit" type="number" value={formData.securityDeposit} onChange={handleChange} placeholder="৳0" />
-                                {/* <Input label="Agent Commission (if applicable)" name="agentCommission" value={formData.agentCommission} onChange={handleChange} placeholder="e.g. 1 Month Rent or ৳10000" /> */}
+                            <div className="grid grid-cols-1 gap-4">
+                                <Field label="Security Deposit (Optional)">
+                                    <Input name="securityDeposit" type="number" value={formData.securityDeposit} onChange={handleChange} placeholder="৳0" />
+                                </Field>
                             </div>
-                            <Textarea label="Description" name="description" value={formData.description} onChange={handleChange} placeholder="Tell tenants about your space..." />
-                        </Section>
+                            
+                            <Field label="Description">
+                                <Textarea name="description" value={formData.description} onChange={handleChange} placeholder="Tell tenants about your space..." rows={4} />
+                            </Field>
+                        </Card>
 
-                        <Section title="Media (Up to 5 images)" icon={<ImageIcon size={20} />}>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                    {formData.images.map((url, index) => (
-                                        <div key={index} className="relative aspect-square rounded-2xl overflow-hidden group border border-slate-100 dark:border-white/[0.06] shadow-sm">
-                                            <img loading="lazy" src={url} alt={`Property ${index + 1}`} className="w-full h-full object-cover" />
-                                            <button 
-                                                onClick={() => removeImage(index)}
-                                                className="absolute top-2 right-2 p-1.5 bg-rose-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-rose-500/20"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                            {index === 0 && (
-                                                <div className="absolute bottom-0 inset-x-0 bg-primary/80 backdrop-blur-sm py-1 text-[8px] font-black text-white text-center uppercase tracking-widest">
-                                                    Main Cover
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                    
-                                    {formData.images.length < 5 && (
-                                        <div className="relative aspect-square flex flex-col gap-2">
-                                            <input 
-                                                type="file" 
-                                                accept="image/*" 
-                                                multiple
-                                                onChange={handleImageUpload}
-                                                className="hidden" 
-                                                id="image-upload" 
-                                                disabled={loading}
-                                            />
-                                            <input 
-                                                type="file" 
-                                                accept="image/*" 
-                                                capture="environment"
-                                                onChange={handleImageUpload}
-                                                className="hidden" 
-                                                id="camera-upload" 
-                                                disabled={loading}
-                                            />
-                                            <label 
-                                                htmlFor="image-upload"
-                                                className="flex-1 flex flex-col items-center justify-center w-full border-2 border-dashed border-slate-200 dark:border-white/[0.06] rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
-                                            >
-                                                <div className="text-primary dark:text-indigo-400 mb-0.5">
-                                                    <ImageIcon size={18} />
-                                                </div>
-                                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                                    {loading ? "..." : "Gallery"}
-                                                </p>
-                                            </label>
-                                            <label 
-                                                htmlFor="camera-upload"
-                                                className="flex-1 flex flex-col items-center justify-center w-full border-2 border-dashed border-slate-200 dark:border-white/[0.06] rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all"
-                                            >
-                                                <div className="text-primary dark:text-indigo-400 mb-0.5">
-                                                    <Camera size={18} />
-                                                </div>
-                                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                                                    {loading ? "..." : "Camera"}
-                                                </p>
-                                            </label>
-                                        </div>
-                                    )}
-                                </div>
+                        <Card padding="lg" className="space-y-6">
+                            <div className="flex items-center gap-2 text-primary pb-4 border-b border-border">
+                                <ImageIcon size={20} />
+                                <h3 className="font-bold uppercase text-xs tracking-widest">Media (Up to 5 images)</h3>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {formData.images.map((url, index) => (
+                                    <div key={index} className="relative aspect-square rounded-control overflow-hidden group border border-border shadow-sm">
+                                        <img loading="lazy" src={url} alt={`Property ${index + 1}`} className="w-full h-full object-cover" />
+                                        <button 
+                                            onClick={() => removeImage(index)}
+                                            className="absolute top-2 right-2 p-1.5 bg-danger text-white rounded-control opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                        {index === 0 && (
+                                            <div className="absolute bottom-0 inset-x-0 bg-primary/80 backdrop-blur-sm py-1 text-[8px] font-black text-white text-center uppercase tracking-widest">
+                                                Main Cover
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                                 
-                                {loading && (
-                                    <div className="h-1 w-full bg-slate-100 dark:bg-white/[0.06] rounded-full overflow-hidden">
-                                        <div className="h-full bg-primary animate-progress" style={{ width: '100%' }} />
+                                {formData.images.length < 5 && (
+                                    <div className="relative aspect-square">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            multiple 
+                                            onChange={handleImageUpload} 
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                            disabled={loading}
+                                        />
+                                        <Card variant="sunken" className="absolute inset-0 flex flex-col items-center justify-center gap-2 border-dashed border-2 border-border hover:border-primary/50 transition-colors">
+                                            {loading ? (
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                                    <span className="text-caption font-bold text-primary">Uploading...</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="size-10 bg-primary-subtle text-primary rounded-full flex items-center justify-center">
+                                                        <Camera size={20} />
+                                                    </div>
+                                                    <div className="text-center">
+                                                        <p className="text-caption font-bold text-content">Add Photos</p>
+                                                        <p className="text-[9px] text-muted">{5 - formData.images.length} remaining</p>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </Card>
                                     </div>
                                 )}
                             </div>
-                        </Section>
+                        </Card>
 
-                        <button
-                            type="button"
-                            onClick={nextStep}
-                            disabled={!formData.title || !formData.rent || !formData.upazila || !formData.imageUrl}
-                            className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
-                        >
-                            Continue: Amenities
-                            <ArrowRight size={20} />
-                        </button>
-                    </div>
-                )}
-
-                {step === 2 && (
-                    <div className="space-y-6 fade-in">
-                        <Section title="Utilities & Features" icon={<Info size={20} />}>
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">Included Utilities</label>
-                                    <div className="grid grid-cols-2 gap-2 mt-2">
-                                        {UTILITY_OPTIONS.map(opt => (
-                                            <button
-                                                key={opt.id}
-                                                type="button"
-                                                onClick={() => toggleItem('utilities', opt.id)}
-                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.utilities.includes(opt.id) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-[#222630] border-transparent text-slate-500'}`}
-                                            >
-                                                {opt.icon}
-                                                <span className="truncate">{opt.id}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <Input label="Monthly Utilities Cost (৳)" name="utilitiesCost" type="number" value={formData.utilitiesCost} onChange={handleChange} placeholder="e.g. 2000" />
-
-                                <div>
-                                    <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">Property Features</label>
-                                    <div className="grid grid-cols-2 gap-2 mt-2">
-                                        {FEATURE_OPTIONS.map(opt => (
-                                            <button
-                                                key={opt.id}
-                                                type="button"
-                                                onClick={() => toggleItem('features', opt.id)}
-                                                className={`flex items-center gap-2 p-3 rounded-xl border text-xs font-bold transition-all text-left ${formData.features.includes(opt.id) ? 'bg-primary/10 border-primary text-primary dark:text-indigo-400' : 'bg-slate-50 dark:bg-[#222630] border-transparent text-slate-500'}`}
-                                            >
-                                                {opt.icon}
-                                                <span className="truncate">{opt.id}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </Section>
-
-                        <Section title="BD Specific Policies & Amenities" icon={<Building2 size={20} />}>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Select label="Gas Supply" name="gasSupply" value={formData.gasSupply} onChange={handleChange}>
-                                    <option value="Line Gas">Line Gas</option>
-                                    <option value="Prepaid Gas">Prepaid Gas</option>
-                                    <option value="Cylinder">Cylinder</option>
-                                </Select>
-                                <Select label="Electricity Bill" name="electricityBilling" value={formData.electricityBilling} onChange={handleChange}>
-                                    <option value="Excluded">Excluded (Standard)</option>
-                                    <option value="Included">Included in Rent</option>
-                                    <option value="Sub-meter">Sub-meter</option>
-                                </Select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Select label="Water Source" name="waterSource" value={formData.waterSource} onChange={handleChange}>
-                                    <option value="WASA">WASA</option>
-                                    <option value="Deep Tube-well">Deep Tube-well</option>
-                                    <option value="Tank">Tank Delivery</option>
-                                </Select>
-                                <Select label="Facing Direction" name="facing" value={formData.facing} onChange={handleChange}>
-                                    <option value="">Select Direction</option>
-                                    <option value="South">South Facing</option>
-                                    <option value="North">North Facing</option>
-                                    <option value="East">East Facing</option>
-                                    <option value="West">West Facing</option>
-                                </Select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input label="Floor Number" name="floorNumber" value={formData.floorNumber} onChange={handleChange} placeholder="e.g. 5th Floor" />
-                                <Select label="Parking Type" name="parkingType" value={formData.parkingType} onChange={handleChange}>
-                                    <option value="None">None</option>
-                                    <option value="Covered">Covered Garage</option>
-                                    <option value="Open">Open Parking</option>
-                                </Select>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-4">
-                                <Select label="Pet Policy" name="petPolicy" value={formData.petPolicy} onChange={handleChange}>
-                                    <option value="Not Allowed">Not Allowed</option>
-                                    <option value="Allowed">Allowed</option>
-                                </Select>
-                                <Select label="Bachelor Policy" name="bachelorPolicy" value={formData.bachelorPolicy} onChange={handleChange}>
-                                    <option value="Not Allowed">Not Allowed</option>
-                                    <option value="Allowed">Allowed</option>
-                                </Select>
-                                <Select label="Family Policy" name="familyPolicy" value={formData.familyPolicy} onChange={handleChange}>
-                                    <option value="Family Only">Family Only</option>
-                                    <option value="Any">Any</option>
-                                </Select>
-                            </div>
-
-                            <div>
-                                <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest block mb-2">Nearby Distances (in km/meters)</label>
-                                <div className="grid grid-cols-3 gap-4">
-                                    <Input label="Mosque" name="mosque" value={formData.distances.mosque} onChange={handleDistanceChange} placeholder="e.g. 0.5km" />
-                                    <Input label="School" name="school" value={formData.distances.school} onChange={handleDistanceChange} placeholder="e.g. 1km" />
-                                    <Input label="Market" name="market" value={formData.distances.market} onChange={handleDistanceChange} placeholder="e.g. 200m" />
-                                </div>
-                            </div>
-                        </Section>
-
-                        <button
-                            type="button"
-                            onClick={nextStep}
-                            className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95"
-                        >
-                            Preview Details
-                            <ArrowRight size={20} />
-                        </button>
-                    </div>
+                        <div className="flex gap-3">
+                            <Button variant="outline" size="lg" onClick={prevStep}>
+                                Back
+                            </Button>
+                            <Button size="lg" className="flex-1" onClick={nextStep} rightIcon={<ArrowRight size={18} />}>
+                                Review & Publish
+                            </Button>
+                        </div>
+                    </motion.div>
                 )}
 
                 {step === 3 && (
-                    <div className="space-y-6 fade-in">
-                        <div className="space-y-4">
-                            <div className="relative h-64 rounded-3xl overflow-hidden shadow-xl">
-                                <img loading="lazy" src={formData.imageUrl} className="w-full h-full object-cover" alt="Preview" />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                                <div className="absolute bottom-6 left-6 right-6">
-                                    <span className="bg-primary px-3 py-1 rounded-full text-[10px] font-black text-white uppercase tracking-widest mb-2 inline-block shadow-lg">
-                                        {formData.type}
-                                    </span>
-                                    <h2 className="text-xl font-black text-white uppercase truncate">{formData.title}</h2>
-                                </div>
+                    <motion.div className="space-y-6" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                        <Card padding="lg" className="space-y-6">
+                            <div className="flex items-center gap-2 text-primary pb-4 border-b border-border">
+                                <CheckCircle size={20} />
+                                <h3 className="font-bold uppercase text-xs tracking-widest">Everything Looks Good?</h3>
                             </div>
                             
-                            {formData.images.length > 1 && (
-                                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                    {formData.images.map((url, idx) => (
-                                        <div 
-                                            key={idx} 
-                                            className={`size-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${formData.imageUrl === url ? 'border-primary scale-105' : 'border-transparent opacity-60'}`}
-                                            onClick={() => setFormData(prev => ({ ...prev, imageUrl: url, image_url: url }))}
-                                        >
-                                            <img loading="lazy" src={url} className="w-full h-full object-cover" alt="Thumb" />
-                                        </div>
-                                    ))}
+                            <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-sm">
+                                <div>
+                                    <p className="text-[9px] uppercase font-bold text-muted tracking-widest">Rent</p>
+                                    <p className="font-bold text-content uppercase tracking-tight">৳{formData.rent}/{formData.billingCycle}</p>
                                 </div>
-                            )}
-                        </div>
-
-                        <Section title="Everything Looks Good?" icon={<CheckCircle size={20} />}>
-                            <div className="grid grid-cols-2 gap-y-4 text-sm">
-                                <PreviewInfo label="Rent" value={`৳${formData.rent}/${formData.billingCycle}`} />
-                                <PreviewInfo label="Location" value={`${formData.upazila}, ${formData.district}`} />
-                                <PreviewInfo label="Specs" value={`${formData.beds}B / ${formData.baths}Bath`} />
-                                <PreviewInfo label="Size" value={formData.area ? `${formData.area} Sqft` : 'N/A'} />
-                                <PreviewInfo label="Utilities Cost" value={`৳${formData.utilitiesCost || 0}`} />
-                                <PreviewInfo label="Security" value={`৳${formData.securityDeposit || 0}`} />
+                                <div>
+                                    <p className="text-[9px] uppercase font-bold text-muted tracking-widest">Location</p>
+                                    <p className="font-bold text-content uppercase tracking-tight">{formData.upazila}, {formData.district}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] uppercase font-bold text-muted tracking-widest">Specs</p>
+                                    <p className="font-bold text-content uppercase tracking-tight">{formData.beds}B / {formData.baths}Bath</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] uppercase font-bold text-muted tracking-widest">Size</p>
+                                    <p className="font-bold text-content uppercase tracking-tight">{formData.area ? `${formData.area} Sqft` : 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] uppercase font-bold text-muted tracking-widest">Utilities Cost</p>
+                                    <p className="font-bold text-content uppercase tracking-tight">৳{formData.utilitiesCost || 0}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] uppercase font-bold text-muted tracking-widest">Security</p>
+                                    <p className="font-bold text-content uppercase tracking-tight">৳{formData.securityDeposit || 0}</p>
+                                </div>
                             </div>
-                            <div className="pt-4 border-t border-slate-50 dark:border-white/[0.06]">
-                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1 leading-none">Full Address</p>
-                                <p className="text-sm font-black text-slate-800 dark:text-slate-200 mb-3">{formData.addressDetails || 'Not specified'}, {formData.upazila}, {formData.district}, {formData.division}</p>
-                                <p className="text-xs text-slate-400 font-bold leading-relaxed">{formData.description}</p>
+                            <div className="pt-4 border-t border-border">
+                                <p className="text-[9px] font-bold text-muted uppercase tracking-widest mb-1 leading-none">Full Address</p>
+                                <p className="text-body-sm font-bold text-content mb-3">{formData.addressDetails || 'Not specified'}, {formData.upazila}, {formData.district}, {formData.division}</p>
+                                <p className="text-caption text-muted font-medium leading-relaxed">{formData.description}</p>
                             </div>
-                        </Section>
+                        </Card>
 
                         {/* Active Subscription Banner */}
                         {hasActiveSubscription && (
-                            <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 mb-3">
-                                <CheckCircle size={20} className="text-emerald-600 shrink-0" />
+                            <Card variant="sunken" className="flex items-center gap-3 border-success/30 bg-success/10 !p-4">
+                                <CheckCircle size={20} className="text-success shrink-0" />
                                 <div>
-                                    <p className="font-black text-emerald-700 dark:text-emerald-400 text-sm">{subscriptionPlan} Plan Active</p>
-                                    <p className="text-xs font-medium text-emerald-600/80">Listing fee included in your subscription — post for free!</p>
+                                    <p className="font-bold text-success text-body-sm">{subscriptionPlan} Plan Active</p>
+                                    <p className="text-caption font-medium text-success/80">Listing fee included in your subscription — post for free!</p>
                                 </div>
-                            </div>
+                            </Card>
                         )}
 
                         {/* On-Site Verification Add-On */}
-                        <div
-                            onClick={() => setWantOnsiteVerify(v => !v)}
-                            className={`flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all mb-3 ${
+                        <Card 
+                            variant="sunken"
+                            className={`flex items-start gap-4 cursor-pointer transition-all ${
                                 wantOnsiteVerify
-                                    ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                                    : 'border-slate-100 dark:border-white/[0.06] hover:border-primary/40'
+                                    ? 'border-primary bg-primary-subtle'
+                                    : 'border-border hover:border-primary/40'
                             }`}
+                            onClick={() => setWantOnsiteVerify(v => !v)}
                         >
                             <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
                                 wantOnsiteVerify ? 'bg-primary border-primary' : 'border-slate-300 dark:border-slate-600'
@@ -846,39 +747,41 @@ export default function AddProperty() {
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-center justify-between">
-                                    <p className="font-black text-slate-900 dark:text-white text-sm">Add On-Site Verification</p>
-                                    <span className="text-xs font-black text-primary dark:text-indigo-400">+ ৳{ONSITE_FEE}</span>
+                                    <p className="font-bold text-content text-body-sm">Add On-Site Verification</p>
+                                    <span className="text-caption font-bold text-primary">+ ৳{ONSITE_FEE}</span>
                                 </div>
-                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                    Our team visits your property, verifies it, and adds a <span className="font-black text-emerald-600">Verified ✅</span> badge — boosting trust with tenants.
+                                <p className="text-caption font-medium text-muted mt-1 leading-relaxed">
+                                    Our team visits your property, verifies it, and adds a <Badge variant="success" size="sm" className="ml-1 mr-1">Verified</Badge> badge — boosting trust with tenants.
                                 </p>
                             </div>
-                        </div>
+                        </Card>
 
-                        <button
-                            type="button"
+                        <Button
+                            size="lg"
+                            fullWidth
                             disabled={loading}
                             onClick={handleProceedToPayment}
-                            className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70"
+                            leftIcon={<CreditCard size={20} />}
                         >
-                            <CreditCard size={20} />
                             {totalAmount === 0 ? 'Publish Ad — Free with Subscription' : `Publish Ad — ৳${totalAmount}`}
-                        </button>
+                        </Button>
 
-                        <p className="text-center text-[10px] font-bold text-slate-400 mt-2">
+                        <p className="text-center text-[10px] font-bold text-muted mt-2">
                             {hasActiveSubscription
                                 ? `${subscriptionPlan} subscription · Listing: Free${wantOnsiteVerify ? ` · On-Site Verify: ৳${ONSITE_FEE}` : ''}`
                                 : `Listing Fee: ৳${LISTING_FEE}${wantOnsiteVerify ? ` · On-Site Verify: ৳${ONSITE_FEE}` : ' · or get a subscription plan to post free'}`
                             }
                         </p>
 
-                        <button
+                        <Button
+                            variant="ghost"
+                            fullWidth
+                            className="mt-2 text-muted"
                             onClick={() => setStep(2)}
-                            className="w-full text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-primary dark:text-indigo-400 transition-colors mt-2"
                         >
                             Wait, go back and edit
-                        </button>
-                    </div>
+                        </Button>
+                    </motion.div>
                 )}
             </div>
 
@@ -922,74 +825,4 @@ export default function AddProperty() {
             />
         </div>
     );
-}
-
-function Section({ title, icon, children }) {
-    return (
-        <div className="bg-white dark:bg-[#1A1D24] p-6 rounded-3xl border border-slate-100 dark:border-white/[0.06] shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-primary dark:text-indigo-400">
-                {icon}
-                <h3 className="font-black uppercase text-xs tracking-widest">{title}</h3>
-            </div>
-            {children}
-        </div>
-    );
-}
-
-function Input({ label, ...props }) {
-    return (
-        <div className="space-y-1">
-            <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">{label}</label>
-            <input
-                className="w-full bg-slate-50 dark:bg-[#222630] border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                {...props}
-            />
-        </div>
-    );
-}
-
-function PreviewInfo({ label, value }) {
-    return (
-        <div>
-            <p className="text-[9px] uppercase font-black text-slate-400 tracking-[0.1em]">{label}</p>
-            <p className="font-black text-slate-900 dark:text-white uppercase tracking-tight">{value}</p>
-        </div>
-    );
-}
-
-function Select({ label, children, ...props }) {
-    return (
-        <div className="space-y-1">
-            <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">{label}</label>
-            <div className="relative">
-                <select
-                    className="w-full bg-slate-50 dark:bg-[#222630] border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none disabled:opacity-50"
-                    {...props}
-                >
-                    {children}
-                </select>
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <ChevronDown size={16} />
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function Textarea({ label, ...props }) {
-    return (
-        <div className="space-y-1">
-            <label className="text-[10px] uppercase font-black text-slate-400 ml-1 tracking-widest">{label}</label>
-            <textarea
-                className="w-full bg-slate-50 dark:bg-[#222630] border-none rounded-xl py-3 px-4 font-bold text-slate-900 dark:text-white placeholder:text-slate-300 outline-none focus:ring-2 focus:ring-primary/50 transition-all h-32"
-                {...props}
-            />
-        </div>
-    );
-}
-
-function ChevronDown({ size, className }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 9 6 6 6-6" /></svg>
-    )
 }

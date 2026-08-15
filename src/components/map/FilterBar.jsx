@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Input } from '../ui';
 
 const TYPE_OPTIONS = [
     { label: 'All', value: 'all' },
@@ -20,10 +21,26 @@ function FilterPill({ active, label, onClick }) {
         <button
             type="button"
             onClick={onClick}
-            className={`shrink-0 rounded-full px-4 py-2 text-sm font-bold shadow-sm transition-all ${
+            className={`shrink-0 rounded-full px-4 py-2 text-body-sm font-bold shadow-sm transition-all active:scale-95 ${
                 active
                     ? 'bg-primary text-white shadow-primary/20'
-                    : 'border border-gray-200 bg-white text-gray-700 hover:bg-slate-50'
+                    : 'border border-border bg-surface/90 text-content hover:bg-surface-raised backdrop-blur-sm'
+            }`}
+        >
+            {label}
+        </button>
+    );
+}
+
+function OptionChip({ active, label, onClick }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`rounded-control px-3 py-2 text-body-sm font-bold text-left transition-all active:scale-95 ${
+                active
+                    ? 'bg-primary text-white shadow-sm shadow-primary/20'
+                    : 'bg-surface-raised text-content border border-border hover:border-primary/40'
             }`}
         >
             {label}
@@ -79,43 +96,35 @@ export default function FilterBar({ filters, setFilters, activeLayer, setActiveL
             </div>
 
             {openMenu && (
-                <div className="pointer-events-auto w-[min(21rem,calc(100vw-2rem))] rounded-xl border border-[#E5E7EB] bg-white p-3 shadow-lg">
+                <div className="pointer-events-auto w-[min(21rem,calc(100vw-2rem))] rounded-card border border-border bg-surface p-3 shadow-lg">
                     {openMenu === 'type' && (
                         <div className="grid grid-cols-2 gap-2">
                             {TYPE_OPTIONS.map((option) => (
-                                <button
+                                <OptionChip
                                     key={option.value}
-                                    type="button"
+                                    active={filters.type === option.value}
+                                    label={option.label}
                                     onClick={() => updateFilter('type', option.value)}
-                                    className={`rounded-lg px-3 py-2 text-sm font-bold transition-colors ${
-                                        filters.type === option.value
-                                            ? 'bg-primary text-white'
-                                            : 'bg-slate-50 text-slate-900 hover:bg-slate-100'
-                                    }`}
-                                >
-                                    {option.label}
-                                </button>
+                                />
                             ))}
                         </div>
                     )}
 
                     {openMenu === 'price' && (
                         <div className="grid grid-cols-2 gap-3">
-                            <input
+                            <Input
                                 type="number"
                                 inputMode="numeric"
-                                placeholder="Min"
+                                placeholder="Min rent"
                                 value={filters.minPrice}
                                 onChange={(event) => updateFilter('minPrice', event.target.value)}
-                                className="rounded-lg border-2 border-transparent bg-slate-50 px-3 py-2 text-sm font-bold outline-none focus:border-primary/30"
                             />
-                            <input
+                            <Input
                                 type="number"
                                 inputMode="numeric"
-                                placeholder="Max"
+                                placeholder="Max rent"
                                 value={filters.maxPrice}
                                 onChange={(event) => updateFilter('maxPrice', event.target.value)}
-                                className="rounded-lg border-2 border-transparent bg-slate-50 px-3 py-2 text-sm font-bold outline-none focus:border-primary/30"
                             />
                         </div>
                     )}
@@ -123,18 +132,12 @@ export default function FilterBar({ filters, setFilters, activeLayer, setActiveL
                     {openMenu === 'beds' && (
                         <div className="flex gap-2">
                             {BED_OPTIONS.map((option) => (
-                                <button
+                                <OptionChip
                                     key={option}
-                                    type="button"
+                                    active={filters.beds === option}
+                                    label={option === 0 ? 'Any' : String(option)}
                                     onClick={() => updateFilter('beds', option)}
-                                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors ${
-                                        filters.beds === option
-                                            ? 'bg-primary text-white'
-                                            : 'bg-slate-50 text-slate-900 hover:bg-slate-100'
-                                    }`}
-                                >
-                                    {option === 0 ? 'Any' : option}
-                                </button>
+                                />
                             ))}
                         </div>
                     )}
@@ -142,31 +145,25 @@ export default function FilterBar({ filters, setFilters, activeLayer, setActiveL
                     {openMenu === 'layer' && (
                         <div className="grid grid-cols-1 gap-2">
                             {LAYER_OPTIONS.map((option) => (
-                                <button
+                                <OptionChip
                                     key={option.value}
-                                    type="button"
+                                    active={activeLayer === option.value}
+                                    label={option.label}
                                     onClick={() => setActiveLayer(option.value)}
-                                    className={`rounded-lg px-3 py-2 text-sm font-bold text-left transition-colors ${
-                                        activeLayer === option.value
-                                            ? 'bg-primary text-white'
-                                            : 'bg-slate-50 text-slate-900 hover:bg-slate-100'
-                                    }`}
-                                >
-                                    {option.label}
-                                </button>
+                                />
                             ))}
                         </div>
                     )}
 
                     {openMenu === 'more' && (
                         <div className="space-y-3">
-                            <p className="text-xs font-bold text-slate-500">
+                            <p className="text-caption font-bold text-muted">
                                 Filters apply instantly to the visible map area.
                             </p>
                             <button
                                 type="button"
                                 onClick={resetFilters}
-                                className="w-full rounded-lg bg-primary py-2.5 text-sm font-black text-white shadow-lg shadow-primary/20 transition-transform active:scale-95"
+                                className="w-full rounded-control bg-primary py-2.5 text-body-sm font-bold text-white shadow-lg shadow-primary/20 transition-transform active:scale-95"
                             >
                                 Reset filters
                             </button>

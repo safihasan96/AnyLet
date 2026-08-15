@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+import { useEffect, useMemo, useState } from 'react';
+import { collection, getDocs, limit, where, query } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Search, X, List } from 'lucide-react';
+import { List, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MapView from '../components/map/MapView';
 import FilterBar from '../components/map/FilterBar';
@@ -55,7 +55,7 @@ function filterListings(listings, filters) {
 
         if (filters.searchTerm) {
             const term = filters.searchTerm.toLowerCase().trim();
-            const matchesSearch = listing.title?.toLowerCase().includes(term) || 
+            const matchesSearch = listing.title?.toLowerCase().includes(term) ||
                                   listing.addressDetails?.toLowerCase().includes(term) ||
                                   listing.district?.toLowerCase().includes(term) ||
                                   listing.division?.toLowerCase().includes(term) ||
@@ -73,7 +73,7 @@ export default function MapPage() {
     const [visibleListings, setVisibleListings] = useState([]);
     const [selectedListingId, setSelectedListingId] = useState(null);
     const [hoveredListingId, setHoveredListingId] = useState(null);
-    const [hasPanned, setHasPanned] = useState(false);
+    const [_hasPanned, setHasPanned] = useState(false);
     const [currentBounds, setCurrentBounds] = useState(null);
     const [filters, setFilters] = useState(INITIAL_FILTERS);
     const [activeLayer, setActiveLayer] = useState('street');
@@ -137,7 +137,7 @@ export default function MapPage() {
     }, [currentBounds, allListings]);
 
     return (
-        <div className="anylet-map-page fixed inset-0 z-10 bg-[#F9FAFB] md:relative md:inset-auto md:z-auto md:h-[calc(100vh-72px)]">
+        <div className="anylet-map-page fixed inset-0 z-10 bg-surface-sunken md:relative md:inset-auto md:z-auto md:h-[calc(100vh-72px)]">
             <div className="flex h-full w-full flex-col md:flex-row">
                 <section className="relative h-full w-full md:w-[58%]">
                     {/* Premium unified top bar — mobile only */}
@@ -177,14 +177,15 @@ export default function MapPage() {
                     </MapView>
                 </section>
 
-                <aside className="hidden h-full w-[42%] flex-col overflow-y-auto bg-[#F9FAFB] md:flex border-l border-slate-200">
-                    <div className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F9FAFB]/95 px-5 py-4 backdrop-blur flex flex-col gap-3">
-                        <MapSearchBar 
-                            value={filters.searchTerm} 
+                {/* Desktop sidebar */}
+                <aside className="hidden h-full w-[42%] flex-col overflow-y-auto bg-surface-sunken md:flex border-l border-border">
+                    <div className="sticky top-0 z-10 border-b border-border bg-surface/95 px-5 py-4 backdrop-blur flex flex-col gap-3">
+                        <MapSearchBar
+                            value={filters.searchTerm}
                             onChange={(val) => setFilters({ ...filters, searchTerm: val })}
                             onLocationSelect={(coords) => setFlyToTarget(coords)}
                         />
-                        <p className="text-sm font-semibold text-[#111827]">
+                        <p className="text-body-sm font-bold text-content">
                             {filteredVisibleListings.length} properties in this area
                         </p>
                     </div>
@@ -208,14 +209,14 @@ export default function MapPage() {
                 <div className="fixed bottom-[calc(4.5rem+max(env(safe-area-inset-bottom),0.5rem))] left-4 z-[1000] md:hidden">
                     <button
                         onClick={() => setIsMobileModalOpen(true)}
-                        className="flex items-center gap-2 bg-primary px-6 py-3.5 rounded-2xl text-white font-black text-sm shadow-[0_8px_30px_rgb(26,34,127,0.3)] hover:scale-105 active:scale-95 transition-all"
+                        className="flex items-center gap-2 bg-primary px-6 py-3.5 rounded-[18px] text-white font-bold text-body-sm shadow-[0_8px_30px_rgb(26,34,127,0.3)] hover:scale-105 active:scale-95 transition-all"
                     >
                         <List size={18} />
                         {filteredVisibleListings.length} available
                     </button>
                 </div>
 
-                {/* Premium Listings Modal (Mobile Only) */}
+                {/* Mobile Listings Sheet */}
                 <AnimatePresence>
                     {isMobileModalOpen && (
                         <motion.div
@@ -230,23 +231,24 @@ export default function MapPage() {
                                 animate={{ y: 0 }}
                                 exit={{ y: '100%' }}
                                 transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-                                className="absolute inset-x-0 bottom-0 top-16 flex flex-col overflow-hidden rounded-t-[32px] bg-[#F9FAFB] shadow-[0_-20px_40px_rgba(0,0,0,0.2)]"
+                                className="absolute inset-x-0 bottom-0 top-16 flex flex-col overflow-hidden rounded-t-[32px] bg-surface shadow-[0_-20px_40px_rgba(0,0,0,0.2)]"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <div className="sticky top-0 z-10 border-b border-[#E5E7EB] bg-[#F9FAFB]/95 px-5 py-4 backdrop-blur flex flex-col gap-4">
+                                <div className="sticky top-0 z-10 border-b border-border bg-surface/95 px-5 py-4 backdrop-blur flex flex-col gap-4">
                                     <div className="flex items-center justify-between">
-                                        <h2 className="text-lg font-black text-slate-900">
+                                        <h2 className="text-title-sm text-content">
                                             {filteredVisibleListings.length} properties
                                         </h2>
                                         <button
                                             onClick={() => setIsMobileModalOpen(false)}
-                                            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-600 transition-colors hover:bg-slate-300 active:scale-95"
+                                            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-raised text-muted border border-border transition-colors hover:bg-surface-sunken active:scale-95"
+                                            aria-label="Close listings"
                                         >
                                             <X size={18} />
                                         </button>
                                     </div>
-                                    <MapSearchBar 
-                                        value={filters.searchTerm} 
+                                    <MapSearchBar
+                                        value={filters.searchTerm}
                                         onChange={(val) => setFilters({ ...filters, searchTerm: val })}
                                         onLocationSelect={(coords) => {
                                             setFlyToTarget(coords);

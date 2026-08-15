@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation, Link } from 'react-router-dom';
-import { useState, useEffect, Suspense, lazy } from 'react';
+import { useEffect, Suspense, lazy } from 'react';
 import Header from './components/Header';
 import MobileNavBar from './components/MobileNavBar';
 import BottomNav from './components/BottomNav';
@@ -9,8 +9,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import OnboardingGuard from './components/OnboardingGuard';
 import ErrorBoundary from './components/ErrorBoundary';
+import Footer from './components/Footer';
 import './App.css';
-import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
+import { AnimatePresence, MotionConfig } from 'framer-motion';
 
 /* ─────────────────────────────────────────────────────────────
    LAZY IMPORTS — Each page is its own JS chunk.
@@ -70,6 +71,9 @@ const Terms           = lazy(() => import('./pages/Terms'));
 
 // Admin — very heavy (127KB), only for admin users
 const Admin           = lazy(() => import('./pages/AdminPanel'));
+
+// Design system showcase (dev/reference) — the Phase 0 primitive playground
+const DesignSystem    = lazy(() => import('./pages/DesignSystem'));
 
 import PageWrapper from './components/layout/PageWrapper';
 import { PageSkeleton } from './components/Skeleton';
@@ -153,6 +157,7 @@ function App() {
                 <Route path="/terms"            element={<PageWrapper><Terms /></PageWrapper>} />
                 <Route path="/blog"             element={<PageWrapper><Blog /></PageWrapper>} />
                 <Route path="/blog/:id"         element={<PageWrapper><BlogPost /></PageWrapper>} />
+                <Route path="/design-system"    element={<DesignSystem />} />
                 {/* Map page — Leaflet lazy-loads as its own heavy chunk. ErrorBoundary
                     catches chunk-load failures (common on slow 3G) and shows a retry UI. */}
                 <Route path="/map" element={
@@ -246,6 +251,14 @@ function App() {
           </Suspense>
         </div>
       </main>
+
+      {/* Desktop footer — hidden on mobile (BottomNav owns that space) and on
+          full-bleed/immersive surfaces (map, auth, admin, conversations). */}
+      {!isAdminPath && !isAuthPath && !isMapPath && !isConversationPath && !isInboxPath && (
+        <div className="hidden md:block">
+          <Footer />
+        </div>
+      )}
 
       {!isAdminPath && !isAuthPath && !location.pathname.startsWith('/property/') && !isConversationPath && (
         <>

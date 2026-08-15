@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { createPortal } from 'react-dom';
+import Modal from './ui/Modal';
+import { Button, Input, Field, Icon, Card } from './ui';
 import { useNavigate } from 'react-router-dom';
 import logger from '../utils/logger';
 import { getApiUrl } from '../utils/api';
@@ -84,6 +85,7 @@ const backBtnV = {
     exit:    { opacity: 0, x: -10, transition: { duration: 0.1 } },
 };
 
+// eslint-disable-next-line no-unused-vars
 const dotV = (i) => ({
     hidden:  { opacity: 0, scale: 0 },
     visible: {
@@ -126,7 +128,7 @@ export default function PaymentModal({
     const [dir,             setDir]            = useState(1);
     const [selectedMethod,  setSelectedMethod] = useState(null);
     const [txnId,           setTxnId]          = useState('');
-    const [loading,         setLoading]        = useState(false);
+    const [_loading,        setLoading]        = useState(false);
     const [copied,          setCopied]         = useState(false);
     const [verifyResult,    setVerifyResult]   = useState(null); // { success, paymentId, amount, verifiedAt, message, error }
 
@@ -232,8 +234,10 @@ export default function PaymentModal({
     const showProgress = step < 3;
     const progressPct = step < 3 ? `${((step + 1) / totalSteps) * 100}%` : '100%';
 
-    /* Reduced-motion fallbacks */
+    /* Reduced-motion fallbacks — bV/cV kept for modal wrapper if upgraded back to raw portal */
+    // eslint-disable-next-line no-unused-vars
     const bV = reduced ? { hidden: { opacity: 0 }, visible: { opacity: 1 }, exit: { opacity: 0 } } : backdropV;
+    // eslint-disable-next-line no-unused-vars
     const cV = reduced ? { hidden: { opacity: 0 }, visible: { opacity: 1 }, exit: { opacity: 0 } } : cardV;
     const sV = reduced ? {
         enter:  () => ({ opacity: 0 }),
@@ -241,75 +245,59 @@ export default function PaymentModal({
         exit:   () => ({ opacity: 0 }),
     } : stepV;
 
-    return createPortal(
-        <AnimatePresence mode="wait">
-            {isOpen && (
-                <motion.div
-                    key="pay-backdrop"
-                    variants={bV} initial="hidden" animate="visible" exit="exit"
-                    className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-                    onClick={step < 3 ? handleClose : undefined}
-                >
-                    <div className="absolute inset-0 bg-slate-900/90" />
+    return (
+        <Modal open={isOpen} onClose={step < 3 ? handleClose : undefined} showClose={false} size="md" className="p-0">
+            {/* Accent stripe */}
+            <div className="h-1 w-full bg-gradient-to-r from-primary via-indigo-500 to-purple-600" />
+            
+            {/* ── Header ── */}
+            <div className="px-6 pt-5 pb-4">
+                <div className="flex items-center justify-between mb-4">
+                    <AnimatePresence mode="wait">
+                        {step > 0 && step < 3 ? (
+                            <motion.button
+                                key="back-btn"
+                                variants={backBtnV} initial="hidden" animate="visible" exit="exit"
+                                onClick={goBack}
+                                className="size-9 rounded-control bg-surface-raised flex items-center justify-center text-muted hover:text-content transition-colors"
+                                whileTap={{ scale: 0.82 }}
+                                aria-label="Go back"
+                            >
+                                <ArrowLeft size={18} strokeWidth={2.5} />
+                            </motion.button>
+                        ) : <div className="size-9" />}
+                    </AnimatePresence>
 
-                    <motion.div
-                        key="pay-card"
-                        variants={cV} initial="hidden" animate="visible" exit="exit"
-                        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl max-h-[90dvh] overflow-y-auto"
-                        onClick={e => e.stopPropagation()}
+                    {showProgress && (
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                            Step {step + 1} of {totalSteps}
+                        </p>
+                    )}
+
+                    <motion.button
+                        onClick={handleClose}
+                        className="size-9 rounded-control bg-surface-raised flex items-center justify-center text-subtle hover:text-content transition-colors"
+                        whileHover={{ scale: 1.14, rotate: 90 }}
+                        whileTap={{ scale: 0.82 }}
+                        transition={{ type: 'spring', stiffness: 520, damping: 18 }}
+                        aria-label="Close payment modal"
                     >
-                        {/* Accent stripe */}
-                        <div className="h-1 w-full rounded-t-[40px] bg-gradient-to-r from-primary via-indigo-500 to-purple-600" />
-                        <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mt-3" />
+                        <X size={18} strokeWidth={2.5} />
+                    </motion.button>
+                </div>
 
-                        {/* ── Header ── */}
-                        <div className="px-8 pt-5 pb-4">
-                            <div className="flex items-center justify-between mb-4">
-                                <AnimatePresence mode="wait">
-                                    {step > 0 && step < 3 ? (
-                                        <motion.button
-                                            key="back-btn"
-                                            variants={backBtnV} initial="hidden" animate="visible" exit="exit"
-                                            onClick={goBack}
-                                            className="size-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                                            whileTap={{ scale: 0.82 }}
-                                            aria-label="Go back"
-                                        >
-                                            <ArrowLeft size={18} strokeWidth={2.5} />
-                                        </motion.button>
-                                    ) : <div className="size-9" />}
-                                </AnimatePresence>
-
-                                {showProgress && (
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                        Step {step + 1} of {totalSteps}
-                                    </p>
-                                )}
-
-                                <motion.button
-                                    onClick={handleClose}
-                                    className="size-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-                                    whileHover={{ scale: 1.14, rotate: 90 }}
-                                    whileTap={{ scale: 0.82 }}
-                                    transition={{ type: 'spring', stiffness: 520, damping: 18 }}
-                                    aria-label="Close payment modal"
-                                >
-                                    <X size={18} strokeWidth={2.5} />
-                                </motion.button>
-                            </div>
-
-                            {/* Progress bar */}
-                            {showProgress && (
-                                <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                    <motion.div
-                                        className="h-full bg-gradient-to-r from-primary to-indigo-500 rounded-full"
-                                        initial={false}
-                                        animate={{ width: progressPct }}
-                                        transition={{ duration: 0.44, ease: [0.22, 1, 0.36, 1] }}
-                                    />
-                                </div>
-                            )}
-                        </div>
+                {/* Progress bar */}
+                {showProgress && (
+                    <div className="h-1.5 bg-surface-raised rounded-full overflow-hidden">
+                        <motion.div
+                            className="h-full bg-gradient-to-r from-primary to-indigo-500 rounded-full"
+                            initial={false}
+                            animate={{ width: progressPct }}
+                            transition={{ duration: 0.44, ease: [0.22, 1, 0.36, 1] }}
+                        />
+                    </div>
+                )}
+            </div>
 
                         {/* ── Step Content ── */}
                         <div className="overflow-hidden">
@@ -663,7 +651,7 @@ export default function PaymentModal({
                                                     { label: 'Payment Method', value: method?.name || 'Mobile Banking' },
                                                     { label: 'Payment Type', value: (normalizedBookingType || 'listing').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) },
                                                     propertyName ? { label: 'Property', value: propertyName } : null,
-                                                    { label: 'Date', value: new Date(verifyResult?.verifiedAt || Date.now()).toLocaleString('en-BD', { dateStyle: 'medium', timeStyle: 'short' }) },
+                                                    { label: 'Date', value: new Date((verifyResult?.verifiedAt ?? 0) || (verifyResult?.verifiedTimestamp ?? 0)).toLocaleString('en-BD', { dateStyle: 'medium', timeStyle: 'short' }) },
                                                 ].filter(Boolean).map((row, i) => (
                                                     <motion.div
                                                         key={row.label} custom={i}
@@ -781,10 +769,6 @@ export default function PaymentModal({
 
                             </AnimatePresence>
                         </div>
-                    </motion.div>
-                </motion.div>
-            )}
-        </AnimatePresence>,
-        document.body
+        </Modal>
     );
 }

@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '../ui';
 
 function getImageUrl(listing) {
     return listing.imageUrl || listing.images?.[0] || listing.image || '';
@@ -14,33 +15,34 @@ function ListingPreviewCard({ listing }) {
     const location = [listing.upazila || listing.thana, listing.district].filter(Boolean).join(', ');
 
     return (
-        <article className="w-[200px] bg-white">
+        <article className="w-[200px] bg-surface">
             {imageUrl ? (
                 <img
                     src={imageUrl}
                     alt={listing.title || 'AnyLet property'}
                     loading="lazy"
-                    className="h-[120px] w-[200px] rounded-t-lg object-cover"
+                    className="h-[120px] w-[200px] rounded-t-card object-cover"
                 />
             ) : (
-                <div className="flex h-[120px] w-[200px] items-center justify-center rounded-t-lg bg-[#D1FAE5] text-sm font-semibold text-[#1B4332]">
+                <div className="flex h-[120px] w-[200px] items-center justify-center rounded-t-card bg-primary/10 text-body-xs font-bold text-primary">
                     AnyLet
                 </div>
             )}
             <div className="space-y-1 p-3">
-                <h3 className="truncate text-sm font-semibold text-[#111827]">
+                <h3 className="truncate text-body-sm font-bold text-content">
                     {listing.title || 'Untitled property'}
                 </h3>
-                <p className="text-sm font-bold text-[#1B4332]">৳{price}/month</p>
-                <p className="text-xs text-[#6B7280]">{beds} · {baths}</p>
-                <p className="truncate text-xs text-gray-500">{location || 'Bangladesh'}</p>
-                <button
-                    type="button"
+                <p className="text-body-sm font-bold text-success">৳{price}/month</p>
+                <p className="text-caption text-muted">{beds} · {baths}</p>
+                <p className="truncate text-caption text-subtle">{location || 'Bangladesh'}</p>
+                <Button
+                    size="sm"
+                    fullWidth
+                    className="mt-2"
                     onClick={() => navigate(`/property/${listing.id}`)}
-                    className="mt-2 w-full rounded-lg bg-[#1B4332] py-2 text-sm font-semibold text-white transition active:scale-[0.98]"
                 >
                     View Details →
-                </button>
+                </Button>
             </div>
         </article>
     );
