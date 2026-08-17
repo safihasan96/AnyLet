@@ -1,21 +1,12 @@
 import { useState, useEffect } from 'react';
 import { collection, query, getDocs, where, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import PropertyCard from './PropertyCard';
-import { PropertyCardSkeleton } from './Skeleton';
+import useSavedProperties from '../hooks/useSavedProperties';
 import useInfiniteScroll from '../hooks/useInfiniteScroll';
-import { motion, AnimatePresence } from 'framer-motion';
 import logger from '../utils/logger';
-
-const gridVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-        opacity: 1,
-        transition: {
-            staggerChildren: 0.1,
-        },
-    },
-};
+import PropertyCard, { PropertyCardSkeleton } from './patterns/PropertyCard';
+import Grid from './layout/Grid';
+import { EmptyState, Spinner, Icon } from './ui';
 
 // Module-level cache so we don't re-fetch on re-mount
 let _cachedListings = null;
@@ -49,22 +40,23 @@ export default function FeaturedListings({ category = 'All', division = '' }) {
     const [allListings, setAllListings] = useState(_cachedListings || []);
     const [loading, setLoading] = useState(!_cachedListings);
     const [displayCount, setDisplayCount] = useState(12);
+    const { toggleSaveProperty, isPropertySaved } = useSavedProperties();
 
     const { sentinelRef } = useInfiniteScroll(() => {
         setDisplayCount(prev => prev + 12);
     });
 
     useEffect(() => {
+        // Reset visible count when the active filter changes.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDisplayCount(12);
     }, [category, division]);
 
     useEffect(() => {
-        if (_cachedListings) {
-            setAllListings(_cachedListings);
-            setLoading(false);
-            return;
-        }
-        setLoading(true);
+        // State is already hydrated from the module cache via the useState
+        // initializers; only fetch when the cache is cold. setState here runs in
+        // async callbacks, not synchronously in the effect body.
+        if (_cachedListings) return;
         fetchAllApprovedListings()
             .then(listings => {
                 setAllListings(listings);
@@ -93,60 +85,52 @@ export default function FeaturedListings({ category = 'All', division = '' }) {
             return dateB - dateA;
         });
 
-
     if (loading) {
         return (
-            <div className="px-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-                {[1, 2, 3].map(i => (
-                    <PropertyCardSkeleton key={i} />
-                ))}
-            </div>
+            <Grid cols={3} gap="md" className="px-4 lg:px-0">
+                {Array.from({ length: 6 }).map((_, i) => <PropertyCardSkeleton key={i} />)}
+            </Grid>
         );
     }
 
     if (listings.length === 0) {
         return (
-            <div className="px-4 py-20 text-center flex flex-col items-center gap-4">
-                <div className="bg-slate-100 dark:bg-slate-800 p-8 rounded-full">
-                    <span className="text-4xl">🏠</span>
-                </div>
-                <div>
-                    <h4 className="text-slate-900 dark:text-white font-black text-xl mb-1">No Properties Found</h4>
-                    <p className="text-slate-500 text-sm max-w-[250px] mx-auto">Be the first one to post a rental requirement or listing in this area!</p>
-                </div>
-            </div>
+            <EmptyState
+                icon={<Icon name="home" />}
+                title="No properties found"
+                description="Be the first to post a rental listing in this area."
+            />
         );
     }
 
     return (
-        <div className="px-4 py-8">
-            <div className="flex flex-col gap-2 mb-8">
-                <div className="flex items-center justify-between">
-                    <h3 className="font-black text-2xl text-slate-900 dark:text-white uppercase tracking-tight">
-                        {category === 'All' ? 'Latest' : category} Properties
-                        {division && <span className="text-primary dark:text-indigo-400 font-bold ml-2">in {division}</span>}
-                    </h3>
-                    <div className="hidden md:block h-1 bg-primary w-20 rounded-full"></div>
+        <div className="px-4 lg:px-0">
+            <div className="mb-6 flex items-end justify-between gap-4">
+                <div>
+                    <h2 className="text-title-lg text-content">
+                        {category === 'All' ? 'Latest' : category} properties
+                        {division && <span className="text-primary"> in {division}</span>}
+                    </h2>
+                    <p className="mt-1 text-body-sm text-muted">
+                        {listings.length} {listings.length === 1 ? 'listing' : 'listings'} matching your criteria
+                    </p>
                 </div>
-                <p className="text-slate-500 text-sm font-medium">
-                    Found {listings.length} {listings.length === 1 ? 'listing' : 'listings'} matching your criteria
-                </p>
             </div>
-            <motion.div
-                variants={gridVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-            >
-                <AnimatePresence mode="popLayout">
-                    {listings.slice(0, displayCount).map((listing) => (
-                        <PropertyCard key={listing.id} property={listing} />
-                    ))}
-                </AnimatePresence>
-            </motion.div>
+
+            <Grid cols={3} gap="md">
+                {listings.slice(0, displayCount).map((listing) => (
+                    <PropertyCard
+                        key={listing.id}
+                        property={listing}
+                        saved={isPropertySaved(listing.id)}
+                        onToggleSave={toggleSaveProperty}
+                    />
+                ))}
+            </Grid>
+
             {listings.length > displayCount && (
-                <div ref={sentinelRef} className="h-12 flex items-center justify-center mt-8">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <div ref={sentinelRef} className="mt-8 flex h-12 items-center justify-center">
+                    <Spinner className="text-primary" />
                 </div>
             )}
         </div>

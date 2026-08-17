@@ -9,9 +9,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import OnboardingGuard from './components/OnboardingGuard';
 import ErrorBoundary from './components/ErrorBoundary';
+import Footer from './components/Footer';
 import './App.css';
 import { AnimatePresence, MotionConfig } from 'framer-motion';
-import { Helmet } from 'react-helmet-async';
 
 /* ─────────────────────────────────────────────────────────────
    LAZY IMPORTS — Each page is its own JS chunk.
@@ -44,7 +44,6 @@ const Settings        = lazy(() => import('./pages/Settings'));
 const AddProperty     = lazy(() => import('./pages/AddProperty'));
 const MyListings      = lazy(() => import('./pages/MyListings'));
 const MyBookings      = lazy(() => import('./pages/MyBookings'));
-const OwnerBookings   = lazy(() => import('./pages/OwnerBookings'));
 const MyMoveIns       = lazy(() => import('./pages/MyMoveIns'));
 const Favorites       = lazy(() => import('./pages/Favorites'));
 const Notifications   = lazy(() => import('./pages/Notifications'));
@@ -72,10 +71,9 @@ const Terms           = lazy(() => import('./pages/Terms'));
 
 // Admin — very heavy (127KB), only for admin users
 const Admin           = lazy(() => import('./pages/AdminPanel'));
-const AdminLayout     = lazy(() => import('./pages/admin/AdminLayout'));
-const AdminOverview   = lazy(() => import('./pages/admin/AdminOverview'));
-const AdminMoneyManagement = lazy(() => import('./pages/admin/AdminMoneyManagement'));
-const AdminChatReview    = lazy(() => import('./pages/admin/AdminChatReview'));
+
+// Design system showcase (dev/reference) — the Phase 0 primitive playground
+const DesignSystem    = lazy(() => import('./pages/DesignSystem'));
 
 import PageWrapper from './components/layout/PageWrapper';
 import { PageSkeleton } from './components/Skeleton';
@@ -159,6 +157,7 @@ function App() {
                 <Route path="/terms"            element={<PageWrapper><Terms /></PageWrapper>} />
                 <Route path="/blog"             element={<PageWrapper><Blog /></PageWrapper>} />
                 <Route path="/blog/:id"         element={<PageWrapper><BlogPost /></PageWrapper>} />
+                <Route path="/design-system"    element={<DesignSystem />} />
                 {/* Map page — Leaflet lazy-loads as its own heavy chunk. ErrorBoundary
                     catches chunk-load failures (common on slow 3G) and shows a retry UI. */}
                 <Route path="/map" element={
@@ -206,9 +205,6 @@ function App() {
                 <Route path="/my-bookings" element={
                   <ProtectedRoute><PageWrapper><MyBookings /></PageWrapper></ProtectedRoute>
                 } />
-                <Route path="/owner-bookings" element={
-                  <ProtectedRoute><PageWrapper><OwnerBookings /></PageWrapper></ProtectedRoute>
-                } />
                 <Route path="/my-reviews" element={
                   <ProtectedRoute><PageWrapper><MyReviews /></PageWrapper></ProtectedRoute>
                 } />
@@ -235,23 +231,13 @@ function App() {
                 } />
 
                 {/* ── Admin Routes ── */}
-                <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-                  <Route index element={<AdminOverview />} />
-                  <Route path="money" element={<AdminMoneyManagement />} />
-                  <Route path="chat-review" element={<AdminChatReview />} />
-                  <Route path="chat-review/:bookingId" element={<AdminChatReview />} />
-                </Route>
-                
-                {/* Fallback to legacy AdminPanel for unmigrated routes */}
-                <Route path="/admin/*" element={<AdminRoute><Admin /></AdminRoute>} />
+                <Route path="/admin/*" element={
+                  <AdminRoute><Admin /></AdminRoute>
+                } />
 
                 {/* ── 404 Catch-All ── */}
                 <Route path="*" element={
                   <PageWrapper>
-                    <Helmet>
-                      <title>Page Not Found | Any-Let</title>
-                      <meta name="description" content="The page you are looking for could not be found." />
-                    </Helmet>
                     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
                       <h2 className="text-4xl font-black text-slate-800 dark:text-white mb-2">404</h2>
                       <p className="text-slate-500 font-bold uppercase tracking-widest text-sm mb-6">Page Not Found</p>
@@ -265,6 +251,14 @@ function App() {
           </Suspense>
         </div>
       </main>
+
+      {/* Desktop footer — hidden on mobile (BottomNav owns that space) and on
+          full-bleed/immersive surfaces (map, auth, admin, conversations). */}
+      {!isAdminPath && !isAuthPath && !isMapPath && !isConversationPath && !isInboxPath && (
+        <div className="hidden md:block">
+          <Footer />
+        </div>
+      )}
 
       {!isAdminPath && !isAuthPath && !location.pathname.startsWith('/property/') && !isConversationPath && (
         <>

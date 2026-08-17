@@ -183,7 +183,7 @@ export default function PropertyCard({ property }) {
                                 {Number(property.reviewScore || 0).toFixed(1)} ({property.reviewCount})
                             </div>
                         )}
-                        {property.status && property.status !== 'Available' && (
+                        {property.status && property.status !== 'Available' && property.status !== 'Pending' && (
                             <div className={`px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm flex items-center gap-1.5 border ${
                                 property.status === 'Let Agreed' 
                                     ? 'bg-rose-500 text-white border-rose-400' 

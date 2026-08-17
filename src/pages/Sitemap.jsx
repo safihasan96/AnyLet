@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 
 export default function Sitemap() {
     const sections = [
@@ -39,22 +38,21 @@ export default function Sitemap() {
     ];
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-16">
-            <Helmet><title>Sitemap | Any-Let</title></Helmet>
+        <div className="min-h-screen bg-surface-sunken py-16">
             <div className="max-w-4xl mx-auto px-6">
-                <header className="mb-12 border-b border-slate-200 dark:border-slate-800 pb-8">
-                    <h1 className="text-4xl font-black text-slate-900 dark:text-white mb-4">Site Map</h1>
-                    <p className="text-lg text-slate-500 font-medium">Find your way around Any-Let.</p>
+                <header className="mb-12 border-b border-border pb-8">
+                    <h1 className="text-4xl font-bold text-content mb-4">Site Map</h1>
+                    <p className="text-lg text-muted font-medium">Find your way around Any-Let.</p>
                 </header>
 
                 <div className="grid md:grid-cols-2 gap-10">
                     {sections.map((section, idx) => (
-                        <div key={idx} className="bg-white dark:bg-slate-900 p-8 rounded-[32px] shadow-sm border border-slate-100 dark:border-slate-800">
-                            <h2 className="text-xl font-black text-slate-900 dark:text-white mb-6 uppercase tracking-widest text-sm">{section.title}</h2>
+                        <div key={idx} className="bg-surface p-8 rounded-card shadow-sm border border-border">
+                            <h2 className="text-xl font-bold text-content mb-6 uppercase tracking-widest text-sm">{section.title}</h2>
                             <ul className="space-y-4">
                                 {section.links.map((link, ldx) => (
                                     <li key={ldx}>
-                                        <Link to={link.path} className="font-bold text-slate-600 dark:text-slate-300 hover:text-primary dark:text-indigo-400 transition-colors">
+                                        <Link to={link.path} className="font-bold text-muted hover:text-primary transition-colors">
                                             {link.name}
                                         </Link>
                                     </li>

@@ -1,5 +1,4 @@
-import { Building2, MapPin, Info, Image as ImageIcon, Trash2, Camera, ArrowRight, Calendar, Users, GripVertical } from 'lucide-react';
-import { Reorder } from 'framer-motion';
+import { Building2, MapPin, Info, Image as ImageIcon, Trash2, Camera, ArrowRight, Calendar, Users } from 'lucide-react';
 import LocationPickerMap from '../LocationPickerMap';
 import { Section, Input, Select, Textarea } from './FormControls';
 import { PROPERTY_TYPES, BILLING_CYCLES, TENANT_TYPES } from './constants';
@@ -15,7 +14,6 @@ export default function StepBasics({
     onChange,
     onImageUpload,
     onRemoveImage,
-    onReorderImages,
     uploading,
     onNext,
     divisions,
@@ -118,40 +116,23 @@ export default function StepBasics({
 
             <Section title="Media (Up to 5 images)" icon={<ImageIcon size={20} />}>
                 <div className="space-y-4">
-                    <div className="space-y-3">
-                        {formData.images.length > 0 && (
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 flex items-center gap-1">
-                                <GripVertical size={11} /> Drag to reorder · First image is the cover
-                            </p>
-                        )}
-                        <Reorder.Group
-                            axis="x"
-                            values={formData.images}
-                            onReorder={onReorderImages}
-                            className="grid grid-cols-2 sm:grid-cols-3 gap-3 list-none"
-                        >
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {formData.images.map((url, index) => (
-                            <Reorder.Item
-                                key={url}
-                                value={url}
-                                className="relative aspect-square rounded-2xl overflow-hidden group border border-slate-100 dark:border-white/[0.06] shadow-sm cursor-grab active:cursor-grabbing"
-                                whileDrag={{ scale: 1.05, zIndex: 50, boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}
-                            >
-                                <img loading="lazy" src={url} alt={`Property ${index + 1}`} className="w-full h-full object-cover pointer-events-none" />
+                            <div key={index} className="relative aspect-square rounded-2xl overflow-hidden group border border-slate-100 dark:border-white/[0.06] shadow-sm">
+                                <img loading="lazy" src={url} alt={`Property ${index + 1}`} className="w-full h-full object-cover" />
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); onRemoveImage(index); }}
-                                    className="absolute top-2 right-2 p-1.5 bg-rose-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-rose-500/20 z-10"
+                                    onClick={() => onRemoveImage(index)}
+                                    className="absolute top-2 right-2 p-1.5 bg-rose-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg shadow-rose-500/20"
                                 >
                                     <Trash2 size={14} />
                                 </button>
                                 {index === 0 && (
-                                    <div className="absolute bottom-0 inset-x-0 bg-primary/80 backdrop-blur-sm py-1 text-[8px] font-black text-white text-center uppercase tracking-widest pointer-events-none">
+                                    <div className="absolute bottom-0 inset-x-0 bg-primary/80 backdrop-blur-sm py-1 text-[8px] font-black text-white text-center uppercase tracking-widest">
                                         Main Cover
                                     </div>
                                 )}
-                            </Reorder.Item>
+                            </div>
                         ))}
-                        </Reorder.Group>
 
                         {formData.images.length < 5 && (
                             <div className="relative aspect-square flex flex-col gap-2">

@@ -1,6 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { IconButton, Icon } from './ui';
 
 /* ─────────────────────────────────────────────────────────────
    PAGE TITLE MAP
@@ -102,31 +101,14 @@ export default function MobileNavBar() {
   };
 
   return (
-    <header
-      className="md:hidden fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] bg-white/70 dark:bg-[#0F1117]/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50"
-    >
-      <div className="flex items-center h-[56px] px-4 gap-3">
-        <motion.button
-          id="mobile-back-btn"
-          onClick={handleBack}
-          whileTap={{ scale: 0.9 }}
-          transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-          aria-label="Go back"
-          className="flex items-center justify-center size-9 rounded-2xl bg-primary/10 hover:bg-primary/15 active:bg-primary/20 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 transition-colors shrink-0"
-        >
-          <ArrowLeft size={20} strokeWidth={2.5} className="text-primary dark:text-indigo-400" />
-        </motion.button>
-
+    <header className="md:hidden fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] surface-blur border-b border-border">
+      {/* 56px content height matches the top padding App.jsx reserves for it. */}
+      <div className="flex h-14 items-center gap-2 px-3">
+        <IconButton label="Go back" variant="soft" onClick={handleBack} className="min-h-11 min-w-11">
+          <Icon name="back" />
+        </IconButton>
         {title && (
-          <motion.h1
-            key={location.pathname}
-            initial={{ opacity: 0, x: 8 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="flex-1 text-[16px] font-[900] text-slate-900 dark:text-white tracking-tight truncate"
-          >
-            {title}
-          </motion.h1>
+          <h1 className="min-w-0 flex-1 truncate text-title-sm text-content">{title}</h1>
         )}
       </div>
     </header>

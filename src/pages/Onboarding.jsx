@@ -2,18 +2,12 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import {
-    User, Phone, Camera, ShieldCheck, ArrowRight, ArrowLeft,
-    CheckCircle2, Home as HomeIcon, Building2, Users,
-    Loader2, Upload, FileCheck, AlertCircle, X
-} from 'lucide-react';
+import { Card, Button, Input, Field, Icon, ErrorState } from '../components/ui';
 
 /* ─────────────────────────────────────────────────────────────────────────
    Utilities
 ───────────────────────────────────────────────────────────────────────── */
-// Bangladesh phone regex: +880XXXXXXXXXX or 01XXXXXXXXX
 const BD_PHONE_RE = /^(?:\+880|0)1[3-9]\d{8}$/;
-// General international phone regex fallback
 const INTL_PHONE_RE = /^\+?[1-9]\d{6,14}$/;
 
 function isValidPhone(num) {
@@ -40,8 +34,8 @@ const slide = {
 };
 
 const STEPS = [
-    { id: 'personal_details', label: 'Personal', icon: User },
-    { id: 'phone_verification', label: 'Phone', icon: Phone },
+    { id: 'personal_details', label: 'Personal', iconName: 'user' },
+    { id: 'phone_verification', label: 'Phone', iconName: 'phone' },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -143,27 +137,27 @@ export default function Onboarding() {
     ───────────────────────────────────────────────────────────────────── */
     if (stepIdx >= STEPS.length) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-primary via-indigo-800 to-indigo-950 flex flex-col items-center justify-center p-6 text-center">
+            <div className="min-h-screen bg-surface flex flex-col items-center justify-center p-6 text-center">
                 <motion.div
                     initial={{ scale: 0, rotate: -30 }}
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 18 }}
-                    className="size-28 rounded-[32px] bg-emerald-400 flex items-center justify-center shadow-2xl shadow-emerald-400/30 mb-8"
+                    className="size-28 rounded-modal bg-success/20 flex items-center justify-center mb-8 border border-success/30"
                 >
-                    <CheckCircle2 size={56} className="text-white" />
+                    <Icon name="success" className="text-success size-14" />
                 </motion.div>
                 <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                    <h1 className="text-3xl font-black text-white mb-3">You're all set! 🎉</h1>
-                    <p className="text-white/60 font-medium text-sm max-w-xs mx-auto mb-10">
+                    <h1 className="text-title-xl text-content mb-3">You're all set! 🎉</h1>
+                    <p className="text-muted text-body-md max-w-xs mx-auto mb-10">
                         Your profile is complete. You can now explore and add properties on AnyLet.
                     </p>
-                    <motion.button
-                        whileTap={{ scale: 0.95 }}
+                    <Button
+                        size="lg"
                         onClick={() => navigate(nextRoute, { replace: true })}
-                        className="px-10 py-4 bg-white text-primary font-black rounded-2xl shadow-2xl text-sm uppercase tracking-widest hover:bg-slate-50 transition-colors"
+                        className="px-10"
                     >
                         Start Exploring
-                    </motion.button>
+                    </Button>
                 </motion.div>
             </div>
         );
@@ -173,34 +167,33 @@ export default function Onboarding() {
        WIZARD SHELL
     ───────────────────────────────────────────────────────────────────── */
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
+        <div className="min-h-screen bg-surface-sunken flex flex-col">
             {/* Top bar */}
-            <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 pt-4 pb-0">
+            <div className="sticky top-0 z-10 bg-surface border-b border-border px-4 pt-4 pb-0">
                 <div className="max-w-lg mx-auto">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                            <div className="size-8 bg-primary rounded-xl flex items-center justify-center">
-                                <HomeIcon size={16} className="text-white" />
+                            <div className="size-8 bg-primary rounded-control flex items-center justify-center">
+                                <Icon name="home" className="text-on-primary size-4" />
                             </div>
-                            <span className="text-sm font-black text-primary dark:text-indigo-400 uppercase tracking-tighter">AnyLet</span>
+                            <span className="text-caption font-semibold text-primary uppercase">AnyLet</span>
                         </div>
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        <span className="text-caption text-muted uppercase">
                             Step {stepIdx + 1} of {STEPS.length}
                         </span>
                     </div>
                     {/* Step pills */}
                     <div className="flex items-center gap-1 mb-0">
                         {STEPS.map((s, i) => {
-                            const Icon = s.icon;
                             const done = i < stepIdx;
                             const active = i === stepIdx;
                             return (
                                 <div key={s.id} className="flex-1 flex flex-col items-center gap-1">
-                                    <div className={`w-full h-1 rounded-full transition-all duration-500 ${done || active ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}`} />
-                                    <div className={`size-7 rounded-xl flex items-center justify-center transition-all ${done ? 'bg-primary text-white' : active ? 'bg-primary/10 text-primary dark:bg-indigo-900/40 dark:text-indigo-400' : 'bg-transparent text-slate-300 dark:text-slate-600'}`}>
-                                        {done ? <CheckCircle2 size={14} /> : <Icon size={14} />}
+                                    <div className={`w-full h-1 rounded-full transition-all duration-500 ${done || active ? 'bg-primary' : 'bg-surface-raised border border-border'}`} />
+                                    <div className={`size-7 rounded-control flex items-center justify-center transition-all ${done ? 'bg-primary text-on-primary' : active ? 'bg-primary-subtle text-primary' : 'text-subtle'}`}>
+                                        {done ? <Icon name="success" className="size-3.5" /> : <Icon name={s.iconName} className="size-3.5" />}
                                     </div>
-                                    <span className={`text-[9px] font-black uppercase tracking-wider hidden sm:block ${active ? 'text-primary dark:text-indigo-400' : done ? 'text-slate-500' : 'text-slate-300 dark:text-slate-600'}`}>{s.label}</span>
+                                    <span className={`text-[9px] font-semibold uppercase tracking-wider hidden sm:block ${active ? 'text-primary' : done ? 'text-content' : 'text-subtle'}`}>{s.label}</span>
                                 </div>
                             );
                         })}
@@ -225,41 +218,39 @@ export default function Onboarding() {
                         {currentStep.id === 'personal_details' && (
                             <div className="flex flex-col gap-6">
                                 <div>
-                                    <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-1">Your legal name</h1>
-                                    <p className="text-sm font-medium text-slate-500">As it appears on your government ID. Required for lease agreements.</p>
+                                    <h1 className="text-title-lg text-content mb-1">Your legal name</h1>
+                                    <p className="text-body-sm text-muted">As it appears on your government ID. Required for lease agreements.</p>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">First Name</label>
-                                        <input
-                                            value={firstName}
-                                            onChange={e => setFirstName(e.target.value)}
-                                            placeholder="First Name"
-                                            className="w-full px-4 py-3.5 bg-white dark:bg-[#0A0C10] border-2 border-slate-200 dark:border-transparent rounded-2xl font-bold text-slate-900 dark:text-white focus:border-primary/50 dark:focus:border-indigo-500/50 outline-none transition-all"
-                                        />
+                                <Card padding="lg" className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <Field label="First Name">
+                                            <Input
+                                                value={firstName}
+                                                onChange={e => setFirstName(e.target.value)}
+                                                placeholder="First Name"
+                                            />
+                                        </Field>
+                                        <Field label="Last Name">
+                                            <Input
+                                                value={lastName}
+                                                onChange={e => setLastName(e.target.value)}
+                                                placeholder="Last Name"
+                                            />
+                                        </Field>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Last Name</label>
-                                        <input
-                                            value={lastName}
-                                            onChange={e => setLastName(e.target.value)}
-                                            placeholder="Last Name"
-                                            className="w-full px-4 py-3.5 bg-white dark:bg-[#0A0C10] border-2 border-slate-200 dark:border-transparent rounded-2xl font-bold text-slate-900 dark:text-white focus:border-primary/50 dark:focus:border-indigo-500/50 outline-none transition-all"
+                                    <Field label={<>Date of Birth <span className="text-danger font-normal ml-1">· Must be 18+</span></>}>
+                                        <Input
+                                            type="date"
+                                            value={dob}
+                                            onChange={e => setDob(e.target.value)}
+                                            max={new Date(Date.now() - 18 * 365.25 * 24 * 3600 * 1000).toISOString().split('T')[0]}
                                         />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Date of Birth <span className="text-rose-500">· Must be 18+</span></label>
-                                    <input
-                                        type="date"
-                                        value={dob}
-                                        onChange={e => setDob(e.target.value)}
-                                        max={new Date(Date.now() - 18 * 365.25 * 24 * 3600 * 1000).toISOString().split('T')[0]}
-                                        className="w-full px-4 py-3.5 bg-white dark:bg-[#0A0C10] border-2 border-slate-200 dark:border-transparent rounded-2xl font-bold text-slate-900 dark:text-white focus:border-primary/50 dark:focus:border-indigo-500/50 outline-none transition-all"
-                                    />
-                                </div>
-                                {error && <ErrorBanner message={error} />}
-                                <ContinueButton onClick={submitPersonal} loading={saving} />
+                                    </Field>
+                                </Card>
+                                {error && <ErrorState message={error} />}
+                                <Button size="lg" onClick={submitPersonal} loading={saving} rightIcon={<Icon name="forward" />}>
+                                    Continue
+                                </Button>
                             </div>
                         )}
 
@@ -267,69 +258,43 @@ export default function Onboarding() {
                         {currentStep.id === 'phone_verification' && (
                             <div className="flex flex-col gap-6">
                                 <div>
-                                    <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-1">Your phone number</h1>
-                                    <p className="text-sm font-medium text-slate-500">Used for host-tenant contact and important account alerts.</p>
+                                    <h1 className="text-title-lg text-content mb-1">Your phone number</h1>
+                                    <p className="text-body-sm text-muted">Used for host-tenant contact and important account alerts.</p>
                                 </div>
-                                <div>
-                                    <label className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1.5 block">Phone Number</label>
-                                    <div className="flex gap-2 group">
-                                        <div className="flex items-center px-4 bg-white dark:bg-[#0A0C10] border-2 border-slate-200 dark:border-transparent rounded-2xl font-bold text-slate-500 text-sm whitespace-nowrap transition-colors group-focus-within:border-primary/50 dark:group-focus-within:border-indigo-500/50">
-                                            🇧🇩 +880
+                                <Card padding="lg">
+                                    <Field label="Phone Number" error={phoneError} hint="Enter a BD number (01XXXXXXXXX) or international number with country code">
+                                        <div className="flex gap-2">
+                                            <div className="flex items-center px-4 bg-surface-sunken border border-border rounded-control font-semibold text-muted text-sm whitespace-nowrap">
+                                                🇧🇩 +880
+                                            </div>
+                                            <Input
+                                                type="tel"
+                                                value={phone}
+                                                onChange={e => { setPhone(e.target.value); setPhoneError(''); }}
+                                                placeholder="01712 345 678"
+                                                className="flex-1"
+                                                invalid={!!phoneError}
+                                            />
                                         </div>
-                                        <input
-                                            type="tel"
-                                            value={phone}
-                                            onChange={e => { setPhone(e.target.value); setPhoneError(''); }}
-                                            placeholder="01712 345 678"
-                                            className="flex-1 px-4 py-3.5 bg-white dark:bg-[#0A0C10] border-2 border-slate-200 dark:border-transparent rounded-2xl font-bold text-slate-900 dark:text-white focus:border-primary/50 dark:focus:border-indigo-500/50 outline-none transition-all"
-                                        />
-                                    </div>
-                                    {phoneError && (
-                                        <p className="flex items-center gap-1.5 mt-2 text-xs font-bold text-rose-500">
-                                            <AlertCircle size={12} /> {phoneError}
-                                        </p>
-                                    )}
-                                    <p className="mt-2 text-xs text-slate-400 font-medium">Enter a BD number (01XXXXXXXXX) or international number with country code</p>
-                                </div>
-                                {error && <ErrorBanner message={error} />}
+                                    </Field>
+                                </Card>
+                                {error && <ErrorState message={error} />}
                                 <div className="flex flex-col gap-3">
                                     <div className="flex gap-3">
-                                        <button onClick={goBack} className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"><ArrowLeft size={20} /></button>
-                                        <ContinueButton onClick={submitPhone} loading={saving} className="flex-1" label="Submit & Finish" />
+                                        <Button variant="outline" size="lg" onClick={goBack}><Icon name="back" /></Button>
+                                        <Button size="lg" className="flex-1" onClick={submitPhone} loading={saving} rightIcon={<Icon name="success" />}>
+                                            Submit & Finish
+                                        </Button>
                                     </div>
-                                    <button onClick={skipPhone} className="text-center text-xs text-slate-400 font-bold underline underline-offset-2 hover:text-slate-600 transition-colors">
+                                    <Button variant="ghost" onClick={skipPhone} className="text-muted">
                                         Skip for now
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         )}
                     </motion.div>
                 </AnimatePresence>
             </div>
-        </div>
-    );
-}
-
-/* ─────────────────────────────────────────────────────────────────────────
-   Shared sub-components
-───────────────────────────────────────────────────────────────────────── */
-function ContinueButton({ onClick, loading, label = 'Continue', className = '' }) {
-    return (
-        <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={onClick}
-            disabled={loading}
-            className={`flex items-center justify-center gap-2 py-4 px-8 bg-primary text-white font-black rounded-2xl shadow-lg shadow-primary/20 hover:bg-primary-dark transition-all disabled:opacity-70 ${className}`}
-        >
-            {loading ? <Loader2 size={18} className="animate-spin" /> : <>{label} <ArrowRight size={18} /></>}
-        </motion.button>
-    );
-}
-
-function ErrorBanner({ message }) {
-    return (
-        <div className="flex items-center gap-2 p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-2xl text-rose-600 dark:text-rose-400 text-xs font-bold">
-            <AlertCircle size={14} className="shrink-0" /> {message}
         </div>
     );
 }

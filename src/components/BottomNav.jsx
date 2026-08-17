@@ -1,118 +1,93 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Compass, Map, MessageSquare, User, Plus } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { subscribeToUnreadCount } from '../utils/messageService';
+import { cn } from '../lib/cn';
+import { Icon } from './ui';
 
+/**
+ * BottomNav — mobile tab bar (translucent, scroll-under) with a floating "Post"
+ * action. Fixed to the bottom with safe-area-inset padding; the 4.5rem bar
+ * height matches the spacer App.jsx renders. Every tap target is ≥44px. Motion
+ * is limited to a shared active-dot indicator + a gentle press on the CTA.
+ */
 export default function BottomNav() {
-    const { currentUser } = useAuth();
-    const { t } = useLanguage();
-    const location = useLocation();
-    const [unreadCount, setUnreadCount] = useState(0);
+  const { currentUser } = useAuth();
+  const { t } = useLanguage();
+  const location = useLocation();
+  const [unread, setUnread] = useState(0);
+  const isActive = (path) => location.pathname === path;
 
-    const isActive = (path) => location.pathname === path;
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsub = subscribeToUnreadCount(currentUser.uid, setUnread);
+    return () => unsub();
+  }, [currentUser]);
 
-    useEffect(() => {
-        if (!currentUser) {
-            setUnreadCount(0);
-            return;
-        }
+  // Show 0 when logged out without resetting state inside the effect.
+  const shownUnread = currentUser ? unread : 0;
 
-        const unsub = subscribeToUnreadCount(currentUser.uid, (total) => {
-            setUnreadCount(total);
-        });
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 surface-blur border-t border-border"
+      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)' }}
+      aria-label="Primary"
+    >
+      <div className="flex h-[4.5rem] items-center justify-evenly px-1 sm:px-6">
+        <Tab to="/" icon="explore" label={t('explore')} active={isActive('/')} />
+        <Tab to="/map" icon="map" label="Map" active={isActive('/map')} />
 
-        return () => unsub();
-    }, [currentUser]);
+        {/* Floating Post action */}
+        <div className="relative -top-6 flex w-16 shrink-0 justify-center sm:w-20">
+          <motion.div whileTap={{ scale: 0.92 }} transition={{ type: 'spring', bounce: 0, duration: 0.3 }}>
+            <Link
+              to="/post-ad"
+              aria-label="Post an ad"
+              className="grid size-14 place-items-center rounded-full bg-primary text-on-primary shadow-raised
+                         border-4 border-bg transition-colors hover:bg-primary-hover
+                         focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              <Icon name="add" className="size-6" strokeWidth={2.5} />
+            </Link>
+          </motion.div>
+        </div>
 
-    return (
-        <nav className="fixed bottom-0 left-0 right-0 w-full bg-white/80 dark:bg-[#0F1117]/80 backdrop-blur-md border-t border-slate-200/50 dark:border-slate-800/50 z-50" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.5rem)' }}>
-            <div className="flex justify-evenly items-center px-1 sm:px-6 w-full h-[4.5rem]">
-                <NavItem
-                    to="/"
-                    isActive={isActive}
-                    icon={(active) => <Compass size={24} strokeWidth={active ? 2.5 : 2} />}
-                    label={t('explore')}
-                />
-                <NavItem
-                    to="/map"
-                    isActive={isActive}
-                    icon={(active) => <Map size={24} strokeWidth={active ? 2.5 : 2} />}
-                    label="Map"
-                />
-
-                {/* Floating Center Button */}
-                <div className="relative -top-6 flex justify-center w-16 sm:w-20 shrink-0">
-                    <motion.div
-                        whileTap={{ scale: 0.9 }}
-                        whileHover={{ scale: 1.05 }}
-                        transition={{ type: 'spring', stiffness: 500, damping: 20 }}
-                    >
-                        <Link
-                            to="/post-ad"
-                            className="flex items-center justify-center size-[56px] sm:size-[60px] rounded-full bg-primary text-white shadow-xl shadow-primary/30 border-[4px] sm:border-[6px] border-[#F8F9FA] dark:border-[#0F1117]"
-                            aria-label="Post Ad"
-                        >
-                            <motion.div
-                                animate={{ rotate: isActive('/post-ad') ? 45 : 0 }}
-                                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                            >
-                                <Plus size={26} strokeWidth={3} className="sm:w-7 sm:h-7" />
-                            </motion.div>
-                        </Link>
-                    </motion.div>
-                </div>
-
-                <NavItem
-                    to="/messages"
-                    isActive={isActive}
-                    icon={(active) => <MessageSquare size={24} strokeWidth={active ? 2.5 : 2} />}
-                    label={t('messages')}
-                    badge={true}
-                    unreadCount={unreadCount}
-                />
-                <NavItem
-                    to="/profile"
-                    isActive={isActive}
-                    icon={(active) => <User size={24} strokeWidth={active ? 2.5 : 2} />}
-                    label={t('profile')}
-                />
-            </div>
-        </nav>
-    );
+        <Tab to="/messages" icon="messages" label={t('messages')} active={isActive('/messages')} badge={shownUnread} />
+        <Tab to="/profile" icon="user" label={t('profile')} active={isActive('/profile')} />
+      </div>
+    </nav>
+  );
 }
 
-const NavItem = ({ to, icon, label, badge = false, unreadCount = 0, isActive }) => {
-    const active = isActive(to);
-    return (
-        <Link to={to} className="relative flex flex-col items-center gap-1 w-12 outline-none group">
-            <motion.div
-                className={`flex flex-col items-center gap-1 ${active ? 'text-primary dark:text-indigo-400' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors'}`}
-                whileTap={{ scale: 0.9 }}
-                transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-            >
-                {active && (
-                    <motion.div
-                        layoutId="bottomNavDot"
-                        className="absolute -top-3 w-5 h-[3px] bg-primary dark:bg-indigo-400 rounded-full"
-                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    />
-                )}
-                <div className="relative">
-                    {icon(active)}
-                    {badge && unreadCount > 0 && (
-                        <span className="absolute -top-0.5 -right-1 flex size-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                            <span className="relative inline-flex size-3 rounded-full bg-rose-500 border-2 border-white dark:border-[#0F1117]" />
-                        </span>
-                    )}
-                </div>
-                <span className={`text-[10px] font-[800] tracking-wide transition-colors ${active ? 'text-primary dark:text-indigo-400' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}>
-                    {label}
-                </span>
-            </motion.div>
-        </Link>
-    );
-};
+function Tab({ to, icon, label, active, badge = 0 }) {
+  return (
+    <Link
+      to={to}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'group relative flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 rounded-control px-2 transition-colors',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+        active ? 'text-primary' : 'text-subtle hover:text-content'
+      )}
+    >
+      {active && (
+        <motion.span
+          layoutId="bottomnav-active"
+          className="absolute -top-1 h-1 w-5 rounded-full bg-primary"
+          transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+        />
+      )}
+      <span className="relative">
+        <Icon name={icon} className="size-6" strokeWidth={active ? 2.4 : 2} />
+        {badge > 0 && (
+          <span className="absolute -right-1.5 -top-1 grid min-w-4 place-items-center rounded-full bg-danger px-1 text-[0.625rem] font-semibold leading-4 text-on-danger ring-2 ring-bg">
+            {badge > 9 ? '9+' : badge}
+          </span>
+        )}
+      </span>
+      <span className="text-[0.6875rem] font-medium leading-none">{label}</span>
+    </Link>
+  );
+}

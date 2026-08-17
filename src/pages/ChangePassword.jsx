@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../firebase';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, signOut } from 'firebase/auth';
 import { ArrowLeft, RefreshCw, Key, Lock, Shield, EyeOff, Eye, Info, LockIcon } from 'lucide-react';
+import { Button, Input, Field } from '../components/ui';
 import logger from '../utils/logger';
 
 export default function ChangePassword() {
@@ -60,13 +61,13 @@ export default function ChangePassword() {
     }
 
     return (
-        <div className="flex flex-col min-h-screen bg-[#f8fafc] dark:bg-slate-950 pb-32">
+        <div className="flex flex-col min-h-screen bg-surface-sunken pb-32">
             <header className="flex items-center justify-center p-6 mb-2">
-                <h1 className="text-lg font-[800] text-slate-900 dark:text-white tracking-tight">Change Password</h1>
+                <h1 className="text-lg font-bold text-content tracking-tight">Change Password</h1>
             </header>
 
             <div className="flex-1 flex flex-col items-center px-6 max-w-md mx-auto w-full">
-                <div className="size-[80px] bg-[#e2e8f0] dark:bg-slate-800 rounded-full flex items-center justify-center text-[#4338ca] dark:text-indigo-400 mb-6">
+                <div className="size-[80px] bg-primary-subtle rounded-full flex items-center justify-center text-primary mb-6">
                     <div className="relative">
                         <RefreshCw size={32} strokeWidth={2.5} className="absolute -inset-1 opacity-20" />
                         <RefreshCw size={32} strokeWidth={2.5} />
@@ -76,7 +77,7 @@ export default function ChangePassword() {
                     </div>
                 </div>
 
-                <p className="text-[#64748b] text-center text-[14px] font-medium leading-relaxed mb-8 px-2">
+                <p className="text-muted text-center text-[14px] font-medium leading-relaxed mb-8 px-2">
                     To secure your account, please ensure your new password is at least 8 characters long and includes numbers.
                 </p>
 
@@ -87,75 +88,78 @@ export default function ChangePassword() {
                 )}
 
                 <form onSubmit={handleSubmit} className="w-full space-y-6">
-                    <div className="space-y-2">
-                        <label className="text-[13px] font-[800] text-slate-900 dark:text-slate-200 ml-1">Current Password</label>
+                    <Field label="Current Password">
                         <div className="relative">
-                            <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} strokeWidth={2.5} />
-                            <input
+                            <Input
                                 type={showCurrent ? "text" : "password"}
                                 placeholder="••••••••"
-                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] py-[18px] pl-12 pr-12 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-[#4338ca] focus:ring-1 focus:ring-[#4338ca] transition-all shadow-sm tracking-widest text-lg"
+                                leftIcon={<Key size={20} strokeWidth={2.5} />}
+                                rightIcon={
+                                    <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="text-muted p-1">
+                                        {showCurrent ? <Eye size={20} /> : <EyeOff size={20} strokeWidth={2} />}
+                                    </button>
+                                }
                                 value={currentPassword}
                                 onChange={(e) => setCurrentPassword(e.target.value)}
                                 required
                             />
-                            <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 p-1">
-                                {showCurrent ? <Eye size={20} /> : <EyeOff size={20} strokeWidth={2} />}
-                            </button>
                         </div>
-                    </div>
+                    </Field>
 
-                    <div className="w-full h-px bg-slate-100 dark:bg-slate-800 my-2"></div>
+                    <div className="w-full h-px bg-border my-2"></div>
 
-                    <div className="space-y-2">
-                        <label className="text-[13px] font-[800] text-slate-900 dark:text-slate-200 ml-1">New Password</label>
+                    <Field label="New Password">
                         <div className="relative">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} strokeWidth={2.5} />
-                            <input
+                            <Input
                                 type={showNew ? "text" : "password"}
                                 placeholder="••••••••"
-                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] py-[18px] pl-12 pr-12 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-[#4338ca] focus:ring-1 focus:ring-[#4338ca] transition-all shadow-sm tracking-widest text-lg"
+                                leftIcon={<Lock size={20} strokeWidth={2.5} />}
+                                rightIcon={
+                                    <button type="button" onClick={() => setShowNew(!showNew)} className="text-muted p-1">
+                                        {showNew ? <Eye size={20} /> : <EyeOff size={20} strokeWidth={2} />}
+                                    </button>
+                                }
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
                                 required
                             />
-                            <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 p-1">
-                                {showNew ? <Eye size={20} /> : <EyeOff size={20} strokeWidth={2} />}
-                            </button>
                         </div>
-                    </div>
+                    </Field>
 
-                    <div className="space-y-2">
-                        <label className="text-[13px] font-[800] text-slate-900 dark:text-slate-200 ml-1">Confirm New Password</label>
+                    <Field label="Confirm New Password">
                         <div className="relative">
-                            <Shield className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} strokeWidth={2.5} />
-                            <input
+                            <Input
                                 type={showConfirm ? "text" : "password"}
                                 placeholder="••••••••"
-                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] py-[18px] pl-12 pr-12 font-bold text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-[#4338ca] focus:ring-1 focus:ring-[#4338ca] transition-all shadow-sm tracking-widest text-lg"
+                                leftIcon={<Shield size={20} strokeWidth={2.5} />}
+                                rightIcon={
+                                    <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="text-muted p-1">
+                                        {showConfirm ? <Eye size={20} /> : <EyeOff size={20} strokeWidth={2} />}
+                                    </button>
+                                }
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 required
                             />
-                            <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 p-1">
-                                {showConfirm ? <Eye size={20} /> : <EyeOff size={20} strokeWidth={2} />}
-                            </button>
                         </div>
-                    </div>
+                    </Field>
 
-                    <div className="bg-[#f1f5f9] dark:bg-slate-800/50 rounded-[24px] p-5 flex gap-3 mt-4 border border-[#e2e8f0] dark:border-slate-800">
-                        <Info size={20} className="text-[#3730a3] shrink-0 mt-0.5" strokeWidth={2.5} />
-                        <p className="text-[13px] text-slate-600 dark:text-slate-400 font-medium leading-relaxed">
+                    <div className="bg-surface-sunken rounded-[24px] p-5 flex gap-3 mt-4 border border-border">
+                        <Info size={20} className="text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
+                        <p className="text-[13px] text-muted font-medium leading-relaxed">
                             Changing your password will sign you out of all other active sessions on different devices for security reasons.
                         </p>
                     </div>
 
-                    <button
-                        disabled={loading}
-                        className="w-full bg-[#3730a3] text-white font-[800] text-[15px] py-[18px] rounded-[24px] shadow-lg shadow-[#3730a3]/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70 mt-4"
+                    <Button
+                        type="submit"
+                        fullWidth
+                        size="lg"
+                        loading={loading}
+                        className="mt-4"
                     >
                         {loading ? "UPDATING..." : "Update Password"}
-                    </button>
+                    </Button>
                 </form>
             </div>
 
