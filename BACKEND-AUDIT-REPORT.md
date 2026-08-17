@@ -6,38 +6,14 @@
 
 ---
 
-## 1. Branch Topology — How the Branches Actually Work
+## 1. Branch Topology — Consolidated
 
-### The Problem: Massive Divergence
+**Status:** Fully Consolidated
 
-```
-main                chore/codebase-rehab
- │                        │
- │  ffbd421 fix(MyListings)   ← HEAD of main
- │  ...                      │
- │  bfdd708 remove payment    │
- │  ...                      │
- │                           9aa833f fix(security)  ← HEAD of codebase-rehab
- │                           505efe6 refactor Account.jsx
- │                           ...
- │                           d9989cb fix: browser process.env bug
- │
- │  ◀── 17 commits on main NOT in codebase-rehab ──▶
- │  ◀── 16 commits on codebase-rehab NOT in main ──▶
- │
- │  Total: 114 files changed, +14,104 / -17,863 lines
-```
+The historical divergence between `main`, `chore/codebase-rehab`, and `claude/project-instruction-context-692676` has been **resolved**. 
+All backend hardening, security rules, middleware rewrites, and UI fixes have been unified onto a single `main` branch. 
 
-**What happened:** Claude created two parallel work streams that were never reconciled:
-
-| Branch | What it did | Current state |
-|---|---|---|
-| `main` | Post-rehab feature work: removed payment flow from AddProperty, drag-and-drop images, status/isApproved sync fixes, amenity restoration | 17 commits ahead of codebase-rehab |
-| `chore/codebase-rehab` | Backend hardening, component decomposition, dead code removal, middleware/security cleanup, Firestore rules rewrite | 16 commits ahead of main |
-
-**Key insight:** The `claude/project-instruction-context-692676` branch attempted a merge (`2c8f618`) but it was incomplete — it merged codebase-rehab INTO that branch, then `main` continued to receive new commits that never went back into codebase-rehab.
-
-**Result:** `main` has critical UI fixes (payment removal, status sync) that `codebase-rehab` does NOT have, and `codebase-rehab` has the entire security/middleware/backend rewrite that `main` does NOT have. They are effectively two different applications now.
+The stale branches (`chore/codebase-rehab` and `claude/project-instruction-context-692676`) have been deleted.
 
 ---
 
