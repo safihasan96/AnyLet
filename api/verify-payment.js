@@ -28,7 +28,7 @@ function positiveInteger(value, fallback = 1) {
 // This runs AFTER the TxnID has been verified as genuine.
 async function applyBusinessLogic(tx, {
   unclaimedRef, txData, uid, bookingType, propertyId, months, onsiteVerification,
-  expectedAmount, propertySnapshot,
+  expectedAmount, propertySnapshot, commissionRate
 }) {
   const now = Timestamp.now();
 
@@ -160,11 +160,9 @@ async function applyBusinessLogic(tx, {
   if (payerSnap.exists) {
     const referrerId = payerSnap.data().referredBy ?? null;
     if (referrerId && referrerSnap && referrerSnap.exists) {
-      // Fetch commission rate from Firestore (avoids re-calling getPlatformFees a second time
-      // by reusing the already-fetched fees object passed in via expectedAmount calculation)
-      const feesData       = await getPlatformFees();
-      const commissionRate = Number(feesData.commissionRate?.value) || 0.02;
-      const commissionAmount = parseFloat((txData.amount * commissionRate).toFixed(2));
+      // Uses pre-fetched commission rate to avoid async transaction violations
+      const actualCommissionRate = Number(commissionRate) || 0.02;
+      const commissionAmount = parseFloat((txData.amount * actualCommissionRate).toFixed(2));
 
       const wallet = referrerSnap.data().referralWallet ?? { available: 0 };
       tx.update(referrerRef, {
@@ -243,11 +241,12 @@ export default withMiddleware(async (req, res) => {
 
   // ── 3. Compute required price server-side — client cannot fake this ────────
   // Calls feeCalculator.js (Single Source of Truth). No local fee constants.
-  let expectedAmount, propertySnapshot;
+  let expectedAmount, propertySnapshot, feesData;
   try {
-    ({ expectedAmount, propertySnapshot } = await computeExpectedAmount({
+    ({ expectedAmount, propertySnapshot, fees } = await computeExpectedAmount({
       bookingType, propertyId, months, onsiteVerification, uid,
     }));
+    feesData = fees;
   } catch (err) {
     return res.status(err.statusCode || 400).json({ error: err.message });
   }
@@ -347,9 +346,10 @@ export default withMiddleware(async (req, res) => {
       }
 
       // ── diff ≤ AMOUNT_TOLERANCE: proceed with normal approval ──────────────
+      const preFetchedCommissionRate = Number(feesData?.commissionRate?.value) || 0.02;
       paymentId = await applyBusinessLogic(tx, {
         unclaimedRef, txData, uid, bookingType, propertyId, months, onsiteVerification,
-        expectedAmount, propertySnapshot,
+        expectedAmount, propertySnapshot, commissionRate: preFetchedCommissionRate,
       });
     });
 
