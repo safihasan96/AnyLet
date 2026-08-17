@@ -7,6 +7,7 @@
 // ============================================================
 
 import { getDocs, query, limit as firestoreLimit } from 'firebase/firestore';
+import { FirebaseError } from 'firebase/app';
 import QUERY_LIMITS from '../config/queryLimits';
 import logger from './logger';
 
@@ -19,13 +20,25 @@ import logger from './logger';
  *   If omitted and the query has no limit clause, HARD_CAP is applied automatically.
  * @returns {Promise<import('firebase/firestore').QuerySnapshot>}
  */
+async function executeSafely(q) {
+  try {
+    return await getDocs(q);
+  } catch (error) {
+    if (error instanceof FirebaseError && error.code === 'failed-precondition') {
+      logger.error('[safeQuery] ❌ Missing Firestore index. Returning empty array to prevent app crash.', error);
+      return { docs: [], empty: true, size: 0, forEach: () => {} };
+    }
+    throw error;
+  }
+}
+
 export async function safeDocs(q, explicitLimit) {
   // If the caller provided an explicit limit, apply it.
   // This is the recommended usage: always pass a limit from QUERY_LIMITS.
   if (explicitLimit !== undefined) {
     const boundedLimit = Math.min(explicitLimit, QUERY_LIMITS.HARD_CAP);
     const boundedQuery = query(q, firestoreLimit(boundedLimit));
-    return getDocs(boundedQuery);
+    return executeSafely(boundedQuery);
   }
 
   // No explicit limit was given. Inspect the query for an existing limit clause.
@@ -44,7 +57,7 @@ export async function safeDocs(q, explicitLimit) {
       );
     }
     const guardedQuery = query(q, firestoreLimit(QUERY_LIMITS.HARD_CAP));
-    return getDocs(guardedQuery);
+    return executeSafely(guardedQuery);
   }
 
   // Query already has a limit. Check it does not exceed HARD_CAP.
@@ -57,10 +70,10 @@ export async function safeDocs(q, explicitLimit) {
       );
     }
     const cappedQuery = query(q, firestoreLimit(QUERY_LIMITS.HARD_CAP));
-    return getDocs(cappedQuery);
+    return executeSafely(cappedQuery);
   }
 
-  return getDocs(q);
+  return executeSafely(q);
 }
 
 /**
