@@ -7,11 +7,16 @@ import { withMiddleware } from './_lib/middleware.js';
 // Without this, an empty/weak string would match any request — completely
 // opening the payment endpoint to forged confirmations.
 const WEBHOOK_SECRET = process.env.SMS_WEBHOOK_SECRET;
-if (!WEBHOOK_SECRET || WEBHOOK_SECRET.trim().length < 16) {
-  throw new Error(
-    '[sms-webhook] FATAL: SMS_WEBHOOK_SECRET env var is missing or too short (min 16 chars). ' +
-    'Set it in your Vercel environment variables before deploying.'
-  );
+
+// In production, hard-fail on boot so it never deploys broken.
+// In dev, we lazily evaluate so we can boot the dev server without SMS secrets.
+if (process.env.NODE_ENV === 'production') {
+  if (!WEBHOOK_SECRET || WEBHOOK_SECRET.trim().length < 16) {
+    throw new Error(
+      '[sms-webhook] FATAL: SMS_WEBHOOK_SECRET env var is missing or too short (min 16 chars). ' +
+      'Set it in your Vercel environment variables before deploying.'
+    );
+  }
 }
 
 const ALLOWED_PROVIDERS = new Set(['bkash', 'nagad', 'rocket']);
