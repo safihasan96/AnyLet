@@ -86,6 +86,11 @@ async function handleSetClaim(req, res) {
   });
   await auth.revokeRefreshTokens(targetUid);
 
+  // Mirror role to the users document so admin queries can find this user
+  await db.collection('users').doc(targetUid).set({
+    role: grantAdmin ? 'admin' : 'user'
+  }, { merge: true });
+
   await db.collection('adminAuditLogs').add({
     action: grantAdmin ? 'GRANT_ADMIN' : 'REVOKE_ADMIN',
     performedByUid: req.user.uid,
