@@ -80,7 +80,7 @@ export default withMiddleware(async (req, res) => {
         userId:    targetUid,
         type:      `withdrawal_${finalStatus}`,
         title:     action === 'approve' ? '✅ Withdrawal Approved' : '❌ Withdrawal Rejected',
-        body:      action === 'approve'
+        message:   action === 'approve'
           ? `Your withdrawal of ৳${rejectedAmount.toLocaleString()} has been approved and will be transferred within 1-3 business days.`
           : `Your withdrawal of ৳${rejectedAmount.toLocaleString()} has been rejected. The amount has been returned to your wallet. Please contact support if you have questions.`,
         link:      '/referral',

@@ -64,7 +64,7 @@ export default withMiddleware(async (req, res) => {
           userId:    data.tenantId,
           type:      'rent_reminder',
           title:     'Rent Due Soon',
-          body:      `Your rent for ${data.propertyName || 'your property'} is due in ${diffDays} day${diffDays !== 1 ? 's' : ''}.`,
+          message:   `Your rent for ${data.propertyName || 'your property'} is due in ${diffDays} day${diffDays !== 1 ? 's' : ''}.`,
           link:      '/my-bookings',
           isRead:    false,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),

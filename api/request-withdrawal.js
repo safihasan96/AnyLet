@@ -128,7 +128,7 @@ export default withMiddleware(async (req, res) => {
             userId: adminDoc.id,
             type: 'withdrawal_request',
             title: '💰 New Withdrawal Request',
-            body: `${userName} has requested a withdrawal of ৳${amount.toLocaleString()}. Requires admin approval.`,
+            message: `${userName} has requested a withdrawal of ৳${amount.toLocaleString()}. Requires admin approval.`,
             link: `/admin/withdrawals?id=${withdrawalId}`,
             isRead: false,
             createdAt: now,
