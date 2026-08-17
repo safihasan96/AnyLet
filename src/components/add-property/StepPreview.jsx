@@ -1,23 +1,16 @@
-import { CheckCircle, CreditCard } from 'lucide-react';
+import { CheckCircle, Send } from 'lucide-react';
 import { Section, PreviewInfo } from './FormControls';
 
 /**
- * StepPreview — wizard step 3: listing preview, on-site verification opt-in,
- * and the publish / pay button. Presentational; form state, fee figures, and
- * handlers come from the AddProperty shell.
+ * StepPreview — wizard step 3: listing preview and the free publish button.
+ * Posting is now free — no payment flow. Presentational; form state and
+ * the onPublish handler come from the AddProperty shell.
  */
 export default function StepPreview({
     formData,
     setFormData,
-    hasActiveSubscription,
-    subscriptionPlan,
-    wantOnsiteVerify,
-    setWantOnsiteVerify,
-    onsiteFee,
-    listingFee,
-    totalAmount,
     loading,
-    onProceedToPayment,
+    onPublish,
     onBack,
 }) {
     return (
@@ -39,7 +32,7 @@ export default function StepPreview({
                         {formData.images.map((url, idx) => (
                             <div
                                 key={idx}
-                                className={`size-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${formData.imageUrl === url ? 'border-primary scale-105' : 'border-transparent opacity-60'}`}
+                                className={`size-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${formData.imageUrl === url ? 'border-primary scale-105' : 'border-transparent opacity-60'}`}
                                 onClick={() => setFormData(prev => ({ ...prev, imageUrl: url, image_url: url }))}
                             >
                                 <img loading="lazy" src={url} className="w-full h-full object-cover" alt="Thumb" />
@@ -65,56 +58,24 @@ export default function StepPreview({
                 </div>
             </Section>
 
-            {hasActiveSubscription && (
-                <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 mb-3">
-                    <CheckCircle size={20} className="text-emerald-600 shrink-0" />
-                    <div>
-                        <p className="font-black text-emerald-700 dark:text-emerald-400 text-sm">{subscriptionPlan} Plan Active</p>
-                        <p className="text-xs font-medium text-emerald-600/80">Listing fee included in your subscription — post for free!</p>
-                    </div>
-                </div>
-            )}
-
-            <div
-                onClick={() => setWantOnsiteVerify(v => !v)}
-                className={`flex items-start gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all mb-3 ${
-                    wantOnsiteVerify
-                        ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                        : 'border-slate-100 dark:border-white/[0.06] hover:border-primary/40'
-                }`}
-            >
-                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
-                    wantOnsiteVerify ? 'bg-primary border-primary' : 'border-slate-300 dark:border-slate-600'
-                }`}>
-                    {wantOnsiteVerify && <CheckCircle size={14} className="text-white" strokeWidth={3} />}
-                </div>
-                <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                        <p className="font-black text-slate-900 dark:text-white text-sm">Add On-Site Verification</p>
-                        <span className="text-xs font-black text-primary dark:text-indigo-400">+ ৳{onsiteFee}</span>
-                    </div>
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                        Our team visits your property, verifies it, and adds a <span className="font-black text-emerald-600">Verified ✅</span> badge — boosting trust with tenants.
-                    </p>
+            {/* Free posting banner */}
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20">
+                <CheckCircle size={20} className="text-emerald-600 shrink-0" />
+                <div>
+                    <p className="font-black text-emerald-700 dark:text-emerald-400 text-sm">Posting is Free!</p>
+                    <p className="text-xs font-medium text-emerald-600/80">Submit your listing for review — our team verifies it in under 30 minutes.</p>
                 </div>
             </div>
 
             <button
                 type="button"
                 disabled={loading}
-                onClick={onProceedToPayment}
+                onClick={onPublish}
                 className="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-xl shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70"
             >
-                <CreditCard size={20} />
-                {totalAmount === 0 ? 'Publish Ad — Free with Subscription' : `Publish Ad — ৳${totalAmount}`}
+                <Send size={20} />
+                {loading ? 'Submitting...' : 'Publish Property'}
             </button>
-
-            <p className="text-center text-[10px] font-bold text-slate-400 mt-2">
-                {hasActiveSubscription
-                    ? `${subscriptionPlan} subscription · Listing: Free${wantOnsiteVerify ? ` · On-Site Verify: ৳${onsiteFee}` : ''}`
-                    : `Listing Fee: ৳${listingFee}${wantOnsiteVerify ? ` · On-Site Verify: ৳${onsiteFee}` : ' · or get a subscription plan to post free'}`
-                }
-            </p>
 
             <button
                 onClick={onBack}

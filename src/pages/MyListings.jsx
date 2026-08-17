@@ -365,22 +365,24 @@ export default function MyListings() {
                                         setBottomSheet({ isOpen: false, property: null });
                                     }} 
                                 />
-                                <ActionItem 
-                                    icon={<Activity size={20} />} 
-                                    label="Change Status" 
+                                <ActionItem
+                                    icon={<Activity size={20} />}
+                                    label="Change Status"
                                     onClick={() => {
                                         const newStatus = bottomSheet.property.status === 'Available' ? 'Under Negotiation' : 'Available';
                                         setStatusModal({ isOpen: true, id: bottomSheet.property.id, title: bottomSheet.property.title, newStatus });
                                         setBottomSheet({ isOpen: false, property: null });
-                                    }} 
+                                    }}
+                                    disabled={!bottomSheet.property.isApproved}
                                 />
-                                <ActionItem 
-                                    icon={<RefreshCcw size={20} />} 
-                                    label="Bump Listing (Refresh Date)" 
+                                <ActionItem
+                                    icon={<RefreshCcw size={20} />}
+                                    label="Bump Listing (Refresh Date)"
                                     onClick={() => {
                                         setBumpModal({ isOpen: true, id: bottomSheet.property.id, title: bottomSheet.property.title });
                                         setBottomSheet({ isOpen: false, property: null });
-                                    }} 
+                                    }}
+                                    disabled={!bottomSheet.property.isApproved}
                                 />
                                 {(!bottomSheet.property.verificationStatus || bottomSheet.property.verificationStatus === 'unverified') && (
                                     <ActionItem 
@@ -482,16 +484,26 @@ function MetricCard({ title, count, color, bg, border }) {
     );
 }
 
-function ActionItem({ icon, label, danger, onClick }) {
+function ActionItem({ icon, label, danger, disabled, onClick }) {
     return (
-        <button 
+        <button
             onClick={onClick}
-            className={`flex items-center gap-4 w-full p-4 rounded-2xl active:bg-slate-50 dark:active:bg-slate-800 transition-colors ${danger ? 'text-rose-500' : 'text-slate-900 dark:text-white'}`}
+            disabled={disabled}
+            className={`flex items-center gap-4 w-full p-4 rounded-2xl active:bg-slate-50 dark:active:bg-slate-800 transition-colors ${
+                disabled ? 'opacity-30 pointer-events-none' :
+                danger ? 'text-rose-500' : 'text-slate-900 dark:text-white'
+            }`}
         >
-            <div className={`flex items-center justify-center w-10 h-10 rounded-full ${danger ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
+            <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                disabled ? 'bg-slate-50 dark:bg-slate-800 text-slate-400' :
+                danger ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500' : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+            }`}>
                 {icon}
             </div>
-            <span className="text-[16px] font-bold">{label}</span>
+            <div className="flex-1 text-left">
+                <span className="text-[16px] font-bold">{label}</span>
+                {disabled && <p className="text-[11px] text-slate-400 font-medium">Only available for approved listings</p>}
+            </div>
         </button>
     );
 }
@@ -523,16 +535,17 @@ function ListingCard({ property, onClick, onActionClick, onDeleteRequest }) {
         badgeText = 'Rejected';
         badgeBg = 'bg-red-500/90';
         badgeTextColor = 'text-white';
+    } else if (property.isApproved && status === 'Available') {
+        // Check isApproved FIRST to prevent split-brain where isApproved=true but status text is stale
+        statusDotColor = 'bg-emerald-500'; // 🟢 active
+        badgeText = 'Active';
+        badgeBg = 'bg-emerald-500/90';
+        badgeTextColor = 'text-white';
     } else if (!property.isApproved) {
         statusDotColor = 'bg-yellow-400'; // 🟡 pending
         badgeText = 'Pending Approval';
         badgeBg = 'bg-yellow-400/90';
         badgeTextColor = 'text-slate-900';
-    } else if (property.isApproved && status === 'Available') {
-        statusDotColor = 'bg-emerald-500'; // 🟢 active
-        badgeText = 'Active';
-        badgeBg = 'bg-emerald-500/90';
-        badgeTextColor = 'text-white';
     } else {
         statusDotColor = 'bg-slate-400';
         badgeText = status || 'Active';

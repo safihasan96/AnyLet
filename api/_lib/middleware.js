@@ -85,21 +85,9 @@ async function enforceRateLimit(req, res) {
   return true;
 }
 
-// Deeply sanitize strings in JSON body
+// Note: JSON payload HTML sanitization was removed because it destructively stripped legitimate user input (e.g., `< 10`).
+// XSS protection is natively handled by React on the frontend when rendering data.
 function sanitizePayload(obj) {
-  if (typeof obj === 'string') {
-    return sanitizeHtml(obj, { allowedTags: [], allowedAttributes: {} }); // Strip ALL HTML tags from API payloads
-  }
-  if (Array.isArray(obj)) {
-    return obj.map(sanitizePayload);
-  }
-  if (obj !== null && typeof obj === 'object') {
-    const sanitized = {};
-    for (const [key, value] of Object.entries(obj)) {
-      sanitized[key] = sanitizePayload(value);
-    }
-    return sanitized;
-  }
   return obj;
 }
 

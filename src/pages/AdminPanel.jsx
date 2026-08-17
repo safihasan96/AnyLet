@@ -110,10 +110,18 @@ export default function AdminPanel() {
     /* ── Listing approval ─────────────────────────────────────────────────── */
     const handleApproveListing = async listing => {
         try {
-            await updateDoc(doc(db, 'properties', listing.id), { isApproved: true, isActive: true, isRejected: false });
+            // Atomically set BOTH isApproved and status to eliminate split-brain
+            // where isApproved=true but status='Pending' shows wrong badge in MyListings
+            await updateDoc(doc(db, 'properties', listing.id), {
+                isApproved: true,
+                isActive: true,
+                isRejected: false,
+                status: 'Available',
+                updatedAt: serverTimestamp(),
+            });
             // Update selectedListing in-place so the drawer reflects approval instantly
             if (selectedListing?.id === listing.id) {
-                setSelectedListing(prev => ({ ...prev, isApproved: true, isActive: true, isRejected: false }));
+                setSelectedListing(prev => ({ ...prev, isApproved: true, isActive: true, isRejected: false, status: 'Available' }));
             }
 
             // Notify owner
@@ -131,6 +139,7 @@ export default function AdminPanel() {
             toast.success('Listing approved successfully!');
         } catch (e) { logger.error('Approve listing error:', e); }
     };
+
 
     const handleRejectListing = async listing => {
         try {
