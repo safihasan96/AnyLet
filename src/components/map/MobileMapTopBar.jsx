@@ -196,15 +196,8 @@ export default function MobileMapTopBar({ value, onChange, onLocationSelect, fil
     });
 
     const containerRef = useRef(null);
-    const hasFilterActive = filters.type !== 'all' || filters.minPrice || filters.maxPrice || filters.beds !== 0 || activeLayer !== 'street';
 
-    // Load history
-    useEffect(() => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) setHistory(JSON.parse(saved));
-        } catch { /* ignore */ }
-    }, []);
+    const hasFilterActive = filters.type !== 'all' || filters.minPrice || filters.maxPrice || filters.beds !== 0 || activeLayer !== 'street';
 
     // Close dropdown on outside click
     useEffect(() => {

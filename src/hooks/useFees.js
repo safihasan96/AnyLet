@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
-import logger from '../utils/logger';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 
 // Default fallback fees matching the seed config to avoid UI flashes
 const DEFAULT_FEES = {
@@ -14,55 +13,42 @@ const DEFAULT_FEES = {
   withdrawalLimits: { minAmount: 500, maxAmount: 25000, currency: "BDT" }
 };
 
-// Cross-instance cache so repeat mounts don't flash the loading state.
-// (No `isFetching` singleton — that pattern deadlocked when the first
-// subscriber unmounted before the snapshot resolved.)
 let cachedFees = null;
-
-// Never block the UI on the fees read for longer than this. If the
-// platformConfig/fees listener hangs (e.g. App Check / network), we fall
-// back to DEFAULT_FEES so pages gated on `loading` still render.
-const FEES_TIMEOUT_MS = 4000;
+let isFetching = false;
+let fetchPromise = null;
 
 export function useFees() {
   const [fees, setFees] = useState(cachedFees || DEFAULT_FEES);
   const [loading, setLoading] = useState(!cachedFees);
 
   useEffect(() => {
-    // Already cached → initial useState above already reflects it; nothing to do.
-    if (cachedFees) return;
+    let unsubscribe = null;
 
-    let settled = false;
-    const settle = () => {
-      if (!settled) {
-        settled = true;
-        setLoading(false); // DEFAULT_FEES is already in state as the fallback
-      }
-    };
-
-    const timer = setTimeout(settle, FEES_TIMEOUT_MS);
-
-    const docRef = doc(db, 'platformConfig', 'fees');
-    const unsubscribe = onSnapshot(
-      docRef,
-      (docSnap) => {
+    if (cachedFees) {
+      setFees(cachedFees);
+      setLoading(false);
+    } else if (!isFetching) {
+      isFetching = true;
+      const docRef = doc(db, 'platformConfig', 'fees');
+      
+      // Setup realtime listener for dynamic fee updates
+      unsubscribe = onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
-          cachedFees = docSnap.data();
-          setFees(cachedFees);
+          const data = docSnap.data();
+          cachedFees = data;
+          setFees(data);
         }
-        clearTimeout(timer);
-        settle();
-      },
-      (err) => {
-        logger.error('Error fetching fees', err);
-        clearTimeout(timer);
-        settle();
-      }
-    );
+        setLoading(false);
+        isFetching = false;
+      }, (err) => {
+        console.error("Error fetching fees:", err);
+        setLoading(false);
+        isFetching = false;
+      });
+    }
 
     return () => {
-      clearTimeout(timer);
-      unsubscribe();
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 

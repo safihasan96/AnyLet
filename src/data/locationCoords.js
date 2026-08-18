@@ -78,6 +78,7 @@ export const districtCoords = {
     "Mymensingh":     { lat: 24.7471, lng: 90.4203 },
     "Jamalpur":       { lat: 24.9045, lng: 89.9375 },
     "Sherpur":        { lat: 25.0194, lng: 90.0152 },
+    "Netrokona":      { lat: 24.8698, lng: 90.7279 },
 };
 
 export const upazilaCoords = {
@@ -95,7 +96,7 @@ export const upazilaCoords = {
     "Demra":          { lat: 23.7121, lng: 90.4743 },
     "Paltan":         { lat: 23.7363, lng: 90.4150 },
     "Wari":           { lat: 23.7172, lng: 90.4097 },
-    "Kotwali (Dhaka)": { lat: 23.7162, lng: 90.4040 },
+    "Kotwali":        { lat: 23.7162, lng: 90.4040 },
     "Lalbagh":        { lat: 23.7200, lng: 90.3870 },
     "Hazaribagh":     { lat: 23.7250, lng: 90.3790 },
     "Kamrangirchar":  { lat: 23.7062, lng: 90.3728 },
@@ -125,7 +126,7 @@ export const upazilaCoords = {
     "Agrabad":        { lat: 22.3200, lng: 91.8000 },
     "Halishahar":     { lat: 22.3706, lng: 91.7756 },
     "Panchlaish":     { lat: 22.3620, lng: 91.8133 },
-    "Kotwali (Chattogram)": { lat: 22.3360, lng: 91.8373 },
+    "Kotwali":        { lat: 22.3360, lng: 91.8373 },
     "Bayazid":        { lat: 22.3921, lng: 91.8093 },
     "Khulshi":        { lat: 22.3742, lng: 91.8250 },
     "Double Mooring": { lat: 22.3420, lng: 91.8240 },

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { ArrowLeft, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { PageSkeleton } from '../components/Skeleton';
 import logger from '../utils/logger';
 

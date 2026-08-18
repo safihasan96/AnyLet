@@ -54,23 +54,7 @@ export function AuthProvider({ children }) {
     const [userRole, setUserRole] = useState(null);
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [splashFinished, setSplashFinished] = useState(() => {
-        if (typeof window !== 'undefined') {
-            if (sessionStorage.getItem('splashPlayed')) return true;
-            if (window.location.pathname !== '/') {
-                sessionStorage.setItem('splashPlayed', 'true');
-                return true;
-            }
-        }
-        return false;
-    });
-
-    const handleSplashComplete = useCallback(() => {
-        if (typeof window !== 'undefined') {
-            sessionStorage.setItem('splashPlayed', 'true');
-        }
-        setSplashFinished(true);
-    }, []);
+    const [splashFinished, setSplashFinished] = useState(false);
 
     // ── Derived convenience flags ────────────────────────────────────────────
     const onboardingStep = userData?.onboardingStep ?? null;
@@ -224,20 +208,7 @@ export function AuthProvider({ children }) {
                     const isAdminClaim = !!token.claims.admin;
 
                     const userRef = doc(db, 'users', user.uid);
-                    let docSnap;
-                    try {
-                        docSnap = await getDoc(userRef);
-                    } catch (readErr) {
-                        // A stale auth/App Check token can make the first read of the
-                        // user's own doc fail with permission-denied. Force a token
-                        // refresh and retry once before giving up.
-                        if (readErr?.code === 'permission-denied') {
-                            await user.getIdToken(true);
-                            docSnap = await getDoc(userRef);
-                        } else {
-                            throw readErr;
-                        }
-                    }
+                    const docSnap = await getDoc(userRef);
 
                     if (docSnap.exists()) {
                         const data = docSnap.data();
@@ -304,7 +275,7 @@ export function AuthProvider({ children }) {
         <AuthContext.Provider value={value}>
             <AnimatePresence>
                 {!splashFinished && (
-                    <SplashScreen key="splash" onComplete={handleSplashComplete} />
+                    <SplashScreen key="splash" onComplete={() => setSplashFinished(true)} />
                 )}
             </AnimatePresence>
             {!loading && children}

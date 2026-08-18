@@ -32,6 +32,7 @@ const logger = {
      */
     info(message, data) {
         if (!IS_PROD) {
+            // eslint-disable-next-line no-console
             data !== undefined ? console.log(`[INFO] ${message}`, data) : console.log(`[INFO] ${message}`);
         }
     },
@@ -42,6 +43,7 @@ const logger = {
      */
     debug(message, data) {
         if (!IS_PROD) {
+            // eslint-disable-next-line no-console
             data !== undefined ? console.log(`[DEBUG] ${message}`, data) : console.log(`[DEBUG] ${message}`);
         }
     },
@@ -52,6 +54,7 @@ const logger = {
      */
     warn(message, data) {
         if (!IS_PROD) {
+            // eslint-disable-next-line no-console
             data !== undefined ? console.warn(`[WARN] ${message}`, data) : console.warn(`[WARN] ${message}`);
         }
     },
@@ -62,6 +65,7 @@ const logger = {
      */
     error(context, err) {
         if (!IS_PROD) {
+            // eslint-disable-next-line no-console
             console.error(`[ERROR] ${context}`, err ?? '');
         }
         captureError(context, err);

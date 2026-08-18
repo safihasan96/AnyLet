@@ -143,9 +143,9 @@ export default function MyListings() {
       || (item.area || item.upazila || item.district || '').toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
     const isDraftType = item.status === 'draft' || item.status === 'pending_payment';
-    const isActive = item.isApproved && !item.isRejected;
+    const isPendingApproval = !isDraftType && (item.status === 'Pending' || (!item.isApproved && item.status !== 'draft' && item.status !== 'pending_payment'));
+    const isActive = item.isApproved && item.status === 'Available';
     const isRejected = item.isRejected === true;
-    const isPendingApproval = !item.isApproved && !item.isRejected && !isDraftType;
     if (activeFilter === 'Drafts') return isDraftType;
     if (activeFilter === 'Pending') return isPendingApproval;
     if (activeFilter === 'Active') return isActive;
@@ -156,8 +156,8 @@ export default function MyListings() {
 
   const metrics = {
     total: listings.filter((l) => l.status !== 'draft' && l.status !== 'pending_payment').length,
-    active: listings.filter((l) => l.isApproved && !l.isRejected).length,
-    pending: listings.filter((l) => !l.isApproved && !l.isRejected && l.status !== 'draft' && l.status !== 'pending_payment').length,
+    active: listings.filter((l) => l.isApproved && l.status === 'Available').length,
+    pending: listings.filter((l) => !l.isApproved && l.status !== 'draft' && l.status !== 'pending_payment').length,
     drafts: listings.filter((l) => l.status === 'draft' || l.status === 'pending_payment').length,
     rejected: listings.filter((l) => l.isRejected === true).length,
   };
@@ -252,10 +252,8 @@ const STATUS = (p) => {
   if (p.status === 'pending_payment') return { text: 'Pending payment', tone: 'warning' };
   if (p.isRejected) return { text: 'Rejected', tone: 'danger' };
   if (!p.isApproved) return { text: 'Pending approval', tone: 'warning' };
-  if (p.isApproved && p.status === 'Under Negotiation') return { text: 'Under Negotiation', tone: 'info' };
-  if (p.isApproved && p.status === 'Booked') return { text: 'Booked', tone: 'info' };
-  if (p.isApproved && p.status === 'Inactive') return { text: 'Inactive', tone: 'neutral' };
-  return { text: 'Active', tone: 'success' };
+  if (p.isApproved && p.status === 'Available') return { text: 'Active', tone: 'success' };
+  return { text: p.status || 'Active', tone: 'neutral' };
 };
 
 function ListingCard({ property, onStatus, onBump, onVerify, onDelete }) {
@@ -295,12 +293,8 @@ function ListingCard({ property, onStatus, onBump, onVerify, onDelete }) {
             <>
               <DropdownItem icon={<Icon name="externalLink" />} onSelect={() => window.open(`/property/${id}`, '_self')}>View listing</DropdownItem>
               <DropdownItem icon={<Icon name="edit" />} onSelect={() => window.location.assign(`/edit-property/${id}`)}>Edit details</DropdownItem>
-              {property.isApproved && !property.isRejected && (
-                <>
-                  <DropdownItem icon={<Icon name="refresh" />} onSelect={onStatus}>Change status</DropdownItem>
-                  <DropdownItem icon={<Icon name="trending" />} onSelect={onBump}>Bump listing</DropdownItem>
-                </>
-              )}
+              <DropdownItem icon={<Icon name="refresh" />} onSelect={onStatus}>Change status</DropdownItem>
+              <DropdownItem icon={<Icon name="trending" />} onSelect={onBump}>Bump listing</DropdownItem>
               {canVerify && <DropdownItem icon={<Icon name="verified" />} onSelect={onVerify}>Request verification</DropdownItem>}
               <DropdownSeparator />
             </>

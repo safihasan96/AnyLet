@@ -15,13 +15,14 @@ import {
     CloudSun, UtensilsCrossed, Thermometer, Package, Bike, Calendar, Users,
     CreditCard
 } from 'lucide-react';
-import { motion, AnimatePresence, Reorder } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import LocationPickerMap from '../components/LocationPickerMap';
+import PaymentModal from '../components/PaymentModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../contexts/ToastContext';
 import { createNotification } from '../utils/notificationService';
 import logger from '../utils/logger';
 import { getApiUrl } from '../utils/api';
-import { compressImage } from '../utils/imageUtils';
 import { useFees } from '../hooks/useFees';
 import { Card, Button, Input, Select, Textarea, Field, Icon, Badge, Checkbox, Radio, RadioGroup, Modal, ModalFooter } from '../components/ui';
 
@@ -115,6 +116,8 @@ export default function AddProperty() {
     });
 
     const [showSuccess, setShowSuccess] = useState(false);
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
 
     const BILLING_CYCLES = ["Month", "Week", "Day"];
     const PROPERTY_TYPES = ["House", "Apartment", "Sublet", "Room", "Mess", "Cottage", "Hotel", "Resort", "Commercial Space", "Land", "Shop", "Others"];
@@ -159,18 +162,8 @@ export default function AddProperty() {
         { id: 'Bike Parking', icon: <Bike size={16} /> }
     ];
 
-    // Numeric-only fields: strip everything except digits
-    const NUMERIC_FIELDS = new Set(['rent', 'securityDeposit', 'utilitiesCost', 'area', 'agentCommission', 'floorNumber', 'beds', 'baths', 'verandas']);
-
     const handleChange = (e) => {
-        const { name } = e.target;
-        let { value } = e.target;
-
-        // For currency / numeric text fields, strip non-digit characters so the
-        // browser's number-parsing engine never touches the raw string.
-        if (NUMERIC_FIELDS.has(name)) {
-            value = value.replace(/[^0-9]/g, '');
-        }
+        const { name, value } = e.target;
 
         // Custom logic for cascading resets
         if (name === 'division') {
@@ -195,6 +188,7 @@ export default function AddProperty() {
         }));
     };
 
+    // eslint-disable-next-line no-unused-vars
     const toggleItem = (listName, id) => {
         setFormData(prev => {
             const list = prev[listName];
@@ -207,6 +201,7 @@ export default function AddProperty() {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
 
+        // Check if adding these files exceeds the 5-image limit
         if (formData.images.length + files.length > 5) {
             toast.warning("You can only upload up to 5 images in total.");
             return;
@@ -214,13 +209,6 @@ export default function AddProperty() {
 
         setLoading(true);
         const uploadedUrls = [];
-
-        // Determine which upload strategy to use:
-        // 1. Signed upload via our API (preferred — keeps secrets server-side)
-        // 2. Unsigned upload via preset (fallback for local dev / if API misconfigured)
-        let sigData = null;
-        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
         try {
             const sigRes = await fetch(getApiUrl('/api/cloudinary-sign'), {
@@ -231,75 +219,35 @@ export default function AddProperty() {
                 },
                 body: JSON.stringify({ isKyc: false })
             });
-            if (sigRes.ok) {
-                sigData = await sigRes.json();
-                // Validate the response has everything we need
-                if (!sigData?.signature || !sigData?.apiKey || !sigData?.cloudName) {
-                    logger.warn('[Upload] Signed response incomplete, falling back to unsigned preset.');
-                    sigData = null;
-                }
-            } else {
-                const errBody = await sigRes.json().catch(() => ({}));
-                logger.warn('[Upload] Signed endpoint failed:', errBody?.error || sigRes.status, '— using unsigned preset fallback.');
-            }
-        } catch (sigError) {
-            logger.warn('[Upload] Could not reach sign endpoint:', sigError.message, '— using unsigned preset fallback.');
-        }
+            const sigData = await sigRes.json();
+            if (!sigRes.ok) throw new Error(sigData.error || 'Failed to generate secure upload signature. Ensure backend API keys are configured.');
 
-        // Abort if neither strategy is available
-        if (!sigData && (!cloudName || !uploadPreset)) {
-            toast.error('Image upload is not configured. Please contact support.');
-            setLoading(false);
-            return;
-        }
-
-        try {
-            for (const rawFile of files) {
-                // --- Client-side compression (Canvas API, zero deps) ---
-                let file = rawFile;
-                try {
-                    file = await compressImage(rawFile, { maxWidth: 1280, quality: 0.82, maxSizeKB: 800 });
-                    logger.info(`[Upload] Compressed ${rawFile.name}: ${(rawFile.size/1024).toFixed(0)}KB → ${(file.size/1024).toFixed(0)}KB`);
-                } catch (compressErr) {
-                    logger.warn('[Upload] Compression failed, uploading original:', compressErr.message);
-                    file = rawFile; // fall back to original
-                }
-
+            for (const file of files) {
                 const data = new FormData();
                 data.append('file', file);
-
-                let uploadUrl;
-                if (sigData) {
-                    // Signed upload
-                    data.append('api_key', sigData.apiKey);
-                    data.append('timestamp', sigData.timestamp);
-                    data.append('signature', sigData.signature);
-                    data.append('folder', sigData.folder);
-                    uploadUrl = `https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`;
-                } else {
-                    // Unsigned upload (uses public preset)
-                    data.append('upload_preset', uploadPreset);
-                    uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
-                }
+                data.append('api_key', sigData.apiKey);
+                data.append('timestamp', sigData.timestamp);
+                data.append('signature', sigData.signature);
+                data.append('folder', sigData.folder);
 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s for large files
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-                const res = await fetch(uploadUrl, {
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`, {
                     method: 'POST',
                     body: data,
                     signal: controller.signal
                 });
                 clearTimeout(timeoutId);
-
+                
                 const fileData = await res.json();
-
+                
                 if (!res.ok) {
-                    logger.error('[Upload] Cloudinary error:', fileData);
-                    toast.error(`Upload failed: ${fileData.error?.message || 'Unknown error'}`);
+                    logger.error("Cloudinary Error:", fileData);
+                    toast.error(`Upload failed!\nError: ${fileData.error?.message || "Unknown error"}`);
                     throw new Error(fileData.error?.message || 'Upload failed');
                 }
-
+                
                 if (fileData.secure_url) {
                     uploadedUrls.push(fileData.secure_url);
                 }
@@ -308,34 +256,25 @@ export default function AddProperty() {
             if (uploadedUrls.length > 0) {
                 setFormData(prev => {
                     const newImages = [...prev.images, ...uploadedUrls];
-                    return {
-                        ...prev,
+                    return { 
+                        ...prev, 
                         images: newImages,
-                        imageUrl: newImages[0],
-                        image_url: newImages[0]
+                        imageUrl: newImages[0], // Keep for backward compatibility
+                        image_url: newImages[0]  // Keep for backward compatibility
                     };
                 });
-                toast.success(`${uploadedUrls.length} photo${uploadedUrls.length > 1 ? 's' : ''} uploaded!`);
             }
         } catch (error) {
-            logger.error('[Upload] Process error:', error);
+            logger.error('Error during upload process:', error);
             if (error.name === 'AbortError') {
                 toast.error('Upload timed out. Please check your connection and try again.');
             } else if (!error.message?.includes('Upload failed')) {
+                // Only show toast if we haven't already shown one from the inner loop
                 toast.error(`Upload failed: ${error.message || 'Unknown error'}`);
             }
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleReorderImages = (newOrder) => {
-        setFormData(prev => ({
-            ...prev,
-            images: newOrder,
-            imageUrl: newOrder[0] || '',
-            image_url: newOrder[0] || ''
-        }));
     };
 
     const removeImage = (indexToRemove) => {
@@ -350,7 +289,8 @@ export default function AddProperty() {
         });
     };
 
-    const handlePublish = async () => {
+    // Called by PaymentModal after user submits transaction ID
+    const handlePaymentSubmitted = async (paymentDocId) => {
         if (!currentUser) return;
         
         const rent = Number(formData.rent);
@@ -388,15 +328,15 @@ export default function AddProperty() {
                 utilitiesCost,
                 ownerId: currentUser.uid,
                 isApproved: false,
-                listingPaymentId: null,
+                listingPaymentId: paymentDocId,
                 // If user requested onsite verification, mark it as pending
                 isOnsiteVerified: false,
-                verificationPaymentId: null,
+                verificationPaymentId: wantOnsiteVerify ? paymentDocId : null,
                 verificationStatus: wantOnsiteVerify ? 'pending' : 'none',
                 onsiteVerificationRequested: wantOnsiteVerify,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
-                status: 'Pending',
+                status: 'Available',
                 expiryEmailSent: false
             };
 
@@ -415,6 +355,7 @@ export default function AddProperty() {
                 '/my-listings'
             );
 
+            setPaymentModalOpen(false);
             setShowSuccess(true);
             setTimeout(() => navigate('/'), 4000);
         } catch (err) {
@@ -440,7 +381,9 @@ export default function AddProperty() {
         window.scrollTo(0, 0);
     };
 
-
+    const handleProceedToPayment = () => {
+        setPublishConfirmOpen(true);
+    };
 
     if (feesLoading) {
         return (
@@ -467,7 +410,7 @@ export default function AddProperty() {
                             <div className="size-24 bg-success/20 rounded-full flex items-center justify-center text-success mx-auto mb-8 shadow-xl shadow-success/20 border border-success/30">
                                 <CheckCircle size={48} strokeWidth={2.5} />
                             </div>
-                            <h2 className="text-title-xl text-content mb-4">Ad Submitted!</h2>
+                            <h2 className="text-title-xl text-content mb-4">Payment Submitted!</h2>
                             <p className="text-muted font-bold mb-10 leading-relaxed text-body-md">
                                 Your listing is being verified — usually takes under 30 minutes. Redirecting you home...
                             </p>
@@ -548,7 +491,7 @@ export default function AddProperty() {
                                     </Select>
                                 </Field>
                                 <Field label="Rent (৳)" required>
-                                    <Input name="rent" type="text" inputMode="numeric" pattern="[0-9]*" value={formData.rent} onChange={handleChange} placeholder="25000" />
+                                    <Input name="rent" type="number" value={formData.rent} onChange={handleChange} placeholder="25000" />
                                 </Field>
                             </div>
 
@@ -630,16 +573,16 @@ export default function AddProperty() {
                             
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                 <Field label="Beds">
-                                    <Input name="beds" type="text" inputMode="numeric" pattern="[0-9]*" value={formData.beds} onChange={handleChange} />
+                                    <Input name="beds" type="number" value={formData.beds} onChange={handleChange} />
                                 </Field>
                                 <Field label="Baths">
-                                    <Input name="baths" type="text" inputMode="numeric" pattern="[0-9]*" value={formData.baths} onChange={handleChange} />
+                                    <Input name="baths" type="number" value={formData.baths} onChange={handleChange} />
                                 </Field>
                                 <Field label="Verandas">
-                                    <Input name="verandas" type="text" inputMode="numeric" pattern="[0-9]*" value={formData.verandas} onChange={handleChange} />
+                                    <Input name="verandas" type="number" value={formData.verandas} onChange={handleChange} />
                                 </Field>
                                 <Field label="SqFt (Optional)">
-                                    <Input name="area" type="text" inputMode="numeric" pattern="[0-9]*" value={formData.area} onChange={handleChange} placeholder="N/A" />
+                                    <Input name="area" type="number" value={formData.area} onChange={handleChange} placeholder="N/A" />
                                 </Field>
                             </div>
 
@@ -658,61 +601,13 @@ export default function AddProperty() {
 
                             <div className="grid grid-cols-1 gap-4">
                                 <Field label="Security Deposit (Optional)">
-                                    <Input name="securityDeposit" type="text" inputMode="numeric" pattern="[0-9]*" value={formData.securityDeposit} onChange={handleChange} placeholder="0" />
+                                    <Input name="securityDeposit" type="number" value={formData.securityDeposit} onChange={handleChange} placeholder="৳0" />
                                 </Field>
                             </div>
                             
                             <Field label="Description">
                                 <Textarea name="description" value={formData.description} onChange={handleChange} placeholder="Tell tenants about your space..." rows={4} />
                             </Field>
-                        </Card>
-
-                        {/* NEW AMENITIES & UTILITIES CARD */}
-                        <Card padding="lg" className="space-y-6">
-                            <div className="flex items-center gap-2 text-primary pb-4 border-b border-border">
-                                <Info size={20} />
-                                <h3 className="font-bold uppercase text-xs tracking-widest">Amenities & Utilities</h3>
-                            </div>
-                            
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-[10px] uppercase font-black text-muted ml-1 tracking-widest">Included Utilities</label>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                                        {UTILITY_OPTIONS.map(opt => (
-                                            <button
-                                                key={opt.id}
-                                                type="button"
-                                                onClick={() => toggleItem('utilities', opt.id)}
-                                                className={`flex items-center gap-2 p-3 rounded-xl border text-caption font-bold transition-all text-left ${formData.utilities.includes(opt.id) ? 'bg-primary-subtle border-primary text-primary' : 'bg-surface-sunken border-transparent hover:border-border text-muted hover:text-content'}`}
-                                            >
-                                                {opt.icon}
-                                                <span className="truncate">{opt.id}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <Field label="Monthly Utilities Cost (৳)" required>
-                                    <Input name="utilitiesCost" type="text" inputMode="numeric" pattern="[0-9]*" value={formData.utilitiesCost} onChange={handleChange} placeholder="e.g. 2000" />
-                                </Field>
-
-                                <div>
-                                    <label className="text-[10px] uppercase font-black text-muted ml-1 tracking-widest">Property Features & Amenities</label>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                                        {FEATURE_OPTIONS.map(opt => (
-                                            <button
-                                                key={opt.id}
-                                                type="button"
-                                                onClick={() => toggleItem('features', opt.id)}
-                                                className={`flex items-center gap-2 p-3 rounded-xl border text-caption font-bold transition-all text-left ${formData.features.includes(opt.id) ? 'bg-primary-subtle border-primary text-primary' : 'bg-surface-sunken border-transparent hover:border-border text-muted hover:text-content'}`}
-                                            >
-                                                {opt.icon}
-                                                <span className="truncate">{opt.id}</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
                         </Card>
 
                         <Card padding="lg" className="space-y-6">
@@ -722,34 +617,22 @@ export default function AddProperty() {
                             </div>
                             
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                <Reorder.Group 
-                                    axis="y" 
-                                    values={formData.images} 
-                                    onReorder={handleReorderImages} 
-                                    className="contents" 
-                                    as="div"
-                                >
-                                    {formData.images.map((url, index) => (
-                                        <Reorder.Item 
-                                            key={url} 
-                                            value={url} 
-                                            className="relative aspect-square rounded-control overflow-hidden group border border-border shadow-sm cursor-grab active:cursor-grabbing"
+                                {formData.images.map((url, index) => (
+                                    <div key={index} className="relative aspect-square rounded-control overflow-hidden group border border-border shadow-sm">
+                                        <img loading="lazy" src={url} alt={`Property ${index + 1}`} className="w-full h-full object-cover" />
+                                        <button 
+                                            onClick={() => removeImage(index)}
+                                            className="absolute top-2 right-2 p-1.5 bg-danger text-white rounded-control opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                                         >
-                                            <img loading="lazy" src={url} alt={`Property ${index + 1}`} className="w-full h-full object-cover pointer-events-none select-none" />
-                                            <button 
-                                                onClick={() => removeImage(index)}
-                                                className="absolute top-2 right-2 p-1.5 bg-danger text-white rounded-control opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                            {index === 0 && (
-                                                <div className="absolute bottom-0 inset-x-0 bg-primary/80 backdrop-blur-sm py-1 text-[8px] font-black text-white text-center uppercase tracking-widest z-10 pointer-events-none">
-                                                    Main Cover
-                                                </div>
-                                            )}
-                                        </Reorder.Item>
-                                    ))}
-                                </Reorder.Group>
+                                            <Trash2 size={14} />
+                                        </button>
+                                        {index === 0 && (
+                                            <div className="absolute bottom-0 inset-x-0 bg-primary/80 backdrop-blur-sm py-1 text-[8px] font-black text-white text-center uppercase tracking-widest">
+                                                Main Cover
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                                 
                                 {formData.images.length < 5 && (
                                     <div className="relative aspect-square">
@@ -829,30 +712,10 @@ export default function AddProperty() {
                                     <p className="font-bold text-content uppercase tracking-tight">৳{formData.securityDeposit || 0}</p>
                                 </div>
                             </div>
-                            <div className="pt-4 border-t border-border space-y-3">
+                            <div className="pt-4 border-t border-border">
                                 <p className="text-[9px] font-bold text-muted uppercase tracking-widest mb-1 leading-none">Full Address</p>
                                 <p className="text-body-sm font-bold text-content mb-3">{formData.addressDetails || 'Not specified'}, {formData.upazila}, {formData.district}, {formData.division}</p>
                                 <p className="text-caption text-muted font-medium leading-relaxed">{formData.description}</p>
-                                {formData.utilities.length > 0 && (
-                                    <div>
-                                        <p className="text-[9px] font-bold text-muted uppercase tracking-widest mb-1">Included Utilities</p>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {formData.utilities.map(u => (
-                                                <span key={u} className="text-caption font-bold bg-primary-subtle text-primary px-2 py-0.5 rounded-full">{u}</span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {formData.features.length > 0 && (
-                                    <div>
-                                        <p className="text-[9px] font-bold text-muted uppercase tracking-widest mb-1">Features & Amenities</p>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {formData.features.map(f => (
-                                                <span key={f} className="text-caption font-bold bg-surface-sunken border border-border text-content px-2 py-0.5 rounded-full">{f}</span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         </Card>
 
@@ -897,15 +760,17 @@ export default function AddProperty() {
                             size="lg"
                             fullWidth
                             disabled={loading}
-                            onClick={handlePublish}
-                            leftIcon={<CheckCircle size={20} />}
+                            onClick={handleProceedToPayment}
+                            leftIcon={<CreditCard size={20} />}
                         >
-                            Publish Ad
+                            {totalAmount === 0 ? 'Publish Ad — Free with Subscription' : `Publish Ad — ৳${totalAmount}`}
                         </Button>
 
                         <p className="text-center text-[10px] font-bold text-muted mt-2">
-                            Posting an ad is completely free!
-                            {wantOnsiteVerify && ` (On-Site Verify: ৳${ONSITE_FEE} payable later)`}
+                            {hasActiveSubscription
+                                ? `${subscriptionPlan} subscription · Listing: Free${wantOnsiteVerify ? ` · On-Site Verify: ৳${ONSITE_FEE}` : ''}`
+                                : `Listing Fee: ৳${LISTING_FEE}${wantOnsiteVerify ? ` · On-Site Verify: ৳${ONSITE_FEE}` : ' · or get a subscription plan to post free'}`
+                            }
                         </p>
 
                         <Button
@@ -919,6 +784,45 @@ export default function AddProperty() {
                     </motion.div>
                 )}
             </div>
+
+            <ConfirmationModal
+                isOpen={publishConfirmOpen}
+                title="Confirm Your Listing"
+                message={
+                    hasActiveSubscription
+                        ? `You are about to publish "${formData.title}" under your ${subscriptionPlan} plan. ${wantOnsiteVerify ? `On-site verification (৳${ONSITE_FEE}) will also be charged.` : 'Listing is free with your subscription!'}`
+                        : `You are about to publish "${formData.title}" for ৳${totalAmount}. Your listing will go live once our team verifies your payment — usually under 30 minutes.`
+                }
+                confirmText={totalAmount === 0 ? 'Publish for Free' : 'Proceed to Payment'}
+                confirmColor="#1a227f"
+                variant="info"
+                icon={CreditCard}
+                onConfirm={() => {
+                    setPublishConfirmOpen(false);
+                    setPaymentModalOpen(true);
+                }}
+                onCancel={() => setPublishConfirmOpen(false)}
+            />
+
+            <PaymentModal
+                isOpen={paymentModalOpen}
+                onClose={() => setPaymentModalOpen(false)}
+                type="listing_fee"
+                bookingType="listing"
+                amount={totalAmount}
+                title="Listing Fee"
+                subtitle={`Publish: ${formData.title}`}
+                breakdownItems={[
+                    ...(hasActiveSubscription
+                        ? [{ label: `Listing Fee (${subscriptionPlan} Plan)`, amount: 0 }]
+                        : [{ label: 'Property Listing Fee', amount: LISTING_FEE }]
+                    ),
+                    ...(wantOnsiteVerify ? [{ label: 'On-Site Verification', amount: ONSITE_FEE }] : []),
+                ]}
+                propertyName={formData.title}
+                metadata={{ onsiteVerification: wantOnsiteVerify }}
+                onPaymentSubmitted={handlePaymentSubmitted}
+            />
         </div>
     );
 }

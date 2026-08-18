@@ -1,6 +1,5 @@
 import { Calendar, Clock, User, ArrowLeft, Share2 } from 'lucide-react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
 
 export default function BlogPost() {
     const { id } = useParams();
@@ -8,7 +7,6 @@ export default function BlogPost() {
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
-            <Helmet><title>Blog Post | Any-Let</title></Helmet>
             {/* Hero Image */}
             <div className="w-full h-[40vh] md:h-[50vh] relative">
                 <img loading="lazy" src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80" 

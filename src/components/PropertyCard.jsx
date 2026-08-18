@@ -31,7 +31,7 @@ const heartVariants = {
 };
 
 export default function PropertyCard({ property }) {
-    const { id, title, rent, beds, baths, image, type, isVerified, utilitiesCost } = property;
+    const { id, title, rent, area, beds, baths, sqft, image, type, isVerified, utilitiesCost } = property;
     const { toggleSaveProperty, isPropertySaved } = useSavedProperties();
     const isSaved = isPropertySaved(id);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -72,7 +72,7 @@ export default function PropertyCard({ property }) {
             if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 604800)}w`;
             if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)}mo`;
             return `${Math.floor(diffInSeconds / 31536000)}y`;
-        } catch { return ''; }
+        } catch (e) { return ''; }
     };
 
     return (
@@ -115,17 +115,13 @@ export default function PropertyCard({ property }) {
                     {hasMultipleImages && (
                         <>
                             <button
-                                type="button"
                                 onClick={prevImage}
-                                aria-label="Previous photo"
                                 className="absolute left-2 top-1/2 -translate-y-1/2 size-8 rounded-full bg-white/70 backdrop-blur-sm text-slate-700 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity hover:bg-white shadow-sm z-20"
                             >
                                 <ChevronLeft size={18} />
                             </button>
                             <button
-                                type="button"
                                 onClick={nextImage}
-                                aria-label="Next photo"
                                 className="absolute right-2 top-1/2 -translate-y-1/2 size-8 rounded-full bg-white/70 backdrop-blur-sm text-slate-700 flex items-center justify-center opacity-0 group-hover/slider:opacity-100 transition-opacity hover:bg-white shadow-sm z-20"
                             >
                                 <ChevronRight size={18} />
@@ -147,9 +143,6 @@ export default function PropertyCard({ property }) {
                     {/* Heart button */}
                     <div className="absolute top-4 right-4 z-20">
                         <motion.button
-                            type="button"
-                            aria-label={isSaved ? 'Remove from saved' : 'Save property'}
-                            aria-pressed={isSaved}
                             animate={isSaved ? 'saved' : 'unsaved'}
                             variants={heartVariants}
                             whileHover={{ scale: 1.15 }}
@@ -183,7 +176,7 @@ export default function PropertyCard({ property }) {
                                 {Number(property.reviewScore || 0).toFixed(1)} ({property.reviewCount})
                             </div>
                         )}
-                        {property.status && property.status !== 'Available' && property.status !== 'Pending' && (
+                        {property.status && property.status !== 'Available' && (
                             <div className={`px-3 py-1.5 rounded-lg font-black text-[10px] uppercase tracking-wider shadow-sm flex items-center gap-1.5 border ${
                                 property.status === 'Let Agreed' 
                                     ? 'bg-rose-500 text-white border-rose-400' 

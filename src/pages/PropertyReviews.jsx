@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { motion } from 'framer-motion';
 import {
     ArrowLeft, Star, ShieldCheck, Loader2, MessageSquare, ThumbsUp
 } from 'lucide-react';

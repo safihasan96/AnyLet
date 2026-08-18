@@ -1,11 +1,12 @@
 'use client';
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import {
     collection, addDoc, query, where, onSnapshot,
-    serverTimestamp, limit
+    serverTimestamp, orderBy, limit
 } from 'firebase/firestore';
 import {
     ArrowLeft, Send, MessageSquare, Clock,
@@ -18,6 +19,7 @@ import logger from '../utils/logger';
 
 export default function Enquiry() {
     const { currentUser } = useAuth();
+    const navigate = useNavigate();
     const [enquiries, setEnquiries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

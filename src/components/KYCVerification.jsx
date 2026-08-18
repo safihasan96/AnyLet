@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { CheckCircle2, Clock, FileText, Loader2, ShieldCheck, Upload, X } from 'lucide-react';
 import { db } from '../firebase';
@@ -124,7 +124,7 @@ export default function KYCVerification({ isOpen, onClose, userData, onSubmitted
     setBackPreview(URL.createObjectURL(file));
   }
 
-  async function uploadSigned(file) {
+  async function uploadSigned(file, side) {
     const userToken = await currentUser.getIdToken();
     const sigRes = await fetch(getApiUrl('/api/cloudinary-sign'), {
       method: 'POST',
@@ -239,78 +239,78 @@ export default function KYCVerification({ isOpen, onClose, userData, onSubmitted
             </div>
 
             <div className="space-y-6 p-6">
-                {isApproved && (
-                  <div className="py-8 text-center">
-                    <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-500/10">
-                      <ShieldCheck size={40} className="text-emerald-500" />
-                    </div>
-                    <h3 className="mb-2 text-xl font-black text-slate-900 dark:text-white">Identity Verified</h3>
-                    <p className="text-sm font-medium text-slate-400">Your identity has been approved.</p>
+              {isApproved && (
+                <div className="py-8 text-center">
+                  <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-500/10">
+                    <ShieldCheck size={40} className="text-emerald-500" />
                   </div>
-                )}
+                  <h3 className="mb-2 text-xl font-black text-slate-900 dark:text-white">Identity Verified</h3>
+                  <p className="text-sm font-medium text-slate-400">Your identity has been approved.</p>
+                </div>
+              )}
 
-                {!isApproved && isPending && (
-                  <div className="py-8 text-center">
-                    <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full bg-sky-50 dark:bg-sky-500/10">
-                      <Clock size={40} className="animate-pulse text-sky-500" />
-                    </div>
-                    <h3 className="mb-2 text-xl font-black text-slate-900 dark:text-white">Under Review</h3>
-                    <p className="text-sm font-medium text-slate-400">Your documents are being reviewed by our team.</p>
+              {!isApproved && isPending && (
+                <div className="py-8 text-center">
+                  <div className="mx-auto mb-5 flex size-20 items-center justify-center rounded-full bg-sky-50 dark:bg-sky-500/10">
+                    <Clock size={40} className="animate-pulse text-sky-500" />
                   </div>
-                )}
+                  <h3 className="mb-2 text-xl font-black text-slate-900 dark:text-white">Under Review</h3>
+                  <p className="text-sm font-medium text-slate-400">Your documents are being reviewed by our team.</p>
+                </div>
+              )}
 
-                {!isApproved && !isPending && (
-                  <>
-                    {isRejected && (
-                      <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 dark:border-rose-800/30 dark:bg-rose-500/10">
-                        <p className="text-xs font-bold text-rose-600 dark:text-rose-300">
-                          Your previous submission was rejected. Upload clear front and back images to resubmit.
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="rounded-2xl border border-primary/10 bg-primary/5 p-5 dark:bg-primary/10">
-                      <h4 className="mb-3 text-xs font-black uppercase tracking-wider text-primary dark:text-indigo-300">Why Verify?</h4>
-                      <ul className="space-y-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-                        <li className="flex items-center gap-2"><CheckCircle2 size={13} className="shrink-0 text-emerald-500" /> Build trust with owners and tenants</li>
-                        <li className="flex items-center gap-2"><CheckCircle2 size={13} className="shrink-0 text-emerald-500" /> Keep high-risk accounts out of AnyLet</li>
-                        <li className="flex items-center gap-2"><CheckCircle2 size={13} className="shrink-0 text-emerald-500" /> Unlock stronger profile verification signals</li>
-                      </ul>
+              {!isApproved && !isPending && (
+                <>
+                  {isRejected && (
+                    <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 dark:border-rose-800/30 dark:bg-rose-500/10">
+                      <p className="text-xs font-bold text-rose-600 dark:text-rose-300">
+                        Your previous submission was rejected. Upload clear front and back images to resubmit.
+                      </p>
                     </div>
+                  )}
 
-                    <div>
-                      <label className="mb-2 ml-1 block text-[10px] font-black uppercase tracking-widest text-slate-400">Document Type</label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {DOC_TYPES.map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => setDocType(item.id)}
-                            className={`rounded-xl py-3 text-xs font-black transition ${
-                              docType === item.id
-                                ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                                : 'bg-slate-50 text-slate-500 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-400'
-                            }`}
-                          >
-                            {item.label}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="rounded-2xl border border-primary/10 bg-primary/5 p-5 dark:bg-primary/10">
+                    <h4 className="mb-3 text-xs font-black uppercase tracking-wider text-primary dark:text-indigo-300">Why Verify?</h4>
+                    <ul className="space-y-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+                      <li className="flex items-center gap-2"><CheckCircle2 size={13} className="shrink-0 text-emerald-500" /> Build trust with owners and tenants</li>
+                      <li className="flex items-center gap-2"><CheckCircle2 size={13} className="shrink-0 text-emerald-500" /> Keep high-risk accounts out of AnyLet</li>
+                      <li className="flex items-center gap-2"><CheckCircle2 size={13} className="shrink-0 text-emerald-500" /> Unlock stronger profile verification signals</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 ml-1 block text-[10px] font-black uppercase tracking-widest text-slate-400">Document Type</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {DOC_TYPES.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setDocType(item.id)}
+                          className={`rounded-xl py-3 text-xs font-black transition ${
+                            docType === item.id
+                              ? 'bg-primary text-white shadow-lg shadow-primary/20'
+                              : 'bg-slate-50 text-slate-500 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-400'
+                          }`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
                     </div>
+                  </div>
 
-                    <FilePicker label="NID Front" file={frontFile} preview={frontPreview} onPick={pickFront} onRemove={() => { setFrontFile(null); setFrontPreview(null); }} />
-                    <FilePicker label="NID Back" file={backFile} preview={backPreview} onPick={pickBack} onRemove={() => { setBackFile(null); setBackPreview(null); }} />
+                  <FilePicker label="NID Front" file={frontFile} preview={frontPreview} onPick={pickFront} onRemove={() => { setFrontFile(null); setFrontPreview(null); }} />
+                  <FilePicker label="NID Back" file={backFile} preview={backPreview} onPick={pickBack} onRemove={() => { setBackFile(null); setBackPreview(null); }} />
 
-                    <button
-                      type="button"
-                      disabled={!frontFile || !backFile || submitting}
-                      onClick={handleSubmit}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-sm font-black text-white shadow-xl shadow-primary/20 transition active:scale-95 disabled:opacity-50 disabled:shadow-none"
-                    >
-                      {submitting ? <><Loader2 size={18} className="animate-spin" /> Submitting...</> : <><FileText size={18} /> Submit for Review</>}
-                    </button>
-                  </>
-                )}
+                  <button
+                    type="button"
+                    disabled={!frontFile || !backFile || submitting}
+                    onClick={handleSubmit}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-sm font-black text-white shadow-xl shadow-primary/20 transition active:scale-95 disabled:opacity-50 disabled:shadow-none"
+                  >
+                    {submitting ? <><Loader2 size={18} className="animate-spin" /> Submitting...</> : <><FileText size={18} /> Submit for Review</>}
+                  </button>
+                </>
+              )}
             </div>
           </motion.div>
         </motion.div>

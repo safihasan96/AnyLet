@@ -75,7 +75,7 @@ export default function PropertyCard({
                 Verified
               </Badge>
             )}
-            {status && status !== 'Available' && status !== 'Pending' && (
+            {status && status !== 'Available' && (
               <Badge tone={status === 'Booked' ? 'info' : 'warning'} size="sm" className="shadow-card">{status}</Badge>
             )}
           </div>
