@@ -333,6 +333,18 @@ body {
 .btn:active { transform: scale(0.97); }
 .btn-primary { background-color: var(--color-primary); color: white; }
 
+/* ── Global rule: anything with a solid primary background must have white text.
+   Covers legacy .btn-primary, Tailwind bg-primary, and any inline style using
+   the primary token — so violet buttons always show white labels everywhere. ── */
+[class*="bg-primary"]:not([class*="bg-primary/"]):not([class*="bg-primary-"]):not(.bg-primary-subtle):not(.bg-primary-border),
+.btn-primary,
+[style*="var(--color-primary)"],
+[style*="var(--anl-primary)"],
+[style*="#1a227f"],
+[style*="#1A227F"] {
+  color: white !important;
+}
+
 .app-container {
   width: 100%;
   min-height: 100dvh;
