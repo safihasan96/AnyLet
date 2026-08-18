@@ -13,43 +13,26 @@ const DEFAULT_FEES = {
   withdrawalLimits: { minAmount: 500, maxAmount: 25000, currency: "BDT" }
 };
 
-let cachedFees = null;
-let isFetching = false;
-let fetchPromise = null;
-
 export function useFees() {
-  const [fees, setFees] = useState(cachedFees || DEFAULT_FEES);
-  const [loading, setLoading] = useState(!cachedFees);
+  const [fees, setFees] = useState(DEFAULT_FEES);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let unsubscribe = null;
-
-    if (cachedFees) {
-      setFees(cachedFees);
+    const docRef = doc(db, 'platformConfig', 'fees');
+    
+    // Setup realtime listener for dynamic fee updates
+    // Firestore automatically handles local caching and deduplication
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setFees(docSnap.data());
+      }
       setLoading(false);
-    } else if (!isFetching) {
-      isFetching = true;
-      const docRef = doc(db, 'platformConfig', 'fees');
-      
-      // Setup realtime listener for dynamic fee updates
-      unsubscribe = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          cachedFees = data;
-          setFees(data);
-        }
-        setLoading(false);
-        isFetching = false;
-      }, (err) => {
-        console.error("Error fetching fees:", err);
-        setLoading(false);
-        isFetching = false;
-      });
-    }
+    }, (err) => {
+      console.error("Error fetching fees:", err);
+      setLoading(false);
+    });
 
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
   return { fees, loading };
