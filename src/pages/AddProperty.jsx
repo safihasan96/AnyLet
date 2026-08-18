@@ -336,7 +336,7 @@ export default function AddProperty() {
                 onsiteVerificationRequested: wantOnsiteVerify,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
-                status: 'Available',
+                status: 'Pending',
                 expiryEmailSent: false
             };
 
