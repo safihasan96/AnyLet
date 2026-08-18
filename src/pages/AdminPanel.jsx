@@ -367,10 +367,10 @@ export default function AdminPanel() {
  /* ── Listing approval ─────────────────────────────────────────────────── */
  const handleApproveListing = async listing => {
  try {
- await updateDoc(doc(db, 'properties', listing.id), { isApproved: true, isActive: true, isRejected: false});
+ await updateDoc(doc(db, 'properties', listing.id), { isApproved: true, isActive: true, isRejected: false, status: 'Available'});
  // Update selectedListing in-place so the drawer reflects approval instantly
  if (selectedListing?.id === listing.id) {
- setSelectedListing(prev => ({ ...prev, isApproved: true, isActive: true, isRejected: false}));
+ setSelectedListing(prev => ({ ...prev, isApproved: true, isActive: true, isRejected: false, status: 'Available'}));
 }
 
  // Notify owner
@@ -391,9 +391,9 @@ export default function AdminPanel() {
 
  const handleRejectListing = async listing => {
  try {
- await updateDoc(doc(db, 'properties', listing.id), { isApproved: false, isActive: false, isRejected: true});
+ await updateDoc(doc(db, 'properties', listing.id), { isApproved: false, isActive: false, isRejected: true, status: 'Rejected'});
  if (selectedListing?.id === listing.id) {
- setSelectedListing(prev => ({ ...prev, isApproved: false, isActive: false, isRejected: true}));
+ setSelectedListing(prev => ({ ...prev, isApproved: false, isActive: false, isRejected: true, status: 'Rejected'}));
 }
 
  // Notify owner
@@ -633,7 +633,7 @@ export default function AdminPanel() {
 
  // If it's a listing fee, approve the property
  if (payment.type === 'listing_fee' && payment.propertyId) {
- await updateDoc(doc(db, 'properties', payment.propertyId), { isApproved: true});
+ await updateDoc(doc(db, 'properties', payment.propertyId), { isApproved: true, status: 'Available'});
  // Notify owner
  if (payment.userId) {
  await createNotification(
