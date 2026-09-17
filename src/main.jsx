@@ -8,6 +8,7 @@ import { ToastProvider } from './components/ui/Toast';
 import { registerSW } from 'virtual:pwa-register'
 import { HelmetProvider } from 'react-helmet-async';
 import ErrorBoundary from './components/ErrorBoundary';
+import { Analytics } from '@vercel/analytics/react';
 import './index.css'
 import App from './App.jsx'
 
@@ -30,6 +31,7 @@ createRoot(document.getElementById('root')).render(
               <LanguageProvider>
                 <ToastProvider>
                   <App />
+                  <Analytics />
                 </ToastProvider>
               </LanguageProvider>
             </ThemeProvider>
